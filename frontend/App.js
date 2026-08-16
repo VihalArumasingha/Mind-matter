@@ -1,14 +1,13 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React from 'react'
+import {SafeAreaView, Text} from 'react-native'
+import Config from 'react-native-config'
 
 const App = () => {
-  return (
-    <View>
-      <Text style={{ top: 50, fontSize: 30, fontWeight: 'bold' }}>
-        Mind Matter
-      </Text>
-    </View>
-  );
-};
+    return (
+        <SafeAreaView>
+            <Text>{Config.API_BASE_URL}</Text>
+        </SafeAreaView>
+    )
+}
 
-export default App;
+export default App
