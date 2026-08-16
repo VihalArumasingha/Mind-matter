@@ -1,56 +1,85 @@
 import React from 'react'
-import { ActivityIndicator, StyleSheet, View } from 'react-native'
-import { NavigationContainer } from '@react-navigation/native'
-import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { useAuth } from '../context/AuthContext'
+import {ActivityIndicator, StyleSheet, View} from 'react-native'
+import {NavigationContainer} from '@react-navigation/native'
+import {createNativeStackNavigator} from '@react-navigation/native-stack'
+import {useAuth} from '../context/AuthContext'
 
 import LoginScreen from '../features/authentication/screens/LoginScreen'
 import RegisterScreen from '../features/authentication/screens/RegisterScreen'
 import ForgotPasswordScreen from '../features/authentication/screens/ForgotPasswordScreen'
-import UserHomeScreen from '../features/profile/screens/UserHomeScreen'
-import ProfileScreen from '../features/profile/screens/ProfileScreen'
-import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
+
+import UserNavigator from './UserNavigator'
+import VolunteerNavigator from './VolunteerNavigator'
+import OrganizerNavigator from './OrganizerNavigator'
+import AdminNavigator from './AdminNavigator'
 
 const Stack = createNativeStackNavigator()
 
+const AuthenticationNavigator = () => {
+    return (
+        <Stack.Navigator screenOptions={{headerShown: false}}>
+            <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+            />
+
+            <Stack.Screen
+                name="Register"
+                component={RegisterScreen}
+            />
+
+            <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+            />
+        </Stack.Navigator>
+    )
+}
+
+const LoadingScreen = () => {
+    return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator
+                size="large"
+                color="#4E8C4A"
+            />
+        </View>
+    )
+}
+
 const RootNavigator = () => {
-    const { isAuthenticated, isLoading } = useAuth()
+    const {user, isLoading} = useAuth()
 
     if (isLoading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#4E8C4A" />
-            </View>
-        )
+        return <LoadingScreen />
+    }
+
+    const renderRoleNavigator = () => {
+        if (!user) {
+            return <AuthenticationNavigator />
+        }
+
+        switch (user.role) {
+            case 'user':
+                return <UserNavigator />
+
+            case 'volunteer':
+                return <VolunteerNavigator />
+
+            case 'organizer':
+                return <OrganizerNavigator />
+
+            case 'admin':
+                return <AdminNavigator />
+
+            default:
+                return <AuthenticationNavigator />
+        }
     }
 
     return (
         <NavigationContainer>
-            {isAuthenticated ? (
-                <Stack.Navigator screenOptions={{ headerShown: false }}>
-                    <Stack.Screen
-                        name="UserHome"
-                        component={UserHomeScreen}
-                    />
-                    <Stack.Screen
-                        name="Profile"
-                        component={ProfileScreen}
-                    />
-                    <Stack.Screen
-                        name="EditProfile"
-                        component={EditProfileScreen}
-                    />
-                </Stack.Navigator>
-            ) : (
-                <Stack.Navigator screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="Login" component={LoginScreen} />
-                    <Stack.Screen name="Register" component={RegisterScreen} />
-                    <Stack.Screen
-                        name="ForgotPassword"
-                        component={ForgotPasswordScreen}
-                    />
-                </Stack.Navigator>
-            )}
+            {renderRoleNavigator()}
         </NavigationContainer>
     )
 }
@@ -60,7 +89,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F5F7EF',
+        backgroundColor: '#F4F7EF',
     },
 })
 
