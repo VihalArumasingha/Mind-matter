@@ -100,3 +100,17 @@ export const loginUser = async (req, res) => {
         })
     }
 }
+
+export const logoutUser = async (req, res) => {
+    try {
+        res.status(200).json({
+            message: 'Logout successful'
+        })
+    } catch (error) {
+        console.error('[Logout Error]', error)
+
+        res.status(500).json({
+            message: 'Server error while logging out'
+        })
+    }
+}
