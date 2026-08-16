@@ -1,12 +1,12 @@
 import React from 'react'
-import {SafeAreaView, Text} from 'react-native'
-import Config from 'react-native-config'
+import {AuthProvider} from './src/context/AuthContext'
+import RootNavigator from './src/navigation/RootNavigator'
 
 const App = () => {
     return (
-        <SafeAreaView>
-            <Text>{Config.API_BASE_URL}</Text>
-        </SafeAreaView>
+        <AuthProvider>
+            <RootNavigator />
+        </AuthProvider>
     )
 }
 
