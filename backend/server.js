@@ -25,7 +25,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT,'0.0.0.0', () => {
     console.log(`[Server] Running actively on port ${PORT}`);
     console.log(`[Server] URL: http://localhost:${PORT}`);
 });
