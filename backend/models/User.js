@@ -35,7 +35,31 @@ const userSchema = new mongoose.Schema(
         bio: {
             type: String,
             default: ''
-        }
+        },
+        status: {
+      type: String,
+      enum: ['active', 'warned', 'suspended'],
+      default: 'active'
+    },
+    warningsCount: {
+      type: Number,
+      default: 0
+    },
+    suspensionReason: {
+      type: String,
+      default: ''
+    },
+    suspendedUntil: {
+      type: Date,
+      default: null
+    },
+    violations: [
+      {
+        reason: { type: String },
+        adminName: { type: String },
+        date: { type: Date, default: Date.now }
+      }
+    ]
     },
     {
         timestamps: true
