@@ -4,7 +4,8 @@ import {
   Text, 
   ActivityIndicator, 
   StyleSheet,
-  Pressable
+  Pressable,
+  Alert
 } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,9 +18,16 @@ import {
   getCommunitiesApi,
   getPostsApi,
   getReportsApi,
-  getBroadcastsApi
+  getBroadcastsApi,
+  warnUserApi,
+  suspendUserApi,
+  unsuspendUserApi,
+  approveProfessionalApi,
+  rejectProfessionalApi
 } from '../features/admin/services/adminService';
 import { useAuth } from '../context/AuthContext';
+import UsersManagementView from '../features/admin/views/UsersManagementView';
+import ProfessionalsManagementView from '../features/admin/views/ProfessionalsManagementView';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,7 +58,7 @@ const DashboardScreen = ({ navigation }) => {
       }
 
       const logsResponse = await getAuditLogs(token);
-      console.log('📋 Logs response:', logsResponse);
+      console.log('Logs response:', logsResponse);
       
       const activities = Array.isArray(logsResponse) ? logsResponse : (logsResponse?.data || []);
       setRecentActivities(activities.slice(0, 5));
@@ -125,7 +133,9 @@ const UsersScreen = ({ navigation }) => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getUsersApi(token);
+      console.log('📥 Users fetched:', response?.length || 0);
       setUsers(response || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -141,9 +151,39 @@ const UsersScreen = ({ navigation }) => {
     }, [token])
   );
 
+  // Warn User
+  const handleWarnUser = async (userId, reason) => {
+    try {
+      await warnUserApi(token, userId, reason);
+      Alert.alert('Success', 'User warned successfully');
+      fetchUsers();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to warn user');
+    }
+  };
+  const handleSuspendUser = async (userId, reason, days) => {
+    try {
+      await suspendUserApi(token, userId, reason, days);
+      Alert.alert('Success', 'User suspended successfully');
+      fetchUsers();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to suspend user');
+    }
+  };
+
+  const handleUnsuspendUser = async (userId) => {
+    try {
+      await unsuspendUserApi(token, userId);
+      Alert.alert('Success', 'User restored successfully');
+      fetchUsers();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to restore user');
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.placeholderContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4E8C4A" />
         <Text style={styles.loadingText}>Loading users...</Text>
       </View>
@@ -152,7 +192,7 @@ const UsersScreen = ({ navigation }) => {
 
   if (error) {
     return (
-      <View style={styles.placeholderContainer}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <Pressable style={styles.retryButton} onPress={fetchUsers}>
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -162,16 +202,14 @@ const UsersScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.placeholderContainer}>
-      <Text style={styles.placeholderText}>Users Management</Text>
-      <Text style={styles.placeholderSubtext}>Total Users: {users.length}</Text>
-      <Pressable 
-        style={[styles.retryButton, { marginTop: 20 }]} 
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.retryButtonText}>Go Back</Text>
-      </Pressable>
-    </View>
+    <UsersManagementView 
+      users={users}
+      loading={loading}
+      onWarnUser={handleWarnUser}
+      onSuspendUser={handleSuspendUser}
+      onUnsuspendUser={handleUnsuspendUser}
+      onRefresh={fetchUsers}
+    />
   );
 };
 
@@ -184,7 +222,9 @@ const ProfessionalsScreen = ({ navigation }) => {
   const fetchApplications = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getProfessionalApplicationsApi(token);
+      console.log('Applications fetched:', response?.length || 0);
       setApplications(response || []);
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -199,27 +239,57 @@ const ProfessionalsScreen = ({ navigation }) => {
       fetchApplications();
     }, [token])
   );
+  const handleApprove = async (id) => {
+    try {
+      await approveProfessionalApi(token, id);
+      Alert.alert('Success', 'Professional application approved successfully');
+      fetchApplications();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to approve application');
+    }
+  };
+
+  const handleReject = async (id, reason) => {
+    try {
+      await rejectProfessionalApi(token, id, reason);
+      Alert.alert('Success', 'Application rejected successfully');
+      fetchApplications();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to reject application');
+    }
+  };
+
+  const handleOpenApplyForm = () => {
+    Alert.alert('Info', 'Therapist application form will open here');
+  };
 
   if (loading) {
     return (
-      <View style={styles.placeholderContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4E8C4A" />
         <Text style={styles.loadingText}>Loading professionals...</Text>
       </View>
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={fetchApplications}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.placeholderContainer}>
-      <Text style={styles.placeholderText}>Professionals Management</Text>
-      <Text style={styles.placeholderSubtext}>Pending: {applications.filter(a => a.status === 'pending').length}</Text>
-      <Pressable 
-        style={[styles.retryButton, { marginTop: 20 }]} 
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.retryButtonText}>Go Back</Text>
-      </Pressable>
-    </View>
+    <ProfessionalsManagementView 
+      applications={applications}
+      onApprove={handleApprove}
+      onReject={handleReject}
+      onOpenApplyForm={handleOpenApplyForm}
+    />
   );
 };
 

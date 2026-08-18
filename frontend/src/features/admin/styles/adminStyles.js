@@ -246,7 +246,7 @@ export const adminStyles = StyleSheet.create({
     backgroundColor: COLORS.cardDark,
     borderRadius: 12,
     padding: 14,
-    marginBottom: 14,
+    marginBottom: 11,
     borderWidth: 1,
     borderColor: COLORS.borderDark
   },

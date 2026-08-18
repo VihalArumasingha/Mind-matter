@@ -1,4 +1,3 @@
-// backend/controllers/admin/adminController.js
 import User from '../../models/User.js';
 import ProfessionalApplication from '../../models/ProfessionalApplication.js';
 import Report from '../../models/Report.js';
