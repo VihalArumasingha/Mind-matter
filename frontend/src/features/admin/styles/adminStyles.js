@@ -16,6 +16,7 @@ export const COLORS = {
   textSecondary: '#475569', 
   textMuted: '#94A3B8', 
   textDark: '#0F172A',
+  textLight: '#F4F7EF',
   
   success: '#059669', 
   successBg: '#ECFDF5',

@@ -1,179 +1,187 @@
-import React from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useAuth } from '../../../context/AuthContext'
-import { deleteAccount } from '../services/profileService'
+import React, { useState } from 'react';
+import { 
+  Alert, 
+  Pressable, 
+  ScrollView, 
+  StyleSheet, 
+  Text, 
+  View,
+  Modal,        
+  TouchableOpacity 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../../context/AuthContext';
+import { deleteAccount } from '../services/profileService';
+import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
 
 const ProfileScreen = ({ navigation }) => {
-    const { user, logout, token } = useAuth()
+  const { user, logout, token } = useAuth();
+  
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
 
-    const handleLogout = () => {
-        Alert.alert(
-            'Log out',
-            'Are you sure you want to log out?',
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Log Out',
-                    onPress: logout,
-                },
-            ]
-        )
+  const handleLogout = () => {
+    Alert.alert(
+      'Log out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log Out', onPress: logout },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action is permanent. Your account and associated profile data will be deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Account', style: 'destructive', onPress: confirmDeleteAccount },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    try {
+      await deleteAccount(token);
+      await logout();
+    } catch (error) {
+      Alert.alert('Unable to delete account', error.message);
     }
+  };
 
-    const handleDeleteAccount = () => {
-        Alert.alert(
-            'Delete Account',
-            'This action is permanent. Your account and associated profile data will be deleted.',
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Delete Account',
-                    style: 'destructive',
-                    onPress: confirmDeleteAccount,
-                },
-            ]
-        )
+  const handleBecomeVolunteer = () => {
+    if (user?.role === 'therapist' || user?.role === 'professional') {
+      Alert.alert(
+        'Already Verified',
+        'You are already a verified therapist/professional on MindMatter.'
+      );
+      return;
     }
+    setShowApplicationForm(true);
+  };
 
-    const confirmDeleteAccount = async () => {
-        try {
-            await deleteAccount(token)
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        
+        <View style={styles.header}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}>
+            <Text style={styles.backArrow}>‹</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>My Profile</Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
-            await logout()
-        } catch (error) {
-            Alert.alert(
-                'Unable to delete account',
-                error.message
-            )
-        }
-    }
+        <View style={styles.profileHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <Text style={styles.name}>{user?.name}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>
+              {user?.role || 'user'}
+            </Text>
+          </View>
+        </View>
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView
-                contentContainerStyle={styles.content}
-                showsVerticalScrollIndicator={false}>
-                <View style={styles.header}>
-                    <Pressable
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}>
-                        <Text style={styles.backArrow}>‹</Text>
-                    </Pressable>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Full name</Text>
+              <Text style={styles.infoValue}>{user?.name}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{user?.email}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Bio</Text>
+              <Text style={styles.infoValue}>
+                {user?.bio || 'No bio added yet'}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-                    <Text style={styles.headerTitle}>My Profile</Text>
+        <Pressable
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditProfile')}>
+          <Text style={styles.editButtonText}>Edit Profile</Text>
+        </Pressable>
 
-                    <View style={styles.headerSpacer} />
-                </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>More</Text>
+          <Pressable 
+            style={styles.menuItem}
+            onPress={handleBecomeVolunteer}>
+            <View>
+              <Text style={styles.menuTitle}>Become a Volunteer</Text>
+              <Text style={styles.menuDescription}>
+                Apply to support the MindMatter community.
+              </Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
 
-                <View style={styles.profileHeader}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                        </Text>
-                    </View>
+          <Pressable style={styles.menuItem}>
+            <View>
+              <Text style={styles.menuTitle}>Become a Community Organizer</Text>
+              <Text style={styles.menuDescription}>
+                Apply to organize and manage communities.
+              </Text>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </Pressable>
+        </View>
 
-                    <Text style={styles.name}>{user?.name}</Text>
+        <Pressable
+          style={styles.logoutButton}
+          onPress={handleLogout}>
+          <Text style={styles.logoutText}>Log Out</Text>
+        </Pressable>
+        
+        <Pressable
+          style={styles.deleteButton}
+          onPress={handleDeleteAccount}>
+          <Text style={styles.deleteText}>Delete Account</Text>
+        </Pressable>
+      </ScrollView>
 
-                    <Text style={styles.email}>{user?.email}</Text>
-
-                    <View style={styles.roleBadge}>
-                        <Text style={styles.roleText}>
-                            {user?.role || 'user'}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Personal Information</Text>
-
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Full name</Text>
-                            <Text style={styles.infoValue}>{user?.name}</Text>
-                        </View>
-
-                        <View style={styles.divider} />
-
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Email</Text>
-                            <Text style={styles.infoValue}>{user?.email}</Text>
-                        </View>
-
-                        <View style={styles.divider} />
-
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Bio</Text>
-                            <Text style={styles.infoValue}>
-                                {user?.bio || 'No bio added yet'}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                <Pressable
-                    style={styles.editButton}
-                    onPress={() => navigation.navigate('EditProfile')}>
-                    <Text style={styles.editButtonText}>
-                        Edit Profile
-                    </Text>
-                </Pressable>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>More</Text>
-
-                    <Pressable style={styles.menuItem}>
-                        <View>
-                            <Text style={styles.menuTitle}>
-                                Become a Volunteer
-                            </Text>
-
-                            <Text style={styles.menuDescription}>
-                                Apply to support the MindMatter community.
-                            </Text>
-                        </View>
-
-                        <Text style={styles.menuArrow}>›</Text>
-                    </Pressable>
-
-                    <Pressable style={styles.menuItem}>
-                        <View>
-                            <Text style={styles.menuTitle}>
-                                Become a Community Organizer
-                            </Text>
-
-                            <Text style={styles.menuDescription}>
-                                Apply to organize and manage communities.
-                            </Text>
-                        </View>
-
-                        <Text style={styles.menuArrow}>›</Text>
-                    </Pressable>
-                </View>
-
-                <Pressable
-                    style={styles.logoutButton}
-                    onPress={handleLogout}>
-                    <Text style={styles.logoutText}>Log Out</Text>
-                </Pressable>
-                <Pressable
-                    style={styles.deleteButton}
-                    onPress={handleDeleteAccount}>
-                    <Text style={styles.deleteText}>
-                        Delete Account
-                    </Text>
-                </Pressable>
-            </ScrollView>
-        </SafeAreaView>
-    )
-}
-
+      <Modal
+        visible={showApplicationForm}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowApplicationForm(false)}>
+        <View style={{ flex: 1, backgroundColor: '#F0FDFA' }}>
+          {/* Close button */}
+            
+          <TherapistApplicationForm 
+          userId={user?.id||user?.id}  
+            onSubmitted={() => {
+              setShowApplicationForm(false);
+              Alert.alert(
+                'Application Submitted!',
+                'Your application has been submitted successfully. You will receive a confirmation email shortly.'
+              );
+            }}
+            onClose={() => setShowApplicationForm(false)}
+          />
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+};
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
