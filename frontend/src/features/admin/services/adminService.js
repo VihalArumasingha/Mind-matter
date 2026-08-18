@@ -109,27 +109,42 @@ export const getProfessionalApplicationsApi = async (token, status = 'all') => {
   }
 };
 
-export const submitTherapistApplicationApi = async (token, formData) => {
+export const submitTherapistApplicationWithFiles  = async (formData) => {
   try {
-    const response = await apiRequest('/api/admin/professionals/applications/apply', 'POST', {
-      fullName: formData.fullName,
-      email: formData.email,
-      phone: formData.phone || '',
-      profession: formData.profession || 'Clinical Psychologist',
-      licenseNum: formData.licenseNum,
-      specialization: formData.specialization || 'General Mental Health Support',
-      expYears: formData.expYears || 1,
-      bio: formData.bio || '',
-      documents: formData.documents || [],
-      userId: formData.userId || null
-    }, token);
-    return response.application || response;
+    console.log('Submitting application:', formData);
+    
+    const response = await fetch(`${API_BASE_URL}/api/admin/professionals/applications/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${formData.token || ''}`,
+      },
+      body: JSON.stringify({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone || '',
+        profession: formData.profession || 'Clinical Psychologist',
+        licenseNum: formData.licenseNum,
+        specialization: formData.specialization || 'General Mental Health Support',
+        expYears: formData.expYears || 1,
+        bio: formData.bio || '',
+        userId: formData.userId || null,
+        documents: formData.documents || [],
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to submit application');
+    }
+    
+    return data;
   } catch (error) {
-    console.error('Error submitting application:', error);
+    console.error(' Error submitting application:', error);
     throw error;
   }
 };
-
 export const approveProfessionalApi = async (token, id) => {
   try {
     const response = await apiRequest(`/api/admin/professionals/applications/${id}/approve`, 'PUT', null, token);

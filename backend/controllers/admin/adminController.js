@@ -2,6 +2,7 @@ import User from '../../models/User.js';
 import ProfessionalApplication from '../../models/ProfessionalApplication.js';
 import Report from '../../models/Report.js';
 import AuditLog from '../../models/AuditLog.js';
+import { uploadFilesToCloudinary } from '../../middleware/uploadMiddleware.js';
 
 export const getDashboardOverview = async (req, res) => {
   try {
@@ -244,23 +245,26 @@ export const unsuspendUser = async (req, res) => {
 
 export const getProfessionalApplications = async (req, res) => {
   try {
-    const { status = 'all' } = req.query;
-    
-    let filter = {};
-    if (status !== 'all') {
-      filter.status = status;
+    const { status } = req.query;
+    let query = {};
+    if (status && status !== 'all') {
+      query.status = status;
     }
-    
-    const applications = await ProfessionalApplication.find(filter)
+    const applications = await ProfessionalApplication.find(query)
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({
+
+    console.log(' Applications with docs:', applications.map(app => ({
+      name: app.fullName,
+      docCount: app.documents?.length || 0,
+      docs: app.documents?.map(d => ({ title: d.title, url: d.url }))
+    })));
+
+    return res.status(200).json({
       success: true,
       applications
     });
   } catch (error) {
-    console.error('Error fetching professional applications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message
     });
@@ -269,63 +273,100 @@ export const getProfessionalApplications = async (req, res) => {
 
 export const submitProfessionalApplication = async (req, res) => {
   try {
+    console.log('Received application data:', req.body);
+    console.log('Received files:', req.files);
+
     const {
-      userId,
       fullName,
       email,
       phone,
       profession,
       licenseNum,
       specialization,
-      bio,
       expYears,
-      documents
+      bio,
+      userId
     } = req.body;
-    
-    const existing = await ProfessionalApplication.findOne({ licenseNum });
-    if (existing) {
+
+    if (!fullName || !email || !licenseNum) {
       return res.status(400).json({
         success: false,
-        message: 'License number already exists'
+        error: 'Full Name, Email, and License Number are required'
       });
     }
-    
-    const application = await ProfessionalApplication.create({
-      userId,
-      fullName,
-      email,
-      phone,
-      profession,
-      licenseNum,
-      specialization,
-      bio,
-      expYears,
-      documents,
-      status: 'pending'
-    });
-    
-    await AuditLog.create({
-      adminName: req.user?.name || 'System',
-      action: 'SUBMIT_APPLICATION',
-      targetType: 'Professional',
-      targetId: application._id,
-      targetName: fullName,
-      details: `Submitted professional application for ${profession}`
-    });
-    
-    res.status(201).json({
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    const existingApp = await ProfessionalApplication.findOne({ licenseNum });
+    if (existingApp) {
+      return res.status(400).json({
+        success: false,
+        error: 'This license number is already registered'
+      });
+    }
+
+    let uploadedDocuments = [];
+    if (req.files && req.files.length > 0) {
+      try {
+        uploadedDocuments = await uploadFilesToCloudinary(req.files, 'professionals');
+        console.log('Files uploaded to Cloudinary:', uploadedDocuments);
+      } catch (uploadError) {
+        console.error('File upload error:', uploadError);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to upload documents: ' + uploadError.message
+        });
+      }
+    }
+    const applicationData = {
+      userId: userId || null,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone || '',
+      profession: profession || 'Clinical Psychologist',
+      licenseNum: licenseNum.trim(),
+      specialization: specialization || 'General Mental Health Support',
+      expYears: parseInt(expYears, 10) || 1,
+      bio: bio || '',
+      status: 'pending',
+      documents: uploadedDocuments, 
+    };
+
+    console.log('Saving to database:', applicationData);
+
+    // Save to database
+    const newApplication = new ProfessionalApplication(applicationData);
+    const savedApplication = await newApplication.save();
+
+    console.log('Application saved with ID:', savedApplication._id);
+
+    return res.status(201).json({
       success: true,
-      application
+      message: 'Application submitted successfully',
+      application: savedApplication
     });
+
   } catch (error) {
-    console.error('Error submitting application:', error);
-    res.status(500).json({
+    console.error('Error in submitProfessionalApplication:', error);
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        error: 'License number already exists'
+      });
+    }
+
+    return res.status(500).json({
       success: false,
-      message: error.message
+      error: error.message || 'Internal server error'
     });
   }
 };
-
 export const approveProfessional = async (req, res) => {
   try {
     const { id } = req.params;

@@ -16,6 +16,7 @@ import {
   getAuditLogs,
   getAnalytics
 } from '../../controllers/admin/adminController.js';
+import {uploadMultiple} from '../../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 router.get('/overview', getDashboardOverview);
@@ -26,7 +27,7 @@ router.put('/users/:id/suspend', suspendUser);
 router.put('/users/:id/unsuspend', unsuspendUser);
 
 router.get('/professionals/applications', getProfessionalApplications);
-router.post('/professionals/applications/apply', submitProfessionalApplication);
+router.post('/professionals/applications/apply', uploadMultiple, submitProfessionalApplication);
 router.put('/professionals/applications/:id/approve', approveProfessional);
 router.put('/professionals/applications/:id/reject', rejectProfessional);
 
