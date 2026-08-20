@@ -308,6 +308,42 @@ export const profileStyles = StyleSheet.create({
     backgroundColor: COLORS.borderLight,
     marginVertical: 4,
   },
+
+  /* Bottom Navigation Bar */
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 60,
+  },
+  activeNavIndicator: {
+    backgroundColor: COLORS.greenBg,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  navLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 3,
+  },
 });
 
 export default profileStyles;

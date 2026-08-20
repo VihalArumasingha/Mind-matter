@@ -102,3 +102,121 @@ export const declineVolunteerRequest = async (requestId, token) => {
     throw error;
   }
 };
+
+/**
+ * Save volunteer availability settings (repeat weekly / status)
+ */
+export const saveVolunteerAvailabilitySchedule = async (scheduleData, token) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/volunteer/availability/schedule`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(scheduleData),
+      }
+    );
+
+    return parseJsonResponse(response);
+  } catch (error) {
+    console.error('Error saving availability schedule:', error);
+    throw error;
+  }
+};
+
+const parseJsonResponse = async (response) => {
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      'Backend did not return JSON. Restart the backend (npm start in backend) and try again.'
+    );
+  }
+  if (!response.ok) {
+    throw new Error(data.message || 'Availability request failed');
+  }
+  return data;
+};
+
+/**
+ * Insert one availability slot into MongoDB collection `availabilityslots`
+ */
+export const createVolunteerAvailabilitySlot = async (slotData, token) => {
+  const response = await fetch(`${API_BASE_URL}/api/volunteer/availability/slots`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(slotData),
+  });
+  return parseJsonResponse(response);
+};
+
+/**
+ * Update one availability slot document in `availabilityslots`
+ */
+export const updateVolunteerAvailabilitySlot = async (slotId, slotData, token) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/volunteer/availability/slots/${slotId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(slotData),
+    }
+  );
+  return parseJsonResponse(response);
+};
+
+/**
+ * Delete one availability slot document from `availabilityslots`
+ */
+export const deleteVolunteerAvailabilitySlot = async (slotId, token) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/volunteer/availability/slots/${slotId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return parseJsonResponse(response);
+};
+
+/**
+ * Get volunteer availability schedule (slots & recurring settings)
+ */
+export const getVolunteerAvailabilitySchedule = async (token) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/volunteer/availability/schedule`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch schedule');
+    }
+    return data;
+  } catch (error) {
+    console.error('Error fetching availability schedule:', error);
+    throw error;
+  }
+};
+
+

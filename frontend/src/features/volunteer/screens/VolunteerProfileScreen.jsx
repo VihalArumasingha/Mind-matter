@@ -19,7 +19,7 @@ import { updateProfile, deleteAccount } from '../../profile/services/profileServ
 import { profileStyles } from '../styles/volunteerProfileStyles';
 import { COLORS } from '../styles/volunteerDashboardStyles';
 
-export default function VolunteerProfileScreen({ navigation }) {
+export default function VolunteerProfileScreen({ navigation, onTabChange }) {
   const { user, token, logout, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -388,6 +388,54 @@ export default function VolunteerProfileScreen({ navigation }) {
             </View>
           )}
         </ScrollView>
+
+        {/* Bottom Nav */}
+        <View style={profileStyles.bottomNav}>
+          <TouchableOpacity
+            style={profileStyles.navItem}
+            onPress={() => onTabChange?.('dashboard')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="view-dashboard-outline" size={22} color={COLORS.navInactive} />
+            <Text style={[profileStyles.navLabel, { color: COLORS.navInactive }]}>Dashboard</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={profileStyles.navItem}
+            onPress={() => onTabChange?.('requests')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="clipboard-list-outline" size={22} color={COLORS.navInactive} />
+            <Text style={[profileStyles.navLabel, { color: COLORS.navInactive }]}>Requests</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={profileStyles.navItem}
+            onPress={() => onTabChange?.('availability')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="calendar-blank-outline" size={22} color={COLORS.navInactive} />
+            <Text style={[profileStyles.navLabel, { color: COLORS.navInactive }]}>Availability</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={profileStyles.navItem}
+            onPress={() => onTabChange?.('messages')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="message-outline" size={22} color={COLORS.navInactive} />
+            <Text style={[profileStyles.navLabel, { color: COLORS.navInactive }]}>Messages</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[profileStyles.navItem, profileStyles.activeNavIndicator]}
+            onPress={() => onTabChange?.('profile')}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="account-outline" size={22} color={COLORS.green} />
+            <Text style={[profileStyles.navLabel, { color: COLORS.green }]}>Profile</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

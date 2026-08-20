@@ -71,7 +71,7 @@ function NavItem({ icon, label, active, onPress }) {
   );
 }
 
-export default function VolunteerDashboardScreen({ navigation }) {
+export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
   const { user, token } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
   const [pendingRequests] = useState(initialPendingRequests);
@@ -118,9 +118,9 @@ export default function VolunteerDashboardScreen({ navigation }) {
               <Ionicons name="notifications-outline" size={20} color={COLORS.green} />
               <View style={styles.notifDot} />
             </TouchableOpacity>
-            <TouchableOpacity
+              <TouchableOpacity
               style={styles.avatarCircle}
-              onPress={() => navigation?.navigate('VolunteerProfile')}
+              onPress={() => onTabChange?.('profile')}
               activeOpacity={0.8}
             >
               <Text style={styles.avatarText}>{initials}</Text>
@@ -181,7 +181,7 @@ export default function VolunteerDashboardScreen({ navigation }) {
           </View>
           <TouchableOpacity
             style={styles.sectionLinkContainer}
-            onPress={() => navigation?.navigate('Requests')}
+            onPress={() => onTabChange?.('requests')}
           >
             <Text style={styles.sectionLink}>See all</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.green} />
@@ -192,7 +192,7 @@ export default function VolunteerDashboardScreen({ navigation }) {
           <VolunteerRequestCard
             key={req.id}
             request={req}
-            onPress={() => navigation?.navigate('Requests')}
+            onPress={() => onTabChange?.('requests')}
           />
         ))}
 
@@ -206,7 +206,7 @@ export default function VolunteerDashboardScreen({ navigation }) {
           </View>
           <TouchableOpacity
             style={styles.sectionLinkContainer}
-            onPress={() => navigation?.navigate('Sessions')}
+            onPress={() => onTabChange?.('requests')}
           >
             <Text style={styles.sectionLink}>See all</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.green} />
@@ -217,33 +217,38 @@ export default function VolunteerDashboardScreen({ navigation }) {
           <VolunteerSessionCard
             key={session.id}
             session={session}
-            onPress={() => navigation?.navigate('Sessions')}
+            onPress={() => onTabChange?.('requests')}
           />
         ))}
       </ScrollView>
 
       {/* Bottom nav */}
       <View style={styles.bottomNav}>
-        <NavItem icon="view-dashboard-outline" label="Dashboard" active />
+        <NavItem
+          icon="view-dashboard-outline"
+          label="Dashboard"
+          active
+          onPress={() => onTabChange?.('dashboard')}
+        />
         <NavItem
           icon="clipboard-list-outline"
           label="Requests"
-          onPress={() => navigation?.navigate('Requests')}
+          onPress={() => onTabChange?.('requests')}
         />
         <NavItem
           icon="calendar-blank-outline"
           label="Availability"
-          onPress={() => navigation?.navigate('Availability')}
+          onPress={() => onTabChange?.('availability')}
         />
         <NavItem
           icon="message-outline"
           label="Messages"
-          onPress={() => navigation?.navigate('Messages')}
+          onPress={() => onTabChange?.('messages')}
         />
         <NavItem
           icon="account-outline"
           label="Profile"
-          onPress={() => navigation?.navigate('VolunteerProfile')}
+          onPress={() => onTabChange?.('profile')}
         />
       </View>
     </SafeAreaView>
