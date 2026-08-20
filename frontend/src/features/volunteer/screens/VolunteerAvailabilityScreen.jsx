@@ -61,6 +61,16 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
   // Expanded slot IDs state for viewing time slots
   const [expandedSlotIds, setExpandedSlotIds] = useState({});
 
+  // Creative Toast notification state
+  const [toastInfo, setToastInfo] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToastInfo({ visible: true, message, type });
+    setTimeout(() => {
+      setToastInfo((prev) => ({ ...prev, visible: false }));
+    }, 3200);
+  };
+
   const toggleExpandSlot = (slotId) => {
     setExpandedSlotIds((prev) => ({
       ...prev,
@@ -155,8 +165,41 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     return days;
   };
 
+  // Helper to resolve slots for a date considering repeatWeekly recurrence
+  const getSlotsForDate = (dateStr, slotsMap, isRepeatWeekly) => {
+    if (!dateStr) return [];
+    if (slotsMap[dateStr] && Array.isArray(slotsMap[dateStr]) && slotsMap[dateStr].length > 0) {
+      return slotsMap[dateStr];
+    }
+    if (isRepeatWeekly && slotsMap && typeof slotsMap === 'object') {
+      const targetDate = new Date(dateStr + 'T00:00:00');
+      const targetDay = targetDate.getDay();
+      if (!isNaN(targetDay)) {
+        for (const [keyDate, list] of Object.entries(slotsMap)) {
+          if (Array.isArray(list) && list.length > 0) {
+            const d = new Date(keyDate + 'T00:00:00');
+            if (d.getDay() === targetDay) {
+              return list.map((item) => ({ ...item, date: dateStr }));
+            }
+          }
+        }
+      }
+    }
+    return [];
+  };
+
   const calendarGrid = getCalendarDays();
-  const currentSelectedSlots = slotsByDate[selectedDateStr] || [];
+  const currentSelectedSlots = getSlotsForDate(selectedDateStr, slotsByDate, repeatWeekly);
+
+  const handleToggleRepeatWeekly = async (val) => {
+    setRepeatWeekly(val);
+    try {
+      await persistSchedule(slotsByDate, val);
+      showToast(val ? '🔄 Weekly repeat enabled! Slots apply every week.' : 'Weekly repeat disabled.');
+    } catch (err) {
+      console.error('Failed to toggle repeatWeekly:', err);
+    }
+  };
 
   // Slot handlers
   const openAddSlotModal = () => {
@@ -204,10 +247,10 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
       }
 
       await loadScheduleFromDb();
-      Alert.alert('Saved', 'Slot saved in MongoDB table availabilityslots (database test).');
+      showToast('✨ Time slot saved successfully!');
     } catch (err) {
       console.error('Failed to save slot to DB:', err);
-      Alert.alert('Database Error', err.message || 'Failed to save slot to database.');
+      showToast('❌ Failed to save slot: ' + (err.message || ''), 'error');
     }
   };
 
@@ -224,9 +267,10 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
               await deleteVolunteerAvailabilitySlot(slotId, token);
             }
             await loadScheduleFromDb();
+            showToast('🗑️ Slot deleted successfully.');
           } catch (err) {
             console.error('Failed to delete slot from DB:', err);
-            Alert.alert('Database Error', 'Failed to delete slot from database.');
+            showToast('❌ Failed to delete slot from database.', 'error');
           }
         },
       },
@@ -236,16 +280,36 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
   const handleSaveAll = async () => {
     try {
       await persistSchedule(slotsByDate, repeatWeekly);
-      Alert.alert('Saved', 'Availability saved in MongoDB table availabilityslots.');
+      showToast('✨ Availability schedule saved successfully!');
     } catch (err) {
       console.error('Failed to save availability schedule:', err);
-      Alert.alert('Database Error', 'Failed to save availability to database: ' + (err.message || ''));
+      showToast('❌ Failed to save availability: ' + (err.message || ''), 'error');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS?.bg || '#F6F9F6'} />
+
+      {/* Creative Floating Toast Notification Banner */}
+      {toastInfo.visible && (
+        <TouchableOpacity
+          style={[
+            styles.creativeToastBanner,
+            toastInfo.type === 'error' && styles.creativeToastErrorBanner,
+          ]}
+          onPress={() => setToastInfo({ ...toastInfo, visible: false })}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name={toastInfo.type === 'error' ? 'alert-circle' : 'checkmark-circle'}
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.creativeToastText}>{toastInfo.message}</Text>
+          <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
+      )}
 
       <ScrollView
         style={styles.container}
@@ -301,6 +365,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
                 key={`${cell.dateStr}-${index}`}
                 style={[
                   styles.dateCell,
+                  hasSlots && !isSelected && styles.dateCellHasRecord,
                   isSelected && styles.dateCellSelected,
                 ]}
                 onPress={() => {
@@ -315,12 +380,17 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
                   style={[
                     styles.dateCellText,
                     (!cell.inMonth || cell.isPast) && styles.dateCellTextDisabled,
+                    hasSlots && !isSelected && styles.dateCellTextHasRecord,
                     isSelected && styles.dateCellTextSelected,
                   ]}
                 >
                   {cell.day}
                 </Text>
-                {hasSlots && !isSelected && <View style={styles.dateDot} />}
+                {hasSlots && (
+                  <View style={styles.hasRecordBadge}>
+                    <View style={[styles.hasRecordDot, isSelected && styles.hasRecordDotSelected]} />
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -649,6 +719,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginVertical: 2,
   },
+  dateCellHasRecord: {
+    backgroundColor: '#EAF3ED',
+    borderWidth: 1.5,
+    borderColor: GREEN,
+  },
   dateCellSelected: {
     backgroundColor: GREEN,
   },
@@ -657,18 +732,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: TEXT_DARK,
   },
+  dateCellTextHasRecord: {
+    color: GREEN,
+    fontWeight: '800',
+  },
   dateCellTextDisabled: {
     color: '#CBD5CD', // Disabled/Past day in grey
   },
   dateCellTextSelected: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
-  dateDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: GREEN,
+  hasRecordBadge: {
     marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hasRecordDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: GREEN,
+  },
+  hasRecordDotSelected: {
+    backgroundColor: '#FFFFFF',
   },
   selectedDateRow: {
     flexDirection: 'row',
@@ -929,6 +1016,38 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  creativeToastBanner: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 14 : 10,
+    left: 18,
+    right: 18,
+    zIndex: 9999,
+    backgroundColor: '#1B3A24',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: GREEN,
+  },
+  creativeToastErrorBanner: {
+    backgroundColor: '#991B1B',
+    borderColor: '#F87171',
+  },
+  creativeToastText: {
+    flex: 1,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
   },
