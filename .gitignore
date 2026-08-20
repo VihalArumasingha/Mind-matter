@@ -30,6 +30,7 @@ yarn-error.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.vscode/
 
 # OS
 .DS_Store
