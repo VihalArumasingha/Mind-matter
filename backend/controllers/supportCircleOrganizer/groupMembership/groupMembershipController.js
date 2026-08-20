@@ -1,5 +1,5 @@
-import GroupMembership from '../../models/GroupMembership.js'
-import SupportCircle from '../../models/SupportCircle.js'
+import GroupMembership from '../../../models/GroupMembership.js'
+import SupportCircle from '../../../models/SupportCircle.js'
 
 // Request to join a support circle (creates a pending membership)
 export const requestToJoinCircle = async (req, res) => {
