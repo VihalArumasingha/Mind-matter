@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { generateTimeSlots } from '../utils/slotGenerator';
 
 const GREEN = '#2F6B47';
 const TEXT_DARK = '#1B3A24';
@@ -39,6 +40,16 @@ export default function AvailabilitySlotFormModal({
   const [breakStart, setBreakStart] = useState('');
   const [breakEnd, setBreakEnd] = useState('');
   const [breakDuration, setBreakDuration] = useState('');
+  const [showPreviewSlots, setShowPreviewSlots] = useState(true);
+
+  const previewSlots = generateTimeSlots({
+    startTime,
+    endTime,
+    slotDuration,
+    breakStart,
+    breakEnd,
+    breakDuration,
+  });
 
   useEffect(() => {
     if (editingSlot) {
@@ -224,6 +235,55 @@ export default function AvailabilitySlotFormModal({
               />
             </View>
 
+            {/* View Generated Time Slots Toggle Button */}
+            <TouchableOpacity
+              style={styles.viewSlotsToggleBtn}
+              onPress={() => setShowPreviewSlots(!showPreviewSlots)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="time-outline" size={16} color={GREEN} />
+              <Text style={styles.viewSlotsToggleText}>
+                {showPreviewSlots ? 'Hide Generated Time Slots' : 'View Generated Time Slots'} ({previewSlots.filter(s => !s.isBreak).length} available)
+              </Text>
+              <Ionicons
+                name={showPreviewSlots ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={GREEN}
+              />
+            </TouchableOpacity>
+
+            {/* Live Generated Slots Preview Container */}
+            {showPreviewSlots && previewSlots.length > 0 && (
+              <View style={styles.previewContainer}>
+                <Text style={styles.previewTitle}>All Available Time Slots ({startTime} - {endTime}):</Text>
+                <View style={styles.previewGrid}>
+                  {previewSlots.map((s, idx) => (
+                    <View
+                      key={s.id || idx}
+                      style={[
+                        styles.previewSlotChip,
+                        s.isBreak && styles.previewBreakChip,
+                      ]}
+                    >
+                      <Ionicons
+                        name={s.isBreak ? 'cafe-outline' : 'checkmark-circle-outline'}
+                        size={13}
+                        color={s.isBreak ? '#C0644A' : GREEN}
+                      />
+                      <Text
+                        style={[
+                          styles.previewSlotText,
+                          s.isBreak && styles.previewBreakText,
+                        ]}
+                      >
+                        {s.isBreak ? `Break: ${s.start} - ${s.end}` : `${s.start} - ${s.end} (${s.duration})`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Action Buttons */}
             <View style={styles.modalButtonsRow}>
               <TouchableOpacity
@@ -337,6 +397,67 @@ const styles = StyleSheet.create({
   },
   col: {
     flex: 1,
+  },
+  viewSlotsToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EAF3ED',
+    borderWidth: 1,
+    borderColor: '#C3D4C8',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  viewSlotsToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GREEN,
+    flex: 1,
+    marginLeft: 8,
+  },
+  previewContainer: {
+    backgroundColor: '#F8FAF8',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 10,
+  },
+  previewTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  previewGrid: {
+    flexDirection: 'column',
+    gap: 6,
+  },
+  previewSlotChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D4E3D8',
+    gap: 8,
+  },
+  previewBreakChip: {
+    backgroundColor: '#FDF2F0',
+    borderColor: '#F7D6CF',
+  },
+  previewSlotText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_DARK,
+  },
+  previewBreakText: {
+    color: '#A8432A',
   },
   modalButtonsRow: {
     flexDirection: 'row',

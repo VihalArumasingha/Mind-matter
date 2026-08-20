@@ -23,6 +23,7 @@ import {
 } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
 import AvailabilitySlotFormModal from '../components/AvailabilitySlotFormModal';
+import { generateTimeSlots } from '../utils/slotGenerator';
 
 const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_NAMES = [
@@ -56,6 +57,16 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
   const [selectedDateStr, setSelectedDateStr] = useState(todayStr);
   const [slotsByDate, setSlotsByDate] = useState({});
   const [repeatWeekly, setRepeatWeekly] = useState(false);
+
+  // Expanded slot IDs state for viewing time slots
+  const [expandedSlotIds, setExpandedSlotIds] = useState({});
+
+  const toggleExpandSlot = (slotId) => {
+    setExpandedSlotIds((prev) => ({
+      ...prev,
+      [slotId]: !prev[slotId],
+    }));
+  };
 
   // Time slot modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -342,51 +353,134 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
             <Text style={styles.emptySlotText}>No time slots added for {selectedDateStr}</Text>
           </View>
         ) : (
-          currentSelectedSlots.map((slot) => (
-            <View key={slot.id} style={styles.slotCardContainer}>
-              <View style={styles.slotCard}>
-                <View style={styles.slotLeft}>
-                  <View style={styles.slotDot} />
-                  <View>
-                    <View style={styles.slotTimeRow}>
-                      <Text style={styles.slotText}>
-                        {slot.start} – {slot.end}
-                      </Text>
-                      {slot.slotDuration ? (
-                        <View style={styles.durationBadge}>
-                          <Text style={styles.durationBadgeText}>{slot.slotDuration}</Text>
-                        </View>
+          currentSelectedSlots.map((slot) => {
+            const isExpanded = !!expandedSlotIds[slot.id];
+            const generatedSlots = generateTimeSlots({
+              startTime: slot.start,
+              endTime: slot.end,
+              slotDuration: slot.slotDuration || '1 hr',
+              breakStart: slot.breakStart || '',
+              breakEnd: slot.breakEnd || '',
+              breakDuration: slot.breakDuration || '',
+            });
+            const validSlotsCount = generatedSlots.filter((s) => !s.isBreak).length;
+
+            return (
+              <View key={slot.id} style={styles.slotCardContainer}>
+                <View style={styles.slotCard}>
+                  <View style={styles.slotLeft}>
+                    <View style={styles.slotDot} />
+                    <View>
+                      <View style={styles.slotTimeRow}>
+                        <Text style={styles.slotText}>
+                          {slot.start} – {slot.end}
+                        </Text>
+                        {slot.slotDuration ? (
+                          <View style={styles.durationBadge}>
+                            <Text style={styles.durationBadgeText}>{slot.slotDuration}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {slot.date ? (
+                        <Text style={styles.slotDateText}>Date: {slot.date}</Text>
                       ) : null}
                     </View>
-                    {slot.date ? (
-                      <Text style={styles.slotDateText}>Date: {slot.date}</Text>
-                    ) : null}
+                  </View>
+
+                  {/* Edit & Delete Action Buttons */}
+                  <View style={styles.slotActions}>
+                    <TouchableOpacity onPress={() => openEditSlotModal(slot)} activeOpacity={0.7}>
+                      <Ionicons name="pencil-outline" size={18} color={TEXT_MUTED} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteSlot(slot.id)} activeOpacity={0.7}>
+                      <Ionicons name="trash-outline" size={18} color="#C0644A" />
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* Edit & Delete Action Buttons */}
-                <View style={styles.slotActions}>
-                  <TouchableOpacity onPress={() => openEditSlotModal(slot)} activeOpacity={0.7}>
-                    <Ionicons name="pencil-outline" size={18} color={TEXT_MUTED} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteSlot(slot.id)} activeOpacity={0.7}>
-                    <Ionicons name="trash-outline" size={18} color="#C0644A" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Break details badge */}
-              {(slot.breakStart || slot.breakDuration) ? (
-                <View style={styles.breakCardRow}>
-                  <Ionicons name="cafe-outline" size={14} color="#C0644A" />
-                  <Text style={styles.breakCardText}>
-                    Break: {slot.breakStart && slot.breakEnd ? `${slot.breakStart} - ${slot.breakEnd}` : 'Scheduled Break'}
-                    {slot.breakDuration ? ` (${slot.breakDuration})` : ''}
+                {/* View Time Slots Button */}
+                <TouchableOpacity
+                  style={styles.viewTimeSlotsCardBtn}
+                  onPress={() => toggleExpandSlot(slot.id)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="eye-outline" size={15} color={GREEN} />
+                  <Text style={styles.viewTimeSlotsCardBtnText}>
+                    {isExpanded ? 'Hide Time Slots' : 'View Time Slots'} ({validSlotsCount} available)
                   </Text>
-                </View>
-              ) : null}
-            </View>
-          ))
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={GREEN}
+                  />
+                </TouchableOpacity>
+
+                {/* Expanded Time Slots List */}
+                {isExpanded && (
+                  <View style={styles.expandedSlotsList}>
+                    <Text style={styles.expandedSlotsTitle}>
+                      Available Time Slots ({slot.start} – {slot.end}):
+                    </Text>
+                    {generatedSlots.length === 0 ? (
+                      <Text style={styles.noExpandedSlotsText}>No sub-slots generated.</Text>
+                    ) : (
+                      generatedSlots.map((item, idx) => (
+                        <View
+                          key={item.id || idx}
+                          style={[
+                            styles.expandedSlotRow,
+                            item.isBreak && styles.expandedBreakRow,
+                          ]}
+                        >
+                          <View style={styles.expandedSlotTimeCol}>
+                            <Ionicons
+                              name={item.isBreak ? 'cafe-outline' : 'time-outline'}
+                              size={14}
+                              color={item.isBreak ? '#C0644A' : GREEN}
+                            />
+                            <Text
+                              style={[
+                                styles.expandedSlotTimeText,
+                                item.isBreak && styles.expandedBreakTimeText,
+                              ]}
+                            >
+                              {item.start} – {item.end}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.expandedSlotBadge,
+                              item.isBreak && styles.expandedBreakBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.expandedSlotBadgeText,
+                                item.isBreak && styles.expandedBreakBadgeText,
+                              ]}
+                            >
+                              {item.isBreak ? 'Break' : item.duration}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {/* Break details badge */}
+                {(slot.breakStart || slot.breakDuration) ? (
+                  <View style={styles.breakCardRow}>
+                    <Ionicons name="cafe-outline" size={14} color="#C0644A" />
+                    <Text style={styles.breakCardText}>
+                      Break: {slot.breakStart && slot.breakEnd ? `${slot.breakStart} - ${slot.breakEnd}` : 'Scheduled Break'}
+                      {slot.breakDuration ? ` (${slot.breakDuration})` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })
         )}
 
         {selectedDateStr >= todayStr && (
@@ -691,6 +785,93 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#A8432A',
     fontWeight: '600',
+  },
+  viewTimeSlotsCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EAF3ED',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    marginTop: -2,
+    borderWidth: 1,
+    borderColor: '#C3D4C8',
+    borderTopWidth: 0,
+  },
+  viewTimeSlotsCardBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GREEN,
+    flex: 1,
+    marginLeft: 6,
+  },
+  expandedSlotsList: {
+    backgroundColor: '#FAFAF9',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    gap: 6,
+  },
+  expandedSlotsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    marginBottom: 4,
+  },
+  noExpandedSlotsText: {
+    fontSize: 12,
+    color: TEXT_MUTED,
+    fontStyle: 'italic',
+  },
+  expandedSlotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E1EAE3',
+  },
+  expandedBreakRow: {
+    backgroundColor: '#FDF2F0',
+    borderColor: '#F7D6CF',
+  },
+  expandedSlotTimeCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  expandedSlotTimeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_DARK,
+  },
+  expandedBreakTimeText: {
+    color: '#A8432A',
+  },
+  expandedSlotBadge: {
+    backgroundColor: GREEN_BG,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  expandedBreakBadge: {
+    backgroundColor: '#F7D6CF',
+  },
+  expandedSlotBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: GREEN,
+  },
+  expandedBreakBadgeText: {
+    color: '#A8432A',
   },
   slotActions: {
     flexDirection: 'row',
