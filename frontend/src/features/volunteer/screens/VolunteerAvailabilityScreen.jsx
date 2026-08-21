@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
   StatusBar,
   Platform,
@@ -26,26 +25,30 @@ import AvailabilitySlotFormModal from '../components/AvailabilitySlotFormModal';
 import { generateTimeSlots } from '../utils/slotGenerator';
 
 const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEK_DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const DEFAULT_WEEK_SLOT = {
+  start: '9:00 AM',
+  end: '10:00 AM',
+  slotDuration: '1 hr',
+  breakStart: '',
+  breakEnd: '',
+  breakDuration: '',
+};
+
 export default function VolunteerAvailabilityScreen({ navigation, onTabChange }) {
-  let token = null;
-  try {
-    const auth = useAuth();
-    token = auth?.token;
-  } catch (e) {
-    // Fallback if rendered without AuthContext
-  }
+  const { token } = useAuth();
 
   // Current calendar view state (defaults to today's month/year)
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-indexed
 
-  // Selected date object { year, month, day, dateStr }
+  // Selected date ISO format helper (YYYY-MM-DD)
   const formatIsoDate = (y, m, d) => {
     const mm = (m + 1) < 10 ? `0${m + 1}` : `${m + 1}`;
     const dd = d < 10 ? `0${d}` : `${d}`;
@@ -56,12 +59,49 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
 
   const [selectedDateStr, setSelectedDateStr] = useState(todayStr);
   const [slotsByDate, setSlotsByDate] = useState({});
-  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [editingSlotDateStr, setEditingSlotDateStr] = useState(null);
+
+  const makeDefaultSlot = (dateStr) => ({
+    ...DEFAULT_WEEK_SLOT,
+    id: `s_${dateStr}_${Date.now()}`,
+    date: dateStr,
+  });
+
+  // Calculate 7 days for the week containing the selected date (Monday to Sunday)
+  const getWeekDatesContainingSelectedDate = (dateStr) => {
+    const selected = new Date(`${dateStr}T00:00:00`);
+    const day = selected.getDay();
+    // Monday as start of week (Sunday = 0 -> -6, Monday = 1 -> 0, etc.)
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(selected);
+    monday.setDate(selected.getDate() + diff);
+
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      const cellDateStr = formatIsoDate(date.getFullYear(), date.getMonth(), date.getDate());
+      const dayIndex = date.getDay();
+
+      weekDates.push({
+        dayIndex,
+        dayName: WEEK_DAYS_FULL[dayIndex],
+        date,
+        dateStr: cellDateStr,
+        isPast: cellDateStr < todayStr,
+        isToday: cellDateStr === todayStr,
+        isSelected: cellDateStr === dateStr,
+      });
+    }
+    return weekDates;
+  };
+
+  const currentWeekDates = getWeekDatesContainingSelectedDate(selectedDateStr);
 
   // Expanded slot IDs state for viewing time slots
   const [expandedSlotIds, setExpandedSlotIds] = useState({});
 
-  // Creative Toast notification state
+  // Floating Toast notification state
   const [toastInfo, setToastInfo] = useState({ visible: false, message: '', type: 'success' });
 
   const showToast = (message, type = 'success') => {
@@ -84,21 +124,21 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
 
   const applyScheduleFromDb = (data) => {
     setSlotsByDate(data?.slotsByDate && typeof data.slotsByDate === 'object' ? data.slotsByDate : {});
-    if (data?.repeatWeekly !== undefined) {
-      setRepeatWeekly(data.repeatWeekly);
-    }
   };
 
   const loadScheduleFromDb = async () => {
     if (!token) return;
-    const response = await getVolunteerAvailabilitySchedule(token);
-    applyScheduleFromDb(response?.data);
+    try {
+      const response = await getVolunteerAvailabilitySchedule(token);
+      applyScheduleFromDb(response?.data);
+    } catch (err) {
+      console.log('Error loading availability from DB:', err);
+    }
   };
 
   useEffect(() => {
-    loadScheduleFromDb().catch((err) => {
-      console.log('Error loading availability from DB:', err);
-    });
+    loadScheduleFromDb();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Calendar generation helpers
@@ -150,7 +190,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
       });
     }
 
-    // Next month padding to fill out 35 or 42 grid cells
+    // Next month padding
     const totalCells = Math.ceil(days.length / 7) * 7;
     const remaining = totalCells - days.length;
     for (let j = 1; j <= remaining; j++) {
@@ -165,68 +205,44 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     return days;
   };
 
-  // Helper to resolve slots for a date considering repeatWeekly recurrence
-  const getSlotsForDate = (dateStr, slotsMap, isRepeatWeekly) => {
-    if (!dateStr) return [];
-    if (slotsMap[dateStr] && Array.isArray(slotsMap[dateStr]) && slotsMap[dateStr].length > 0) {
-      return slotsMap[dateStr];
-    }
-    if (isRepeatWeekly && slotsMap && typeof slotsMap === 'object') {
-      const targetDate = new Date(dateStr + 'T00:00:00');
-      const targetDay = targetDate.getDay();
-      if (!isNaN(targetDay)) {
-        for (const [keyDate, list] of Object.entries(slotsMap)) {
-          if (Array.isArray(list) && list.length > 0) {
-            const d = new Date(keyDate + 'T00:00:00');
-            if (d.getDay() === targetDay) {
-              return list.map((item) => ({ ...item, date: dateStr }));
-            }
-          }
-        }
-      }
-    }
-    return [];
+  const getSlotsForDate = (dateStr, slotsMap) => {
+    if (!dateStr || !slotsMap || typeof slotsMap !== 'object') return [];
+    return Array.isArray(slotsMap[dateStr]) ? slotsMap[dateStr] : [];
   };
 
   const calendarGrid = getCalendarDays();
-  const currentSelectedSlots = getSlotsForDate(selectedDateStr, slotsByDate, repeatWeekly);
-
-  const handleToggleRepeatWeekly = async (val) => {
-    setRepeatWeekly(val);
-    try {
-      await persistSchedule(slotsByDate, val);
-      showToast(val ? '🔄 Weekly repeat enabled! Slots apply every week.' : 'Weekly repeat disabled.');
-    } catch (err) {
-      console.error('Failed to toggle repeatWeekly:', err);
-    }
-  };
+  const currentSelectedSlots = getSlotsForDate(selectedDateStr, slotsByDate);
 
   // Slot handlers
-  const openAddSlotModal = () => {
-    if (selectedDateStr < todayStr) {
-      Alert.alert('Past Date', 'Cannot add availability slots for past dates.');
+  const openAddSlotModal = (targetDateStr = selectedDateStr) => {
+    if (targetDateStr < todayStr) {
+      showToast('Cannot add availability slots for past dates.', 'error');
       return;
     }
     setEditingSlot(null);
+    setEditingSlotDateStr(targetDateStr);
     setModalVisible(true);
   };
 
-  const openEditSlotModal = (slot) => {
+  const openEditSlotModal = (slot, targetDateStr = selectedDateStr) => {
+    const dStr = slot?.date || targetDateStr;
+    if (dStr < todayStr) {
+      showToast('Cannot edit availability slots for past dates.', 'error');
+      return;
+    }
     setEditingSlot(slot);
+    setEditingSlotDateStr(dStr);
     setModalVisible(true);
   };
 
-  const persistSchedule = async (nextSlotsByDate, nextRepeatWeekly = repeatWeekly) => {
+  const persistSchedule = async (nextSlotsByDate) => {
     if (!token) {
       Alert.alert('Authentication Required', 'Please log in to save availability to the database.');
       return false;
     }
 
-    const response = await saveVolunteerAvailabilitySchedule(
-      { slotsByDate: nextSlotsByDate, repeatWeekly: nextRepeatWeekly },
-      token
-    );
-    applyScheduleFromDb(response?.data || { slotsByDate: nextSlotsByDate, repeatWeekly: nextRepeatWeekly });
+    const response = await saveVolunteerAvailabilitySchedule({ slotsByDate: nextSlotsByDate }, token);
+    applyScheduleFromDb(response?.data || { slotsByDate: nextSlotsByDate });
     return true;
   };
 
@@ -237,13 +253,22 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     }
 
     try {
+      const dateStr = editingSlotDateStr || selectedDateStr;
+      const existingSlots = getSlotsForDate(dateStr, slotsByDate);
+      const nextSlot = { ...slotData, date: dateStr, id: editingSlot?.id || `s_${dateStr}_${Date.now()}` };
+      const nextSlots = editingSlot
+        ? existingSlots.map((slot) => (slot.id === editingSlot.id ? nextSlot : slot))
+        : [...existingSlots, nextSlot];
+
+      setSlotsByDate((prev) => ({ ...prev, [dateStr]: nextSlots }));
+
       const mongoId = editingSlot?.id || editingSlot?._id;
       const isExisting = mongoId && /^[a-fA-F0-9]{24}$/.test(String(mongoId));
 
       if (isExisting) {
-        await updateVolunteerAvailabilitySlot(mongoId, slotData, token);
+        await updateVolunteerAvailabilitySlot(mongoId, nextSlot, token);
       } else {
-        await createVolunteerAvailabilitySlot(slotData, token);
+        await createVolunteerAvailabilitySlot(nextSlot, token);
       }
 
       await loadScheduleFromDb();
@@ -254,7 +279,11 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     }
   };
 
-  const handleDeleteSlot = (slotId) => {
+  const handleDeleteSlot = (slotId, targetDateStr = selectedDateStr) => {
+    if (targetDateStr < todayStr) {
+      showToast('Cannot delete availability slots for past dates.', 'error');
+      return;
+    }
     Alert.alert('Delete Slot', 'Are you sure you want to delete this time slot?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -265,6 +294,17 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
           try {
             if (slotId && /^[a-fA-F0-9]{24}$/.test(String(slotId))) {
               await deleteVolunteerAvailabilitySlot(slotId, token);
+            } else {
+              setSlotsByDate((prev) => {
+                const next = { ...prev };
+                const remaining = getSlotsForDate(targetDateStr, next).filter((s) => s.id !== slotId);
+                if (remaining.length === 0) {
+                  delete next[targetDateStr];
+                } else {
+                  next[targetDateStr] = remaining;
+                }
+                return next;
+              });
             }
             await loadScheduleFromDb();
             showToast('🗑️ Slot deleted successfully.');
@@ -277,21 +317,72 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     ]);
   };
 
+  // On Save: Only ticked dates get marked as available
   const handleSaveAll = async () => {
     try {
-      await persistSchedule(slotsByDate, repeatWeekly);
-      showToast('✨ Availability schedule saved successfully!');
+      const weekDateSet = new Set(currentWeekDates.map((day) => day.dateStr));
+      const nextSlotsByDate = { ...slotsByDate };
+
+      // For dates in the current week, if unticked (0 slots), remove them
+      currentWeekDates.forEach((day) => {
+        const daySlots = getSlotsForDate(day.dateStr, nextSlotsByDate);
+        if (daySlots.length === 0) {
+          delete nextSlotsByDate[day.dateStr];
+        }
+      });
+
+      // Filter out any empty arrays
+      Object.keys(nextSlotsByDate).forEach((dateKey) => {
+        if (weekDateSet.has(dateKey) && (!Array.isArray(nextSlotsByDate[dateKey]) || nextSlotsByDate[dateKey].length === 0)) {
+          delete nextSlotsByDate[dateKey];
+        }
+      });
+
+      await persistSchedule(nextSlotsByDate);
+      showToast('✨ Availability saved for ticked days this week');
     } catch (err) {
       console.error('Failed to save availability schedule:', err);
       showToast('❌ Failed to save availability: ' + (err.message || ''), 'error');
     }
   };
 
+  // Toggle day checkbox in weekly schedule (ticking assigns default slot without filling form)
+  const toggleWeekDayAvailable = (dateStr, isPast) => {
+    if (isPast) {
+      showToast('Cannot mark past dates as available.', 'error');
+      return;
+    }
+
+    setSlotsByDate((prev) => {
+      const next = { ...prev };
+      const existing = getSlotsForDate(dateStr, next);
+      if (existing.length > 0) {
+        delete next[dateStr];
+      } else {
+        next[dateStr] = [makeDefaultSlot(dateStr)];
+      }
+      return next;
+    });
+  };
+
+  const clearThisWeek = () => {
+    setSlotsByDate((prev) => {
+      const next = { ...prev };
+      currentWeekDates.forEach((day) => {
+        if (!day.isPast) {
+          delete next[day.dateStr];
+        }
+      });
+      return next;
+    });
+    showToast('Cleared ticked days for this week');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS?.bg || '#F6F9F6'} />
 
-      {/* Creative Floating Toast Notification Banner */}
+      {/* Floating Toast Notification Banner */}
       {toastInfo.visible && (
         <TouchableOpacity
           style={[
@@ -357,8 +448,9 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
         <View style={styles.calendarGrid}>
           {calendarGrid.map((cell, index) => {
             const isSelected = cell.inMonth && cell.dateStr === selectedDateStr;
-            const cellSlots = cell.inMonth ? getSlotsForDate(cell.dateStr, slotsByDate, repeatWeekly) : [];
-            const hasSlots = cellSlots.length > 0;
+            const cellSlots = cell.inMonth ? getSlotsForDate(cell.dateStr, slotsByDate) : [];
+            const isPast = !cell.inMonth || cell.dateStr < todayStr;
+            const hasSlots = cell.inMonth && !isPast && cellSlots.length > 0;
 
             return (
               <TouchableOpacity
@@ -405,7 +497,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
           {selectedDateStr >= todayStr ? (
             <TouchableOpacity
               style={styles.addSlotChip}
-              onPress={openAddSlotModal}
+              onPress={() => openAddSlotModal(selectedDateStr)}
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={16} color={GREEN} />
@@ -459,10 +551,10 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
 
                   {/* Edit & Delete Action Buttons */}
                   <View style={styles.slotActions}>
-                    <TouchableOpacity onPress={() => openEditSlotModal(slot)} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={() => openEditSlotModal(slot, selectedDateStr)} activeOpacity={0.7}>
                       <Ionicons name="pencil-outline" size={18} color={TEXT_MUTED} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteSlot(slot.id)} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={() => handleDeleteSlot(slot.id, selectedDateStr)} activeOpacity={0.7}>
                       <Ionicons name="trash-outline" size={18} color="#C0644A" />
                     </TouchableOpacity>
                   </View>
@@ -556,7 +648,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
         {selectedDateStr >= todayStr && (
           <TouchableOpacity
             style={styles.addSlotDashed}
-            onPress={openAddSlotModal}
+            onPress={() => openAddSlotModal(selectedDateStr)}
             activeOpacity={0.7}
           >
             <Ionicons name="add" size={16} color={TEXT_MUTED} />
@@ -564,21 +656,124 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
           </TouchableOpacity>
         )}
 
-        {/* Repeat weekly */}
-        <View style={styles.repeatCard}>
-          <View>
-            <Text style={styles.repeatTitle}>Repeat weekly</Text>
-            <Text style={styles.repeatSubtitle}>
-              Apply these slots every week for this day
-            </Text>
+        {/* Weekly Schedule Section — Scoped to the week containing the selected date */}
+        <View style={styles.weeklyScheduleSection}>
+          <View style={styles.weeklyScheduleHeader}>
+            <View style={styles.weeklyScheduleTitleRow}>
+              <Ionicons name="calendar-outline" size={20} color={GREEN} />
+              <Text style={styles.weeklyScheduleTitle}>Weekly Schedule</Text>
+            </View>
+            <TouchableOpacity onPress={clearThisWeek} activeOpacity={0.7}>
+              <Text style={{ fontSize: 12, color: '#C0644A', fontWeight: '600' }}>Clear Week</Text>
+            </TouchableOpacity>
           </View>
-          <Switch
-            value={repeatWeekly}
-            onValueChange={setRepeatWeekly}
-            trackColor={{ false: '#D8DEDA', true: '#A9CDB4' }}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor="#D8DEDA"
-          />
+
+          <View style={styles.weeklyScheduleContent}>
+            {/* Week Range Header */}
+            <View style={styles.weekRangeHeader}>
+              <Text style={styles.weekRangeText}>
+                Week of {MONTH_NAMES[currentWeekDates[0].date.getMonth()]} {currentWeekDates[0].date.getDate()} – {MONTH_NAMES[currentWeekDates[6].date.getMonth()]} {currentWeekDates[6].date.getDate()}, {currentWeekDates[0].date.getFullYear()}
+              </Text>
+              <Text style={styles.weekRangeHint}>
+                Tick days to set availability. Default slots are applied automatically and can be edited.
+              </Text>
+            </View>
+
+            {currentWeekDates.map((dayData) => {
+              const daySlots = getSlotsForDate(dayData.dateStr, slotsByDate);
+              const isTicked = daySlots.length > 0;
+              const isSelectedDay = dayData.isSelected;
+
+              return (
+                <View key={dayData.dateStr} style={styles.weeklyDayContainer}>
+                  <View style={[
+                    styles.weeklyDayRow,
+                    isTicked && styles.weeklyDayRowSelected,
+                    dayData.isPast && styles.weeklyDayRowDisabled,
+                  ]}>
+                    <TouchableOpacity
+                      style={styles.weeklyDayCheckTouchable}
+                      onPress={() => toggleWeekDayAvailable(dayData.dateStr, dayData.isPast)}
+                      activeOpacity={0.7}
+                      disabled={dayData.isPast}
+                    >
+                      <Ionicons
+                        name={isTicked ? "checkbox" : "square-outline"}
+                        size={22}
+                        color={isTicked ? GREEN : (dayData.isPast ? '#CBD5CD' : TEXT_MUTED)}
+                      />
+                      <View style={styles.weeklyDayInfo}>
+                        <Text style={[
+                          styles.weeklyDayName,
+                          isTicked && styles.weeklyDayNameSelected,
+                          dayData.isPast && styles.weeklyDayNameDisabled,
+                        ]}>
+                          {dayData.dayName}, {MONTH_NAMES[dayData.date.getMonth()]} {dayData.date.getDate()}
+                          {dayData.isToday ? ' (Today)' : ''}
+                          {isSelectedDay && !dayData.isToday ? ' (Selected)' : ''}
+                        </Text>
+                        {dayData.isPast && (
+                          <Text style={styles.weeklyDayDisabledText}>Past date</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+
+                    {isTicked && (
+                      <View style={styles.weeklyDayBadge}>
+                        <Text style={styles.weeklyDayBadgeText}>{daySlots.length} slot(s)</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Render configured slots for ticked day */}
+                  {isTicked && (
+                    <View style={styles.weeklyDaySlots}>
+                      {daySlots.map((slot, slotIdx) => (
+                        <View key={slot.id || slotIdx} style={styles.weeklySlotItem}>
+                          <View style={styles.weeklySlotInfo}>
+                            <View style={styles.weeklySlotDot} />
+                            <Text style={styles.weeklySlotText}>
+                              {slot.start} – {slot.end}
+                            </Text>
+                            {slot.slotDuration && (
+                              <View style={styles.weeklyDurationBadge}>
+                                <Text style={styles.weeklyDurationBadgeText}>{slot.slotDuration}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <TouchableOpacity
+                              style={styles.weeklyDayActionBtn}
+                              onPress={() => openEditSlotModal(slot, dayData.dateStr)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="pencil-outline" size={16} color={GREEN} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.weeklySlotDeleteBtn}
+                              onPress={() => handleDeleteSlot(slot.id, dayData.dateStr)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="close-outline" size={16} color="#C0644A" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))}
+
+                      <TouchableOpacity
+                        style={styles.addSlotMiniBtn}
+                        onPress={() => openAddSlotModal(dayData.dateStr)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="add-circle-outline" size={16} color={GREEN} />
+                        <Text style={styles.addSlotMiniText}>Add another slot for this day</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         </View>
 
         {/* Save button */}
@@ -590,10 +785,14 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
       {/* Standalone Add/Edit Time Slot Form Modal Component */}
       <AvailabilitySlotFormModal
         visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          setEditingSlotDateStr(null);
+        }}
         onSave={handleSaveSlotModal}
         editingSlot={editingSlot}
-        selectedDateStr={selectedDateStr}
+        selectedDateStr={editingSlotDateStr || selectedDateStr}
+        isWeeklySchedule={false}
       />
 
       {/* Bottom Navigation */}
@@ -737,7 +936,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dateCellTextDisabled: {
-    color: '#CBD5CD', // Disabled/Past day in grey
+    color: '#CBD5CD',
   },
   dateCellTextSelected: {
     color: '#FFFFFF',
@@ -982,26 +1181,182 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: TEXT_MUTED,
   },
-  repeatCard: {
+  weeklyScheduleSection: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: BORDER,
-    borderRadius: 14,
-    padding: 14,
+    padding: 16,
+    marginBottom: 16,
+  },
+  weeklyScheduleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 12,
   },
-  repeatTitle: {
+  weeklyScheduleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weeklyScheduleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  weeklyScheduleContent: {
+    gap: 8,
+  },
+  weekRangeHeader: {
+    backgroundColor: GREEN_BG,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  weekRangeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  weekRangeHint: {
+    fontSize: 11,
+    color: GREEN,
+    marginTop: 2,
+    opacity: 0.85,
+  },
+  weeklyDayContainer: {
+    gap: 6,
+    marginBottom: 6,
+  },
+  weeklyDayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAF9',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  weeklyDayRowSelected: {
+    backgroundColor: GREEN_BG,
+    borderColor: GREEN,
+  },
+  weeklyDayRowDisabled: {
+    backgroundColor: '#F3F4F3',
+    opacity: 0.6,
+  },
+  weeklyDayCheckTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  weeklyDayInfo: {
+    flexDirection: 'column',
+    gap: 2,
+  },
+  weeklyDayName: {
     fontSize: 14,
     fontWeight: '600',
     color: TEXT_DARK,
   },
-  repeatSubtitle: {
+  weeklyDayNameSelected: {
+    color: GREEN,
+  },
+  weeklyDayNameDisabled: {
+    color: '#9CA3AF',
+  },
+  weeklyDayDisabledText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  weeklyDayBadge: {
+    backgroundColor: GREEN_BG,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  weeklyDayBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: GREEN,
+  },
+  weeklyDaySlots: {
+    gap: 6,
+    paddingLeft: 12,
+    marginTop: 4,
+  },
+  weeklySlotItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E1EAE3',
+  },
+  weeklySlotInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weeklySlotDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+  },
+  weeklySlotText: {
     fontSize: 12,
-    color: TEXT_MUTED,
-    marginTop: 2,
+    fontWeight: '600',
+    color: TEXT_DARK,
+  },
+  weeklyDurationBadge: {
+    backgroundColor: GREEN_BG,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  weeklyDurationBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: GREEN,
+  },
+  weeklyDayActionBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: BORDER,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weeklySlotDeleteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FDF2F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addSlotMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  addSlotMiniText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
   },
   saveButton: {
     backgroundColor: GREEN,

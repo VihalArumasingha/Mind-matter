@@ -33,7 +33,6 @@ const getOrCreateAvailability = async (userId) => {
     availability = await Availability.create({
       user: userId,
       isAvailable: true,
-      repeatWeekly: false,
     });
   }
   return availability;
@@ -49,13 +48,21 @@ const buildScheduleResponse = async (userId) => {
     loadUserSlots(userId),
   ]);
 
+  // Convert Map to plain object for JSON serialization
+  const weeklyScheduleObj = {};
+  if (availability.weeklySchedule) {
+    availability.weeklySchedule.forEach((value, key) => {
+      weeklyScheduleObj[key] = value;
+    });
+  }
+
   return {
     collection: DB_COLLECTION,
     database: mongoose.connection.name,
     slotsByDate: groupSlotsByDate(slots),
     slots: slots.map(toSlotPayload),
-    repeatWeekly: availability.repeatWeekly,
     isAvailable: availability.isAvailable,
+    weeklySchedule: weeklyScheduleObj,
   };
 };
 
@@ -176,11 +183,18 @@ export const deleteAvailabilitySlot = async (req, res) => {
 
 export const saveAvailabilitySchedule = async (req, res) => {
   try {
-    const { slotsByDate, repeatWeekly, isAvailable } = req.body;
+    const { slotsByDate, isAvailable, weeklySchedule } = req.body;
     const availability = await getOrCreateAvailability(req.user._id);
 
-    if (repeatWeekly !== undefined) availability.repeatWeekly = repeatWeekly;
     if (isAvailable !== undefined) availability.isAvailable = isAvailable;
+    if (weeklySchedule !== undefined && typeof weeklySchedule === 'object') {
+      // Convert plain object to Map for Mongoose
+      const weeklyScheduleMap = new Map();
+      Object.entries(weeklySchedule).forEach(([key, value]) => {
+        weeklyScheduleMap.set(key, value);
+      });
+      availability.weeklySchedule = weeklyScheduleMap;
+    }
     await availability.save();
 
     if (slotsByDate && typeof slotsByDate === 'object') {

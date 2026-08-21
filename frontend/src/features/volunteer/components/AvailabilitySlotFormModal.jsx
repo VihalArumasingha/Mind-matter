@@ -32,6 +32,7 @@ export default function AvailabilitySlotFormModal({
   onSave,
   editingSlot,
   selectedDateStr,
+  isWeeklySchedule = false,
 }) {
   const [slotDate, setSlotDate] = useState('');
   const [startTime, setStartTime] = useState('9:00 AM');
@@ -85,9 +86,23 @@ export default function AvailabilitySlotFormModal({
       return;
     }
 
+    // Skip date validation for weekly schedules
+    if (!isWeeklySchedule) {
+      const today = new Date();
+      const mm = (today.getMonth() + 1) < 10 ? `0${today.getMonth() + 1}` : `${today.getMonth() + 1}`;
+      const dd = today.getDate() < 10 ? `0${today.getDate()}` : `${today.getDate()}`;
+      const todayStr = `${today.getFullYear()}-${mm}-${dd}`;
+
+      const targetDateStr = (slotDate.trim() || selectedDateStr);
+      if (targetDateStr < todayStr) {
+        Alert.alert('Past Date Restricted', 'Cannot set availability for past dates. Please select today or a future date.');
+        return;
+      }
+    }
+
     const slotPayload = {
       id: editingSlot ? editingSlot.id : `s_${Date.now()}`,
-      date: slotDate.trim() || selectedDateStr,
+      date: isWeeklySchedule ? null : (slotDate.trim() || selectedDateStr),
       start: startTime.trim(),
       end: endTime.trim(),
       slotDuration: slotDuration.trim(),
@@ -122,17 +137,30 @@ export default function AvailabilitySlotFormModal({
               </TouchableOpacity>
             </View>
 
-            {/* Date Field */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Available Date</Text>
-              <TextInput
-                style={styles.textInput}
-                value={slotDate}
-                onChangeText={setSlotDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={TEXT_MUTED}
-              />
-            </View>
+            {/* Date Field - Only show if not weekly schedule */}
+            {!isWeeklySchedule && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Available Date</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={slotDate}
+                  onChangeText={setSlotDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={TEXT_MUTED}
+                />
+              </View>
+            )}
+
+            {/* Weekly Schedule Indicator */}
+            {isWeeklySchedule && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Schedule For</Text>
+                <View style={styles.weeklyIndicator}>
+                  <Ionicons name="calendar-repeat-outline" size={16} color={GREEN} />
+                  <Text style={styles.weeklyIndicatorText}>{selectedDateStr}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Presets */}
             <Text style={styles.inputLabel}>Presets</Text>
@@ -488,5 +516,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  weeklyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EAF3ED',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: GREEN,
+  },
+  weeklyIndicatorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
   },
 });

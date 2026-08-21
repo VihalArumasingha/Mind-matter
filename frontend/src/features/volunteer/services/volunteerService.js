@@ -104,7 +104,7 @@ export const declineVolunteerRequest = async (requestId, token) => {
 };
 
 /**
- * Save volunteer availability settings (repeat weekly / status)
+ * Save volunteer availability settings (including weekly schedule)
  */
 export const saveVolunteerAvailabilitySchedule = async (scheduleData, token) => {
   try {

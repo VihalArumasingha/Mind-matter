@@ -12,9 +12,10 @@ const availabilitySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    repeatWeekly: {
-      type: Boolean,
-      default: false,
+    weeklySchedule: {
+      type: Map,
+      of: Array,
+      default: {},
     },
   },
   { timestamps: true }

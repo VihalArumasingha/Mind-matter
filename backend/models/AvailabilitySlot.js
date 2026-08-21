@@ -36,10 +36,6 @@ const availabilitySlotSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    repeatWeekly: {
-      type: Boolean,
-      default: false,
-    },
   },
   { timestamps: true }
 );
