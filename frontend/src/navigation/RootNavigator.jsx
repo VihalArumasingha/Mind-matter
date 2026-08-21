@@ -66,7 +66,7 @@ const RootNavigator = () => {
             case 'volunteer':
                 return <VolunteerNavigator />
 
-            case 'organizer':
+            case 'communityOrganizer':
                 return <OrganizerNavigator />
 
             case 'admin':
