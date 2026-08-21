@@ -1,51 +1,72 @@
-import React from 'react'
-import {StyleSheet, Text, View} from 'react-native'
-import {createNativeStackNavigator} from '@react-navigation/native-stack'
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import VolunteerMainScreen from '../features/volunteer/screens/VolunteerMainScreen';
 
-const Stack = createNativeStackNavigator()
+const Stack = createNativeStackNavigator();
 
-const VolunteerInitialScreen = () => {
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Volunteer</Text>
-            <Text style={styles.subtitle}>
-                Volunteer application is under development.
-            </Text>
-        </View>
-    )
-}
-
+/**
+ * VolunteerNavigator mounts VolunteerMainScreen for all volunteer sub-routes.
+ * Registering all route aliases ensures that even if legacy/cached navigation dispatches
+ * hit React Navigation (e.g. 'Availability', 'Requests', 'Dashboard'), React Navigation handles
+ * them cleanly without throwing payload errors.
+ */
 const VolunteerNavigator = () => {
-    return (
-        <Stack.Navigator screenOptions={{headerShown: false}}>
-            <Stack.Screen
-                name="VolunteerInitial"
-                component={VolunteerInitialScreen}
-            />
-        </Stack.Navigator>
-    )
-}
+  return (
+    <Stack.Navigator
+      key="volunteer-main-stack"
+      initialRouteName="VolunteerMain"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen
+        name="VolunteerMain"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="VolunteerDashboard"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Dashboard"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Availability"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="VolunteerAvailability"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Requests"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Sessions"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="VolunteerRequests"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Messages"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="VolunteerMessages"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="VolunteerProfile"
+        component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={VolunteerMainScreen}
+      />
+    </Stack.Navigator>
+  );
+};
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F4F7EF',
-        padding: 24,
-    },
-
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#4E8C4A',
-    },
-
-    subtitle: {
-        marginTop: 10,
-        textAlign: 'center',
-        color: '#687068',
-    },
-})
-
-export default VolunteerNavigator
+export default VolunteerNavigator;

@@ -6,7 +6,7 @@ export const COLORS = {
   primary: '#0D9488', 
   primaryDark: '#0F766E',
   primaryLight: '#E6FFFA',
-  bgDark: '#F4F7EF', 
+  bgDark: '#F8FAFC', 
   cardDark: '#FFFFFF', 
   cardLight: '#FFFFFF',
   surfaceDark: '#F1F5F9', 
@@ -242,10 +242,11 @@ export const adminStyles = StyleSheet.create({
     paddingVertical: 2
   },
 
+  // Cards
   card: {
     backgroundColor: COLORS.cardDark,
     borderRadius: 12,
-    padding: 10,
+    padding: 14,
     marginBottom: 11,
     borderWidth: 1,
     borderColor: COLORS.borderDark
@@ -490,5 +491,4 @@ export const adminStyles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 10
   }
-  
 });
