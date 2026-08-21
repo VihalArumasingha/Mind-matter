@@ -357,7 +357,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
         <View style={styles.calendarGrid}>
           {calendarGrid.map((cell, index) => {
             const isSelected = cell.inMonth && cell.dateStr === selectedDateStr;
-            const cellSlots = cell.inMonth ? (slotsByDate[cell.dateStr] || []) : [];
+            const cellSlots = cell.inMonth ? getSlotsForDate(cell.dateStr, slotsByDate, repeatWeekly) : [];
             const hasSlots = cellSlots.length > 0;
 
             return (
