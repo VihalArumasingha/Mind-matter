@@ -17,6 +17,9 @@ import attendanceRoutes from './routes/supportCircleOrganizer/attendance/attenda
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Connect to Database
+connectDB();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -26,14 +29,18 @@ app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
 
-app.use('/api/auth', authRoutes)
-app.use('/api/users', userRoutes)
-app.use('/api/support-circles', supportCircleRoutes)
-app.use('/api/group-memberships', groupMembershipRoutes)
-app.use('/api/admin', adminRoutes)
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/support-circles', supportCircleRoutes);
+app.use('/api/group-memberships', groupMembershipRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/volunteer', volunteerRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Start the server
-app.listen(PORT,'0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] Running actively on port ${PORT}`);
     console.log(`[Server] URL: http://localhost:${PORT}`);
 });
+
