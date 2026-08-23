@@ -3,7 +3,7 @@ import {StyleSheet, Text, View, TouchableOpacity, Pressable} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 
-const UserHomeScreen = () => {
+const UserHomeScreen = ({navigation}) => {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
@@ -15,7 +15,7 @@ const UserHomeScreen = () => {
             
             <TouchableOpacity 
                 style={styles.fab}
-                onPress={() => {}}
+                onPress={() => navigation.navigate('ProfessionalHelp')}
                 accessible={true}
                 accessibilityLabel="Talk to a professional"
                 accessibilityRole="button"
