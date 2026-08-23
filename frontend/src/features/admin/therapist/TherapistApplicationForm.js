@@ -7,6 +7,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
+import { PROFESSION_CATEGORIES } from '../../../config/professions';
 
 const COLORS = {
   primary: '#0D9488',
@@ -25,13 +26,6 @@ const COLORS = {
   info: '#2563EB',
   infoBg: '#EFF6FF',
 };
-
-const PROFESSIONS = [
-  'Clinical Psychologist',
-  'Licensed Counselor (LPC)',
-  'Psychiatrist (MD)',
-  'Licensed Social Worker (LCSW)',
-];
 
 const DOC_TYPES = [
   { key: 'license', label: 'State License Certificate', desc: 'Official state board license (PDF)', required: true },
@@ -75,7 +69,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [profession, setProfession] = useState('Clinical Psychologist');
+  const [profession, setProfession] = useState(PROFESSION_CATEGORIES[0]);
   const [licenseNum, setLicenseNum] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [expYears, setExpYears] = useState('5');
@@ -270,7 +264,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
       <FormField label="Profession Category" required>
         <View style={styles.chipsWrap}>
-          {PROFESSIONS.map((p) => (
+          {PROFESSION_CATEGORIES.map((p) => (
             <TouchableOpacity
               key={p}
               style={[styles.chip, profession === p && styles.chipActive]}
