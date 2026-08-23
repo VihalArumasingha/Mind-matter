@@ -3,6 +3,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack'
 
 import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
+import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -17,6 +18,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="EditProfile"
                 component={EditProfileScreen}
+            />
+
+            <Stack.Screen
+                name="ProfessionalHelp"
+                component={ProfessionalHelpScreen}
             />
         </Stack.Navigator>
     )
