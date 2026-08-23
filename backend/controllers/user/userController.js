@@ -137,3 +137,41 @@ export const getApprovedProfessionals = async (req, res) => {
         })
     }
 }
+
+export const getProfessionCategories = async (req, res) => {
+    try {
+        // Get unique profession categories from approved professionals
+        const uniqueProfessions = await ProfessionalApplication.aggregate([
+            { $match: { status: 'approved' } },
+            { $group: { _id: '$profession' } },
+            { $sort: { _id: 1 } }
+        ])
+
+        // Default categories if no professionals exist
+        const defaultCategories = [
+            'Clinical Psychologist',
+            'Licensed Counselor (LPC)',
+            'Psychiatrist (MD)',
+            'Licensed Social Worker (LCSW)',
+            'Therapist',
+            'CBT Specialist',
+            'Psychologist'
+        ]
+
+        const categories = uniqueProfessions.length > 0 
+            ? uniqueProfessions.map(p => p._id)
+            : defaultCategories
+
+        res.status(200).json({
+            success: true,
+            categories
+        })
+    } catch (error) {
+        console.error('[Get Profession Categories Error]', error)
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching profession categories'
+        })
+    }
+}

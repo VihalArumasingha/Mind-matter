@@ -2,24 +2,25 @@ import React, {useState, useEffect} from 'react'
 import {StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, FlatList, ActivityIndicator} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
-import {getApprovedProfessionals} from '../services/professionalService'
+import {getApprovedProfessionals, getProfessionCategories} from '../services/professionalService'
 import {useAuth} from '../../../context/AuthContext'
+import {PROFESSION_FILTERS} from '../../../config/professions'
+import {Dimensions} from 'react-native'
+
+const {width} = Dimensions.get('window')
 
 const ProfessionalHelpScreen = ({navigation}) => {
     const {token} = useAuth()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedFilter, setSelectedFilter] = useState(null)
     const [professionals, setProfessionals] = useState([])
+    const [categories, setCategories] = useState(PROFESSION_FILTERS)
     const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState(null)
-
-    const filters = ['CBT', 'Psychiatrist', 'Counselor', 'Therapist', 'Psychologist']
 
     const fetchProfessionals = async () => {
         try {
             console.log('[ProfessionalHelpScreen] Fetching professionals, token:', !!token)
             setIsLoading(true)
-            setError(null)
             
             if (!token) {
                 throw new Error('Authentication token not available')
@@ -31,9 +32,24 @@ const ProfessionalHelpScreen = ({navigation}) => {
             setProfessionals(data.professionals || [])
         } catch (err) {
             console.error('[ProfessionalHelpScreen] Fetch Error:', err)
-            setError(err.message || 'Failed to load professionals')
+            // Don't set error state, just use empty array as fallback
+            setProfessionals([])
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const fetchCategories = async () => {
+        try {
+            if (!token) return
+            
+            const data = await getProfessionCategories(token)
+            if (data.success && data.categories && data.categories.length > 0) {
+                setCategories(data.categories)
+            }
+        } catch (err) {
+            console.log('[ProfessionalHelpScreen] Using default categories due to fetch error:', err.message)
+            // Keep using default categories from config
         }
     }
 
@@ -41,9 +57,9 @@ const ProfessionalHelpScreen = ({navigation}) => {
         console.log('[ProfessionalHelpScreen] Component mounted, token:', !!token)
         if (token) {
             fetchProfessionals()
+            fetchCategories()
         } else {
             setIsLoading(false)
-            setError('Please log in to view professionals')
         }
     }, [token])
 
@@ -65,13 +81,17 @@ const ProfessionalHelpScreen = ({navigation}) => {
                 </View>
                 <View style={styles.cardInfo}>
                     <Text style={styles.name}>{item.fullName}</Text>
-                    <Text style={styles.specialization}>{item.profession} - {item.specialization}</Text>
-                    <Text style={styles.details}>{item.expYears} years experience</Text>
-                    <Text style={styles.details}>License {item.licenseNum}</Text>
+                    <Text style={styles.specialization}>{item.profession}</Text>
+                    <Text style={styles.details}>{item.specialization}</Text>
+                    <View style={styles.detailsRow}>
+                        <Text style={styles.details}>{item.expYears} years exp</Text>
+                        <Text style={styles.details}>•</Text>
+                        <Text style={styles.details}>License {item.licenseNum}</Text>
+                    </View>
                 </View>
             </View>
             <TouchableOpacity style={styles.bookButton}>
-                <Text style={styles.bookButtonText}>Book</Text>
+                <Text style={styles.bookButtonText}>Book Session</Text>
             </TouchableOpacity>
         </View>
     )
@@ -101,7 +121,7 @@ const ProfessionalHelpScreen = ({navigation}) => {
                 </View>
 
                 <View style={styles.filterContainer}>
-                    {filters.map((filter) => (
+                    {categories.map((filter) => (
                         <TouchableOpacity
                             key={filter}
                             style={[
@@ -124,14 +144,6 @@ const ProfessionalHelpScreen = ({navigation}) => {
                     <View style={styles.centerContainer}>
                         <ActivityIndicator size="large" color="#4E8C4A" />
                         <Text style={styles.loadingText}>Loading professionals...</Text>
-                    </View>
-                ) : error ? (
-                    <View style={styles.centerContainer}>
-                        <Icon name="error-outline" size={48} color="#FF6B6B" />
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity style={styles.retryButton} onPress={fetchProfessionals}>
-                            <Text style={styles.retryButtonText}>Retry</Text>
-                        </TouchableOpacity>
                     </View>
                 ) : professionals.length === 0 ? (
                     <View style={styles.centerContainer}>
@@ -157,81 +169,92 @@ const ProfessionalHelpScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F4F7EF',
+        backgroundColor: '#F8FAF5',
     },
 
     container: {
         flex: 1,
-        padding: 16,
+        padding: 20,
     },
 
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
     },
 
     backButton: {
         marginRight: 12,
+        padding: 4,
     },
 
     title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#4E8C4A',
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#2D5A27',
+        letterSpacing: -0.5,
     },
 
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        borderRadius: 16,
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        marginBottom: 16,
+        paddingVertical: 14,
+        marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 1,
         },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#E8ECE6',
     },
 
     searchIcon: {
-        marginRight: 8,
+        marginRight: 12,
     },
 
     searchInput: {
         flex: 1,
-        fontSize: 16,
-        color: '#333333',
+        fontSize: 15,
+        color: '#1A1A1A',
+        fontWeight: '500',
     },
 
     filterContainer: {
         flexDirection: 'row',
-        marginBottom: 16,
-        gap: 8,
+        marginBottom: 20,
+        gap: 10,
+        flexWrap: 'nowrap',
+        overflow: 'hidden',
     },
 
     filterButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
         backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#4E8C4A',
+        borderWidth: 1.5,
+        borderColor: '#C8D5C2',
+        alignItems: 'center',
+        flexShrink: 1,
     },
 
     filterButtonActive: {
         backgroundColor: '#4E8C4A',
+        borderColor: '#4E8C4A',
     },
 
     filterButtonText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#4E8C4A',
+        color: '#5A6A58',
+        textAlign: 'center',
     },
 
     filterButtonTextActive: {
@@ -239,42 +262,52 @@ const styles = StyleSheet.create({
     },
 
     listContainer: {
-        paddingBottom: 16,
+        paddingBottom: 20,
     },
 
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
         elevation: 3,
+        borderWidth: 1,
+        borderColor: '#F0F4F0',
     },
 
     cardHeader: {
         flexDirection: 'row',
-        marginBottom: 12,
+        marginBottom: 16,
     },
 
     avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         backgroundColor: '#4E8C4A',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginRight: 16,
+        shadowColor: '#4E8C4A',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
     },
 
     avatarText: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '800',
         color: '#FFFFFF',
     },
 
@@ -284,85 +317,84 @@ const styles = StyleSheet.create({
     },
 
     name: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
-        marginBottom: 4,
+        color: '#1A1A1A',
+        marginBottom: 6,
+        letterSpacing: -0.3,
     },
 
     specialization: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '600',
         color: '#4E8C4A',
         marginBottom: 4,
     },
 
     details: {
-        fontSize: 12,
-        color: '#687068',
+        fontSize: 13,
+        color: '#6B7280',
         marginBottom: 2,
+    },
+
+    detailsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+        gap: 8,
     },
 
     bookButton: {
         backgroundColor: '#4E8C4A',
-        borderRadius: 8,
-        paddingVertical: 10,
+        borderRadius: 12,
+        paddingVertical: 14,
         alignItems: 'center',
+        shadowColor: '#4E8C4A',
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 4,
     },
 
     bookButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
         color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
 
     footerText: {
         textAlign: 'center',
-        fontSize: 12,
-        color: '#8A918A',
-        marginTop: 16,
-        marginBottom: 8,
+        fontSize: 13,
+        color: '#9CA3AF',
+        marginTop: 20,
+        marginBottom: 12,
+        fontWeight: '500',
     },
 
     centerContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 40,
+        paddingVertical: 60,
     },
 
     loadingText: {
-        marginTop: 16,
+        marginTop: 20,
         fontSize: 16,
-        color: '#8A918A',
-    },
-
-    errorText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: '#FF6B6B',
-        textAlign: 'center',
-    },
-
-    retryButton: {
-        marginTop: 16,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        backgroundColor: '#4E8C4A',
-        borderRadius: 8,
-    },
-
-    retryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
+        color: '#6B7280',
+        fontWeight: '500',
     },
 
     emptyText: {
-        marginTop: 16,
+        marginTop: 20,
         fontSize: 16,
-        color: '#8A918A',
+        color: '#6B7280',
         textAlign: 'center',
+        fontWeight: '500',
     },
 })
 
