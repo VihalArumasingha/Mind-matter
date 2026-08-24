@@ -5,7 +5,10 @@ import {
   likePost,
   getMyPosts,
   updatePost,
-  deletePost
+  deletePost,
+  addComment,
+  getNotifications,
+  markNotificationAsRead
 } from '../../controllers/posts/postController.js';
 import authMiddleware from '../../middleware/authMiddleware.js';
 
@@ -28,5 +31,14 @@ router.delete('/:postId', authMiddleware, deletePost);
 
 // Like post
 router.post('/:postId/like', authMiddleware, likePost);
+
+// Add comment
+router.post('/:postId/comment', authMiddleware, addComment);
+
+// Get notifications
+router.get('/notifications', authMiddleware, getNotifications);
+
+// Mark notification as read
+router.put('/notifications/:notificationId/read', authMiddleware, markNotificationAsRead);
 
 export default router;

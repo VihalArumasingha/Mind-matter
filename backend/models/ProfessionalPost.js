@@ -42,6 +42,7 @@ const professionalPostSchema = new mongoose.Schema(
         ref: 'User',
       },
       userName: String,
+      userAvatar: String,
       content: String,
       createdAt: {
         type: Date,

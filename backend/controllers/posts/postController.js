@@ -1,5 +1,23 @@
 import ProfessionalPost from '../../models/ProfessionalPost.js';
 import User from '../../models/User.js';
+import Notification from '../../models/Notification.js';
+
+const createNotification = async (userId, type, title, message, relatedPostId, relatedUserId, relatedUserName) => {
+  try {
+    const notification = new Notification({
+      userId,
+      type,
+      title,
+      message,
+      relatedPostId,
+      relatedUserId,
+      relatedUserName,
+    });
+    await notification.save();
+  } catch (error) {
+    console.error('[Create Notification Error]', error);
+  }
+};
 
 export const createProfessionalPost = async (req, res) => {
   try {
@@ -113,6 +131,18 @@ export const likePost = async (req, res) => {
       post.likes = post.likes.filter(id => id.toString() !== userId.toString());
     } else {
       post.likes.push(userId);
+      // Create notification for post author
+      if (post.authorId.toString() !== userId.toString()) {
+        await createNotification(
+          post.authorId,
+          'like',
+          'New Like',
+          `${req.user.name || req.user.fullName} liked your post`,
+          post._id,
+          userId,
+          req.user.name || req.user.fullName
+        );
+      }
     }
 
     await post.save();
@@ -127,6 +157,73 @@ export const likePost = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while liking post'
+    });
+  }
+};
+
+export const addComment = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const userId = req.user._id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment content is required'
+      });
+    }
+
+    const post = await ProfessionalPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const comment = {
+      userId,
+      userName: user.name || user.fullName,
+      userAvatar: user.profilePicture || '',
+      content: content.trim(),
+      createdAt: new Date(),
+    };
+
+    post.comments.push(comment);
+    await post.save();
+
+    // Create notification for post author
+    if (post.authorId.toString() !== userId.toString()) {
+      await createNotification(
+        post.authorId,
+        'comment',
+        'New Comment',
+        `${user.name || user.fullName} commented on your post`,
+        post._id,
+        userId,
+        user.name || user.fullName
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Comment added successfully',
+      comment
+    });
+  } catch (error) {
+    console.error('[Add Comment Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while adding comment'
     });
   }
 };
@@ -224,6 +321,69 @@ export const deletePost = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while deleting post'
+    });
+  }
+};
+
+export const getNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    const notifications = await Notification.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // Mark notifications as read
+    await Notification.updateMany(
+      { userId, isRead: false },
+      { isRead: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      notifications
+    });
+  } catch (error) {
+    console.error('[Get Notifications Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching notifications'
+    });
+  }
+};
+
+export const markNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user._id;
+
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    if (notification.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only mark your own notifications as read'
+      });
+    }
+
+    notification.isRead = true;
+    await notification.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+  } catch (error) {
+    console.error('[Mark Notification As Read Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while marking notification as read'
     });
   }
 };

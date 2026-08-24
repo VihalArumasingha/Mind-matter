@@ -114,7 +114,11 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
             <Text style={styles.nameText}>{displayName}</Text>
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconCircle} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.iconCircle} 
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ProfessionalNotifications')}
+            >
               <Ionicons name="notifications-outline" size={20} color={COLORS.green} />
               <View style={styles.notifDot} />
             </TouchableOpacity>
