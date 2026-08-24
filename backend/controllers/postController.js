@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 import Post from '../models/Post.js'
-import postCloudinary from '../config/postCloudinary.js'
+import cloudinary from '../config/cloudinary.js'
 import {Readable} from 'stream'
 
 const postPopulation = [
@@ -13,7 +13,7 @@ const findPost = id => Post.findById(id).populate(postPopulation)
 const isValidId = id => mongoose.isValidObjectId(id)
 
 const uploadPostImage = file => new Promise((resolve, reject) => {
-    const stream = postCloudinary.uploader.upload_stream(
+    const stream = cloudinary.uploader.upload_stream(
         {folder: 'mindmatter_feed_posts', resource_type: 'image'},
         (error, result) => error ? reject(error) : resolve(result),
     )
