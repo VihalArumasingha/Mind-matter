@@ -31,6 +31,26 @@ const postSchema = new mongoose.Schema(
             trim: true,
             maxlength: 5000
         },
+        title: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 200
+        },
+        description: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 5000
+        },
+        imageUrl: {
+            type: String,
+            default: ''
+        },
+        imagePublicId: {
+            type: String,
+            default: ''
+        },
         comments: [commentSchema]
     },
     { timestamps: true }

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose'
 import Post from '../models/Post.js'
+import postCloudinary from '../config/postCloudinary.js'
+import {Readable} from 'stream'
 
 const postPopulation = [
     { path: 'author', select: 'name profilePicture' },
@@ -9,6 +11,27 @@ const postPopulation = [
 const findPost = id => Post.findById(id).populate(postPopulation)
 
 const isValidId = id => mongoose.isValidObjectId(id)
+
+const uploadPostImage = file => new Promise((resolve, reject) => {
+    const stream = postCloudinary.uploader.upload_stream(
+        {folder: 'mindmatter_feed_posts', resource_type: 'image'},
+        (error, result) => error ? reject(error) : resolve(result),
+    )
+
+    Readable.from(file.buffer).pipe(stream)
+})
+
+const readPostFields = body => ({
+    title: typeof body.title === 'string' ? body.title.trim() : '',
+    description: typeof body.description === 'string' ? body.description.trim() : '',
+})
+
+const validatePostFields = ({title, description}) => {
+    if (!title || !description) return 'Post title and description are required'
+    if (title.length > 200) return 'Post title cannot exceed 200 characters'
+    if (description.length > 5000) return 'Post description cannot exceed 5000 characters'
+    return null
+}
 
 export const getFeedPosts = async (req, res) => {
     try {
@@ -57,22 +80,25 @@ export const getPost = async (req, res) => {
 
 export const createPost = async (req, res) => {
     try {
-        const content = typeof req.body.content === 'string'
-            ? req.body.content.trim()
-            : ''
+        const fields = readPostFields(req.body)
+        const validationError = validatePostFields(fields)
 
-        if (!content) {
-            return res.status(400).json({ message: 'Post content is required' })
-        }
-
-        if (content.length > 5000) {
-            return res.status(400).json({ message: 'Post content cannot exceed 5000 characters' })
+        if (validationError) {
+            return res.status(400).json({message: validationError})
         }
 
         const post = await Post.create({
             author: req.user._id,
-            content
+            ...fields,
+            content: fields.description,
         })
+
+        if (req.file) {
+            const image = await uploadPostImage(req.file)
+            post.imageUrl = image.secure_url
+            post.imagePublicId = image.public_id
+            await post.save()
+        }
 
         res.status(201).json({ post: await findPost(post._id) })
     } catch (error) {
@@ -99,19 +125,23 @@ export const updatePost = async (req, res) => {
             return res.status(403).json({ message: 'Only the post author can update this post' })
         }
 
-        const content = typeof req.body.content === 'string'
-            ? req.body.content.trim()
-            : ''
+        const fields = readPostFields(req.body)
+        const validationError = validatePostFields(fields)
 
-        if (!content) {
-            return res.status(400).json({ message: 'Post content is required' })
+        if (validationError) {
+            return res.status(400).json({message: validationError})
         }
 
-        if (content.length > 5000) {
-            return res.status(400).json({ message: 'Post content cannot exceed 5000 characters' })
+        post.title = fields.title
+        post.description = fields.description
+        post.content = fields.description
+
+        if (req.file) {
+            const image = await uploadPostImage(req.file)
+            post.imageUrl = image.secure_url
+            post.imagePublicId = image.public_id
         }
 
-        post.content = content
         await post.save()
 
         res.status(200).json({ post: await findPost(post._id) })
