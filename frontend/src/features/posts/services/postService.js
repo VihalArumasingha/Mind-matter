@@ -1,7 +1,7 @@
 import {API_BASE_URL} from '../../../config/api'
 
 const request = async (token, path, method = 'GET', body, isMultipart = false) => {
-    const response = await fetch(`${API_BASE_URL}/api/posts${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/user-posts${path}`, {
         method,
         headers: {
             ...(!isMultipart && body ? {'Content-Type': 'application/json'} : {}),
