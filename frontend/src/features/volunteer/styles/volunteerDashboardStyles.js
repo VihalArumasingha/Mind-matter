@@ -195,6 +195,48 @@ export const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
+  /* ---- Professional Post Button ---- */
+  professionalPostButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.green,
+    borderRadius: 16,
+    marginBottom: 22,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  professionalPostContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  professionalPostIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  professionalPostText: {
+    flex: 1,
+  },
+  professionalPostTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 2,
+  },
+  professionalPostSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+
   /* ---- Section Headers ---- */
   sectionHeader: {
     flexDirection: 'row',

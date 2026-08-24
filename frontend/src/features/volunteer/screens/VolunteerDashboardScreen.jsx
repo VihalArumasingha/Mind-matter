@@ -71,7 +71,7 @@ function NavItem({ icon, label, active, onPress }) {
   );
 }
 
-export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
+export default function VolunteerDashboardScreen({ navigation, route, onTabChange }) {
   const { user, token } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
   const [pendingRequests] = useState(initialPendingRequests);
@@ -170,6 +170,24 @@ export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
             <Text style={styles.statLabel}>Upcoming sessions</Text>
           </View>
         </View>
+
+        {/* Professional Post Button */}
+        <TouchableOpacity
+          style={styles.professionalPostButton}
+          onPress={() => navigation.navigate('ProfessionalPostForm')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.professionalPostContent}>
+            <View style={styles.professionalPostIcon}>
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.professionalPostText}>
+              <Text style={styles.professionalPostTitle}>Create Professional Post</Text>
+              <Text style={styles.professionalPostSubtitle}>Share expertise with the community</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4E8C4A" />
+          </View>
+        </TouchableOpacity>
 
         {/* Pending requests */}
         <View style={styles.sectionHeader}>

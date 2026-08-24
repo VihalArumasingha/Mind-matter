@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import VolunteerMainScreen from '../features/volunteer/screens/VolunteerMainScreen';
+import ProfessionalPostFormScreen from '../features/volunteer/screens/ProfessionalPostFormScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -64,6 +65,11 @@ const VolunteerNavigator = () => {
       <Stack.Screen
         name="Profile"
         component={VolunteerMainScreen}
+      />
+      <Stack.Screen
+        name="ProfessionalPostForm"
+        component={ProfessionalPostFormScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
