@@ -189,6 +189,24 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           </View>
         </TouchableOpacity>
 
+        {/* View Posts Button */}
+        <TouchableOpacity
+          style={styles.viewPostsButton}
+          onPress={() => navigation.navigate('ViewProfessionalPosts')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.professionalPostContent}>
+            <View style={styles.professionalPostIcon}>
+              <Ionicons name="list-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.professionalPostText}>
+              <Text style={styles.professionalPostTitle}>View My Posts</Text>
+              <Text style={styles.professionalPostSubtitle}>Manage your professional posts</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4E8C4A" />
+          </View>
+        </TouchableOpacity>
+
         {/* Pending requests */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>

@@ -237,6 +237,20 @@ export const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
+  /* ---- View Posts Button ---- */
+  viewPostsButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.green,
+    borderRadius: 16,
+    marginBottom: 22,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
   /* ---- Section Headers ---- */
   sectionHeader: {
     flexDirection: 'row',

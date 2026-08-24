@@ -130,3 +130,100 @@ export const likePost = async (req, res) => {
     });
   }
 };
+
+export const getMyPosts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    const posts = await ProfessionalPost.find({ authorId: userId })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      posts
+    });
+  } catch (error) {
+    console.error('[Get My Posts Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching posts'
+    });
+  }
+};
+
+export const updatePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { title, content } = req.body;
+    const userId = req.user._id;
+
+    const post = await ProfessionalPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    // Check if user is the author
+    if (post.authorId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only edit your own posts'
+      });
+    }
+
+    if (title) post.title = title;
+    if (content) post.content = content;
+
+    await post.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Post updated successfully',
+      post
+    });
+  } catch (error) {
+    console.error('[Update Post Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating post'
+    });
+  }
+};
+
+export const deletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const post = await ProfessionalPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    // Check if user is the author
+    if (post.authorId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete your own posts'
+      });
+    }
+
+    await ProfessionalPost.findByIdAndDelete(postId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Post deleted successfully'
+    });
+  } catch (error) {
+    console.error('[Delete Post Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting post'
+    });
+  }
+};

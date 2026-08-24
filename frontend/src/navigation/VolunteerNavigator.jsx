@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import VolunteerMainScreen from '../features/volunteer/screens/VolunteerMainScreen';
 import ProfessionalPostFormScreen from '../features/volunteer/screens/ProfessionalPostFormScreen';
+import ViewProfessionalPostsScreen from '../features/volunteer/screens/ViewProfessionalPostsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -69,6 +70,11 @@ const VolunteerNavigator = () => {
       <Stack.Screen
         name="ProfessionalPostForm"
         component={ProfessionalPostFormScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ViewProfessionalPosts"
+        component={ViewProfessionalPostsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
