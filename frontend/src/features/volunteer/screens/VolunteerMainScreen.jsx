@@ -71,6 +71,7 @@ export default function VolunteerMainScreen({ navigation, route }) {
         return (
           <VolunteerDashboardScreen
             navigation={navigation}
+            route={route}
             onTabChange={setTab}
           />
         );

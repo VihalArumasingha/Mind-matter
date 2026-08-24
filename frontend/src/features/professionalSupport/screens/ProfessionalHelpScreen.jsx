@@ -6,6 +6,7 @@ import {getApprovedProfessionals, getProfessionCategories} from '../services/pro
 import {useAuth} from '../../../context/AuthContext'
 import {PROFESSION_FILTERS} from '../../../config/professions'
 import {Dimensions} from 'react-native'
+import {API_BASE_URL} from '../../../config/api'
 
 const {width} = Dimensions.get('window')
 
@@ -157,7 +158,18 @@ const ProfessionalHelpScreen = ({navigation}) => {
                         keyExtractor={(item) => item._id.toString()}
                         contentContainerStyle={styles.listContainer}
                         ListFooterComponent={
-                            <Text style={styles.footerText}>More approved professionals load below</Text>
+                            <View style={styles.footerSection}>
+                                <TouchableOpacity 
+                                    style={styles.viewPostsButton}
+                                    onPress={() => navigation.navigate('ProfessionalPosts')}
+                                >
+                                    <View style={styles.viewPostsContent}>
+                                        <Icon name="article" size={20} color="#FFFFFF" />
+                                        <Text style={styles.viewPostsText}>View Professional Posts</Text>
+                                    </View>
+                                </TouchableOpacity>
+                                <Text style={styles.footerText}>More approved professionals load below</Text>
+                            </View>
                         }
                     />
                 )}
@@ -395,6 +407,35 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         fontWeight: '500',
+    },
+
+    footerSection: {
+        marginTop: 20,
+    },
+
+    viewPostsButton: {
+        backgroundColor: '#4E8C4A',
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+        marginBottom: 12,
+        shadowColor: '#4E8C4A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+
+    viewPostsContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+
+    viewPostsText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 })
 

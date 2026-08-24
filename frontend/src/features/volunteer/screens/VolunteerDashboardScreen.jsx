@@ -71,7 +71,7 @@ function NavItem({ icon, label, active, onPress }) {
   );
 }
 
-export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
+export default function VolunteerDashboardScreen({ navigation, route, onTabChange }) {
   const { user, token } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
   const [pendingRequests] = useState(initialPendingRequests);
@@ -114,7 +114,11 @@ export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
             <Text style={styles.nameText}>{displayName}</Text>
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconCircle} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.iconCircle} 
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ProfessionalNotifications')}
+            >
               <Ionicons name="notifications-outline" size={20} color={COLORS.green} />
               <View style={styles.notifDot} />
             </TouchableOpacity>
@@ -170,6 +174,42 @@ export default function VolunteerDashboardScreen({ navigation, onTabChange }) {
             <Text style={styles.statLabel}>Upcoming sessions</Text>
           </View>
         </View>
+
+        {/* Professional Post Button */}
+        <TouchableOpacity
+          style={styles.professionalPostButton}
+          onPress={() => navigation.navigate('ProfessionalPostForm')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.professionalPostContent}>
+            <View style={styles.professionalPostIcon}>
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.professionalPostText}>
+              <Text style={styles.professionalPostTitle}>Create Professional Post</Text>
+              <Text style={styles.professionalPostSubtitle}>Share expertise with the community</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4E8C4A" />
+          </View>
+        </TouchableOpacity>
+
+        {/* View Posts Button */}
+        <TouchableOpacity
+          style={styles.viewPostsButton}
+          onPress={() => navigation.navigate('ViewProfessionalPosts')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.professionalPostContent}>
+            <View style={styles.professionalPostIcon}>
+              <Ionicons name="list-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.professionalPostText}>
+              <Text style={styles.professionalPostTitle}>View My Posts</Text>
+              <Text style={styles.professionalPostSubtitle}>Manage your professional posts</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4E8C4A" />
+          </View>
+        </TouchableOpacity>
 
         {/* Pending requests */}
         <View style={styles.sectionHeader}>
