@@ -1,13 +1,13 @@
 import {API_BASE_URL} from '../../../config/api'
 
-const request = async (token, path, method = 'GET', body) => {
+const request = async (token, path, method = 'GET', body, isMultipart = false) => {
     const response = await fetch(`${API_BASE_URL}/api/posts${path}`, {
         method,
         headers: {
-            ...(body ? {'Content-Type': 'application/json'} : {}),
+            ...(!isMultipart && body ? {'Content-Type': 'application/json'} : {}),
             Authorization: `Bearer ${token}`,
         },
-        ...(body ? {body: JSON.stringify(body)} : {}),
+        ...(body ? {body: isMultipart ? body : JSON.stringify(body)} : {}),
     })
 
     const data = await response.json()
@@ -23,11 +23,11 @@ export const getFeedPosts = token => request(token, '/')
 
 export const getMyPosts = token => request(token, '/mine')
 
-export const createPost = (token, content) =>
-    request(token, '/', 'POST', {content})
+export const createPost = (token, postData) =>
+    request(token, '/', 'POST', postData, true)
 
-export const updatePost = (token, postId, content) =>
-    request(token, `/${postId}`, 'PUT', {content})
+export const updatePost = (token, postId, postData) =>
+    request(token, `/${postId}`, 'PUT', postData, true)
 
 export const deletePost = (token, postId) =>
     request(token, `/${postId}`, 'DELETE')

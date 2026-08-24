@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ActivityIndicator,
+  Image,
   Alert, 
   Pressable, 
   ScrollView, 
@@ -167,7 +168,9 @@ const ProfileScreen = ({ navigation }) => {
                 <Text style={styles.postDate}>
                   {new Date(post.createdAt).toLocaleDateString()}
                 </Text>
-                <Text style={styles.postContent}>{post.content}</Text>
+                <Text style={styles.postTitle}>{post.title || 'Untitled post'}</Text>
+                <Text style={styles.postContent}>{post.description || post.content}</Text>
+                {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={styles.postImage} /> : null}
                 <Text style={styles.commentCount}>
                   {post.comments?.length || 0} {post.comments?.length === 1 ? 'comment' : 'comments'}
                 </Text>
@@ -435,6 +438,20 @@ const styles = StyleSheet.create({
         color: '#303630',
         fontSize: 15,
         lineHeight: 21,
+      },
+
+      postTitle: {
+        marginTop: 8,
+        color: '#303630',
+        fontSize: 16,
+        fontWeight: '700',
+      },
+
+      postImage: {
+        width: '100%',
+        height: 160,
+        marginTop: 10,
+        borderRadius: 10,
       },
 
       commentCount: {

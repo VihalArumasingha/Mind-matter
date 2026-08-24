@@ -1,5 +1,5 @@
 import React, {useState} from 'react'
-import {Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native'
+import {Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import {useFocusEffect} from '@react-navigation/native'
@@ -43,9 +43,9 @@ const UserHomeScreen = ({navigation}) => {
         setPosts(current => current.map(item => item._id === post._id ? post : item))
     }
 
-    const savePost = async (postId, content) => {
+    const savePost = async (postId, postData) => {
         try {
-            const data = await updatePost(token, postId, content)
+            const data = await updatePost(token, postId, postData)
             replacePost(data.post)
             setEditingPost(null)
         } catch (error) {
@@ -117,7 +117,7 @@ const UserHomeScreen = ({navigation}) => {
                     </View>
                     {isOwner(post) && (
                         <View style={styles.actions}>
-                            <TouchableOpacity onPress={() => setEditingPost({id: post._id, content: post.content})}>
+                            <TouchableOpacity onPress={() => setEditingPost({id: post._id, title: post.title || '', description: post.description || post.content || ''})}>
                                 <Icon name="edit" size={21} color="#4E8C4A" />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => confirmDeletePost(post._id)}>
@@ -129,17 +129,26 @@ const UserHomeScreen = ({navigation}) => {
                 {postIsBeingEdited ? (
                     <>
                         <TextInput
+                            value={editingPost.title}
+                            onChangeText={title => setEditingPost({...editingPost, title})}
+                            style={styles.editTitleInput}
+                        />
+                        <TextInput
                             multiline
-                            value={editingPost.content}
-                            onChangeText={content => setEditingPost({...editingPost, content})}
+                            value={editingPost.description}
+                            onChangeText={description => setEditingPost({...editingPost, description})}
                             style={styles.editInput}
                         />
                         <View style={styles.inlineActions}>
                             <TouchableOpacity onPress={() => setEditingPost(null)}><Text style={styles.cancel}>Cancel</Text></TouchableOpacity>
-                            <TouchableOpacity onPress={() => savePost(post._id, editingPost.content)}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => savePost(post._id, {title: editingPost.title, description: editingPost.description})}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
                         </View>
                     </>
-                ) : <Text style={styles.content}>{post.content}</Text>}
+                ) : <>
+                    <Text style={styles.postTitle}>{post.title || 'Untitled post'}</Text>
+                    <Text style={styles.content}>{post.description || post.content}</Text>
+                    {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
+                </>}
 
                 <Text style={styles.commentHeading}>Comments ({post.comments?.length || 0})</Text>
                 {(post.comments || []).map(comment => {
@@ -267,6 +276,30 @@ const styles = StyleSheet.create({
         color: '#243024',
         fontSize: 16,
         lineHeight: 23,
+    },
+
+    postTitle: {
+        marginTop: 14,
+        color: '#243024',
+        fontSize: 18,
+        fontWeight: '700',
+    },
+
+    postImage: {
+        width: '100%',
+        height: 220,
+        marginTop: 14,
+        borderRadius: 10,
+    },
+
+    editTitleInput: {
+        marginTop: 12,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#C8D8C3',
+        borderRadius: 8,
+        color: '#243024',
+        fontWeight: '700',
     },
 
     editInput: {
