@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin/adminRoutes.js'
 import volunteerRoutes from './routes/volunteer/volunteerRoutes.js'
 import sessionRoutes from './routes/supportCircleOrganizer/session/sessionRoutes.js'
 import attendanceRoutes from './routes/supportCircleOrganizer/attendance/attendanceRoutes.js'
+import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
 
 
@@ -38,6 +39,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/volunteer', volunteerRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
 
 // Start the server
