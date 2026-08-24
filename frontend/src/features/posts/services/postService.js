@@ -21,6 +21,8 @@ const request = async (token, path, method = 'GET', body) => {
 
 export const getFeedPosts = token => request(token, '/')
 
+export const getMyPosts = token => request(token, '/mine')
+
 export const createPost = (token, content) =>
     request(token, '/', 'POST', {content})
 
