@@ -6,6 +6,7 @@ import {
     getMySupportCircles,
     getSupportCircleById,
     getPendingJoinRequests,
+    getAllPendingJoinRequests,
     respondToJoinRequest,
     getCircleMembers,
     removeMember,
@@ -27,6 +28,9 @@ router.patch('/:id/archive', authMiddleware, archiveSupportCircle)
 // FM-70 / FM-71 — must come before /:id so Express doesn't treat
 // "dashboard-stats" as a circle id
 router.get('/dashboard-stats', authMiddleware, getDashboardStats)
+
+// Requests tab on the dashboard — across all of the organizer's circles
+router.get('/requests/all', authMiddleware, getAllPendingJoinRequests)
 
 router.get('/mine', authMiddleware, getMySupportCircles)
 router.get('/:id', authMiddleware, getSupportCircleById)
