@@ -1,27 +1,19 @@
-import React, {useState} from 'react'
+import React, {useCallback, useState} from 'react'
 import {Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
-import {
-    addComment,
-    deleteComment,
-    deletePost,
-    getFeedPosts,
-    updateComment,
-    updatePost,
-} from '../../posts/services/postService'
+import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
 
 const UserHomeScreen = ({navigation}) => {
     const {token, user} = useAuth()
     const [posts, setPosts] = useState([])
     const [commentText, setCommentText] = useState({})
-    const [editingPost, setEditingPost] = useState(null)
     const [editingComment, setEditingComment] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
 
-    const loadPosts = async () => {
+    const loadPosts = useCallback(async () => {
         try {
             setIsLoading(true)
             const data = await getFeedPosts(token)
@@ -31,47 +23,15 @@ const UserHomeScreen = ({navigation}) => {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [token])
 
     useFocusEffect(React.useCallback(() => {
         loadPosts()
-    }, [token]))
-
-    const isOwner = post => post.author?._id === user?._id
+    }, [loadPosts]))
 
     const replacePost = post => {
         setPosts(current => current.map(item => item._id === post._id ? post : item))
     }
-
-    const savePost = async (postId, postData) => {
-        try {
-            const data = await updatePost(token, postId, postData)
-            replacePost(data.post)
-            setEditingPost(null)
-        } catch (error) {
-            Alert.alert('Unable to update post', error.message)
-        }
-    }
-
-    const confirmDeletePost = postId => Alert.alert(
-        'Delete post?',
-        'This cannot be undone.',
-        [
-            {text: 'Cancel', style: 'cancel'},
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await deletePost(token, postId)
-                        setPosts(current => current.filter(post => post._id !== postId))
-                    } catch (error) {
-                        Alert.alert('Unable to delete post', error.message)
-                    }
-                },
-            },
-        ],
-    )
 
     const submitComment = async postId => {
         const content = commentText[postId]?.trim()
@@ -106,49 +66,32 @@ const UserHomeScreen = ({navigation}) => {
     }
 
     const renderPost = ({item: post}) => {
-        const postIsBeingEdited = editingPost?.id === post._id
-
         return (
             <View style={styles.postCard}>
                 <View style={styles.postHeader}>
-                    <View>
-                        <Text style={styles.author}>{post.author?.name || 'MindMatter user'}</Text>
-                        <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString()}</Text>
+                    <View style={styles.authorInfo}>
+                        <View style={styles.authorAvatar}>
+                            {post.author?.profilePicture ? <Image source={{uri: post.author.profilePicture}} style={styles.authorImage} /> : <Text style={styles.authorInitial}>{post.author?.name?.charAt(0)?.toUpperCase() || 'M'}</Text>}
+                        </View>
+                        <View>
+                            <Text style={styles.author}>{post.author?.name || 'MindMatter user'}</Text>
+                            <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString()}</Text>
+                        </View>
                     </View>
-                    {isOwner(post) && (
-                        <View style={styles.actions}>
-                            <TouchableOpacity onPress={() => setEditingPost({id: post._id, title: post.title || '', description: post.description || post.content || ''})}>
-                                <Icon name="edit" size={21} color="#4E8C4A" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => confirmDeletePost(post._id)}>
-                                <Icon name="delete-outline" size={22} color="#B64C4C" />
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    <Icon name="more-horiz" size={23} color="#243024" />
                 </View>
-                {postIsBeingEdited ? (
-                    <>
-                        <TextInput
-                            value={editingPost.title}
-                            onChangeText={title => setEditingPost({...editingPost, title})}
-                            style={styles.editTitleInput}
-                        />
-                        <TextInput
-                            multiline
-                            value={editingPost.description}
-                            onChangeText={description => setEditingPost({...editingPost, description})}
-                            style={styles.editInput}
-                        />
-                        <View style={styles.inlineActions}>
-                            <TouchableOpacity onPress={() => setEditingPost(null)}><Text style={styles.cancel}>Cancel</Text></TouchableOpacity>
-                            <TouchableOpacity onPress={() => savePost(post._id, {title: editingPost.title, description: editingPost.description})}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
-                        </View>
-                    </>
-                ) : <>
-                    <Text style={styles.postTitle}>{post.title || 'Untitled post'}</Text>
-                    <Text style={styles.content}>{post.description || post.content}</Text>
-                    {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
-                </>}
+                <Text style={styles.content}>{post.description || post.content}</Text>
+                {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
+
+                <View style={styles.engagementRow}>
+                    <Icon name="favorite-border" size={21} color="#4E8C4A" />
+                    <Text style={styles.engagementText}>{post.likes?.length || 0}</Text>
+                    <Icon name="chat-bubble-outline" size={20} color="#536057" />
+                    <Text style={styles.engagementText}>{post.comments?.length || 0}</Text>
+                    <Icon name="share" size={20} color="#536057" />
+                    <Text style={styles.shareText}>Share</Text>
+                    <Icon name="bookmark-border" size={21} color="#536057" />
+                </View>
 
                 <Text style={styles.commentHeading}>Comments ({post.comments?.length || 0})</Text>
                 {(post.comments || []).map(comment => {
@@ -196,7 +139,11 @@ const UserHomeScreen = ({navigation}) => {
                 refreshing={isLoading}
                 onRefresh={loadPosts}
                 contentContainerStyle={styles.list}
-                ListHeaderComponent={<Text style={styles.title}>Your Feed</Text>}
+                ListHeaderComponent={<>
+                    <View style={styles.brandHeader}><View style={styles.brandMark}><Icon name="spa" size={28} color="#4E8C4A" /></View><View><Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text><Text style={styles.brandTagline}>You matter. Your mind matters.</Text></View><Icon name="notifications-none" size={25} color="#17231A" /></View>
+                    <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><Text style={styles.composerText}>What's on your mind?</Text><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
+                    <View style={styles.feedTabs}><Text style={styles.activeTab}>For You</Text><Text style={styles.tab}>Following</Text><Text style={styles.tab}>Latest</Text></View>
+                </>}
                 ListEmptyComponent={!isLoading ? <Text style={styles.empty}>No posts yet. Share the first thought.</Text> : null}
             />
             <TouchableOpacity 
@@ -223,15 +170,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#F4F7EF',
     },
 
-    title: {
-        fontSize: 26,
-        fontWeight: '700',
-        color: '#4E8C4A',
-        marginBottom: 16,
-    },
-
     list: {
-        padding: 20,
+        paddingHorizontal: 10,
         paddingBottom: 110,
     },
 
@@ -243,8 +183,8 @@ const styles = StyleSheet.create({
 
     postCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 14,
+        padding: 12,
         marginBottom: 14,
         borderWidth: 1,
         borderColor: '#E0E8DC',
@@ -255,9 +195,25 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
 
+    brandHeader: {paddingHorizontal: 14, paddingTop: 10, paddingBottom: 20, flexDirection: 'row', alignItems: 'center'},
+    brandMark: {width: 46, alignItems: 'center'},
+    brandName: {fontSize: 23, color: '#17231A', fontWeight: '400'},
+    brandGreen: {color: '#397A49'},
+    brandTagline: {fontSize: 10, color: '#4F5A51', marginTop: 2},
+    composer: {height: 60, marginHorizontal: 2, paddingHorizontal: 15, borderRadius: 13, borderWidth: 1, borderColor: '#E0E8DC', backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center'},
+    composerText: {flex: 1, marginLeft: 14, color: '#69736B', fontSize: 14},
+    feedTabs: {height: 58, borderBottomWidth: 1, borderBottomColor: '#E0E8DC', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center'},
+    activeTab: {height: 58, paddingTop: 21, color: '#276D3B', fontWeight: '700', borderBottomWidth: 2, borderBottomColor: '#3F9651'},
+    tab: {color: '#1B251D', fontSize: 13},
+    authorInfo: {flexDirection: 'row', alignItems: 'center'},
+    authorAvatar: {width: 40, height: 40, borderRadius: 20, backgroundColor: '#DDEBD8', alignItems: 'center', justifyContent: 'center', marginRight: 10, overflow: 'hidden'},
+    authorImage: {width: '100%', height: '100%'},
+    authorInitial: {fontSize: 17, fontWeight: '700', color: '#397A49'},
+
     author: {
         fontWeight: '700',
         color: '#243024',
+        fontSize: 14,
     },
 
     date: {
@@ -272,25 +228,22 @@ const styles = StyleSheet.create({
     },
 
     content: {
-        marginTop: 14,
+        marginTop: 15,
         color: '#243024',
-        fontSize: 16,
-        lineHeight: 23,
-    },
-
-    postTitle: {
-        marginTop: 14,
-        color: '#243024',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 14,
+        lineHeight: 22,
     },
 
     postImage: {
         width: '100%',
-        height: 220,
-        marginTop: 14,
+        height: 210,
+        marginTop: 10,
         borderRadius: 10,
     },
+
+    engagementRow: {flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8},
+    engagementText: {fontSize: 11, color: '#26342A', marginRight: 13},
+    shareText: {fontSize: 11, color: '#26342A', marginRight: 'auto'},
 
     editTitleInput: {
         marginTop: 12,

@@ -27,7 +27,7 @@ export const createPost = (token, postData) =>
     request(token, '/', 'POST', postData, true)
 
 export const updatePost = (token, postId, postData) =>
-    request(token, `/${postId}`, 'PUT', postData, true)
+    request(token, `/${postId}`, 'PUT', postData, postData instanceof FormData)
 
 export const deletePost = (token, postId) =>
     request(token, `/${postId}`, 'DELETE')
