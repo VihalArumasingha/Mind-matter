@@ -5,6 +5,8 @@ import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 import ProfessionalPostsScreen from '../features/professionalSupport/screens/ProfessionalPostsScreen'
+import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
+import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -29,6 +31,15 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="ProfessionalPosts"
                 component={ProfessionalPostsScreen}
+            />
+
+            <Stack.Screen
+                name="MoodHistory"
+                component={MoodHistoryScreen}
+            />
+            <Stack.Screen
+                name="MyPosts"
+                component={MyPostsScreen}
             />
         </Stack.Navigator>
     )
