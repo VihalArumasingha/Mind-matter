@@ -5,6 +5,7 @@ import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 import ProfessionalPostsScreen from '../features/professionalSupport/screens/ProfessionalPostsScreen'
+import OrganizerApplicationScreen from '../features/profile/screens/OrganizerApplicationScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -29,6 +30,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="ProfessionalPosts"
                 component={ProfessionalPostsScreen}
+            />
+
+            <Stack.Screen
+                name="OrganizerApplication"
+                component={OrganizerApplicationScreen}
             />
         </Stack.Navigator>
     )
