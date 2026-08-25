@@ -7,11 +7,12 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
+import { PROFESSION_CATEGORIES } from '../../../config/professions';
 
 const COLORS = {
-  primary: '#4E824D',
-  primaryLight: '#F4F7EF',
-  bg: '#F4F7EF',
+  primary: '#0D9488',
+  primaryLight: '#CCFBF1',
+  bg: '#F0FDFA',
   card: '#FFFFFF',
   surface: '#F1F5F9',
   border: '#CBD5E1',
@@ -22,22 +23,15 @@ const COLORS = {
   successBg: '#ECFDF5',
   danger: '#DC2626',
   dangerBg: '#FEF2F2',
-  info: '#55ab71',
+  info: '#2563EB',
   infoBg: '#EFF6FF',
 };
 
-const PROFESSIONS = [
-  'Clinical Psychologist',
-  'Licensed Counselor (LPC)',
-  'Psychiatrist (MD)',
-  'Licensed Social Worker (LCSW)',
-];
-
 const DOC_TYPES = [
-  { key: 'license', label: 'State License Certificate', desc: 'Official state board license', required: true },
-  { key: 'degree', label: 'Degree / Diploma', desc: 'University degree transcript', required: false },
-  { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport', required: false },
-  { key: 'references', label: 'Professional References', desc: 'Reference letter', required: false },
+  { key: 'license', label: 'State License Certificate', desc: 'Official state board license (PDF)', required: true },
+  { key: 'degree', label: 'Degree / Diploma', desc: 'University degree transcript (PDF)', required: false },
+  { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport (PDF/JPG)', required: false },
+  { key: 'references', label: 'Professional References', desc: 'Reference letter (PDF/DOC)', required: false },
 ];
 
 const FormField = ({ label, required, children }) => (
@@ -75,7 +69,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [profession, setProfession] = useState('Clinical Psychologist');
+  const [profession, setProfession] = useState(PROFESSION_CATEGORIES[0]);
   const [licenseNum, setLicenseNum] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [expYears, setExpYears] = useState('5');
@@ -270,7 +264,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
       <FormField label="Profession Category" required>
         <View style={styles.chipsWrap}>
-          {PROFESSIONS.map((p) => (
+          {PROFESSION_CATEGORIES.map((p) => (
             <TouchableOpacity
               key={p}
               style={[styles.chip, profession === p && styles.chipActive]}
@@ -384,7 +378,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
                       onPress={() => handlePickDoc(doc.key)}
                       disabled={isPicking}
                     >
-                      <Text style={styles.replaceBtnText}>{isPicking ? '...' : 'Replace'}</Text>
+                      <Text style={styles.replaceBtnText}>{isPicking ? '...' : '↺ Replace'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.removeDocBtn} onPress={() => removeDoc(doc.key)}>
                       <Text style={styles.removeDocBtnText}>✕</Text>
@@ -567,7 +561,7 @@ const styles = StyleSheet.create({
     marginBottom: 16, borderLeftWidth: 4, borderLeftColor: COLORS.info,
   },
   docInfoTitle: { color: COLORS.info, fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  docInfoDesc: { color: '#042011', fontSize: 12, lineHeight: 18 },
+  docInfoDesc: { color: '#1E40AF', fontSize: 12, lineHeight: 18 },
 
   docRow: {
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',

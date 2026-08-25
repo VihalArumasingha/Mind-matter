@@ -1,16 +1,218 @@
-import React from 'react'
-import {StyleSheet, Text, View} from 'react-native'
+import React, {useState} from 'react'
+import {Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
+import Icon from 'react-native-vector-icons/MaterialIcons'
+import {useFocusEffect} from '@react-navigation/native'
+import {useAuth} from '../../../context/AuthContext'
+import {
+    addComment,
+    deleteComment,
+    deletePost,
+    getFeedPosts,
+    updateComment,
+    updatePost,
+} from '../../posts/services/postService'
 
-const UserHomeScreen = () => {
+const UserHomeScreen = ({navigation}) => {
+    const {token, user} = useAuth()
+    const [posts, setPosts] = useState([])
+    const [commentText, setCommentText] = useState({})
+    const [editingPost, setEditingPost] = useState(null)
+    const [editingComment, setEditingComment] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
+
+    const loadPosts = async () => {
+        try {
+            setIsLoading(true)
+            const data = await getFeedPosts(token)
+            setPosts(data.posts || [])
+        } catch (error) {
+            Alert.alert('Unable to load feed', error.message)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useFocusEffect(React.useCallback(() => {
+        loadPosts()
+    }, [token]))
+
+    const isOwner = post => post.author?._id === user?._id
+
+    const replacePost = post => {
+        setPosts(current => current.map(item => item._id === post._id ? post : item))
+    }
+
+    const savePost = async (postId, postData) => {
+        try {
+            const data = await updatePost(token, postId, postData)
+            replacePost(data.post)
+            setEditingPost(null)
+        } catch (error) {
+            Alert.alert('Unable to update post', error.message)
+        }
+    }
+
+    const confirmDeletePost = postId => Alert.alert(
+        'Delete post?',
+        'This cannot be undone.',
+        [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await deletePost(token, postId)
+                        setPosts(current => current.filter(post => post._id !== postId))
+                    } catch (error) {
+                        Alert.alert('Unable to delete post', error.message)
+                    }
+                },
+            },
+        ],
+    )
+
+    const submitComment = async postId => {
+        const content = commentText[postId]?.trim()
+        if (!content) return
+
+        try {
+            const data = await addComment(token, postId, content)
+            replacePost(data.post)
+            setCommentText(current => ({...current, [postId]: ''}))
+        } catch (error) {
+            Alert.alert('Unable to add comment', error.message)
+        }
+    }
+
+    const saveComment = async (postId, commentId, content) => {
+        try {
+            const data = await updateComment(token, postId, commentId, content)
+            replacePost(data.post)
+            setEditingComment(null)
+        } catch (error) {
+            Alert.alert('Unable to update comment', error.message)
+        }
+    }
+
+    const removeComment = async (postId, commentId) => {
+        try {
+            const data = await deleteComment(token, postId, commentId)
+            replacePost(data.post)
+        } catch (error) {
+            Alert.alert('Unable to delete comment', error.message)
+        }
+    }
+
+    const renderPost = ({item: post}) => {
+        const postIsBeingEdited = editingPost?.id === post._id
+
+        return (
+            <View style={styles.postCard}>
+                <View style={styles.postHeader}>
+                    <View>
+                        <Text style={styles.author}>{post.author?.name || 'MindMatter user'}</Text>
+                        <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString()}</Text>
+                    </View>
+                    {isOwner(post) && (
+                        <View style={styles.actions}>
+                            <TouchableOpacity onPress={() => setEditingPost({id: post._id, title: post.title || '', description: post.description || post.content || ''})}>
+                                <Icon name="edit" size={21} color="#4E8C4A" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => confirmDeletePost(post._id)}>
+                                <Icon name="delete-outline" size={22} color="#B64C4C" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+                {postIsBeingEdited ? (
+                    <>
+                        <TextInput
+                            value={editingPost.title}
+                            onChangeText={title => setEditingPost({...editingPost, title})}
+                            style={styles.editTitleInput}
+                        />
+                        <TextInput
+                            multiline
+                            value={editingPost.description}
+                            onChangeText={description => setEditingPost({...editingPost, description})}
+                            style={styles.editInput}
+                        />
+                        <View style={styles.inlineActions}>
+                            <TouchableOpacity onPress={() => setEditingPost(null)}><Text style={styles.cancel}>Cancel</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => savePost(post._id, {title: editingPost.title, description: editingPost.description})}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
+                        </View>
+                    </>
+                ) : <>
+                    <Text style={styles.postTitle}>{post.title || 'Untitled post'}</Text>
+                    <Text style={styles.content}>{post.description || post.content}</Text>
+                    {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
+                </>}
+
+                <Text style={styles.commentHeading}>Comments ({post.comments?.length || 0})</Text>
+                {(post.comments || []).map(comment => {
+                    const commentIsBeingEdited = editingComment?.id === comment._id
+                    const commentIsOwned = comment.user?._id === user?._id
+                    return (
+                        <View key={comment._id} style={styles.comment}>
+                            <Text style={styles.commentAuthor}>{comment.user?.name || 'User'}</Text>
+                            {commentIsBeingEdited ? (
+                                <TextInput value={editingComment.content} onChangeText={content => setEditingComment({...editingComment, content})} style={styles.editInput} />
+                            ) : <Text style={styles.commentContent}>{comment.content}</Text>}
+                            {commentIsOwned && (
+                                <View style={styles.inlineActions}>
+                                    {commentIsBeingEdited ? (
+                                        <TouchableOpacity onPress={() => saveComment(post._id, comment._id, editingComment.content)}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
+                                    ) : <TouchableOpacity onPress={() => setEditingComment({id: comment._id, content: comment.content})}><Text style={styles.actionText}>Edit</Text></TouchableOpacity>}
+                                    <TouchableOpacity onPress={() => removeComment(post._id, comment._id)}><Text style={styles.deleteText}>Delete</Text></TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    )
+                })}
+                <View style={styles.commentComposer}>
+                    <TextInput
+                        value={commentText[post._id] || ''}
+                        onChangeText={content => setCommentText(current => ({...current, [post._id]: content}))}
+                        placeholder="Add a comment..."
+                        placeholderTextColor="#8A918A"
+                        style={styles.commentInput}
+                    />
+                    <TouchableOpacity onPress={() => submitComment(post._id)} style={styles.commentButton}>
+                        <Icon name="send" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )
+    }
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
-                <Text style={styles.title}>Home</Text>
-                <Text style={styles.subtitle}>
-                    Welcome to MindMatter
-                </Text>
-            </View>
+            <FlatList
+                data={posts}
+                renderItem={renderPost}
+                keyExtractor={post => post._id}
+                refreshing={isLoading}
+                onRefresh={loadPosts}
+                contentContainerStyle={styles.list}
+                ListHeaderComponent={<Text style={styles.title}>Your Feed</Text>}
+                ListEmptyComponent={!isLoading ? <Text style={styles.empty}>No posts yet. Share the first thought.</Text> : null}
+            />
+            <TouchableOpacity 
+                style={styles.fab}
+                onPress={() => navigation.navigate('ProfessionalHelp')}
+                accessible={true}
+                accessibilityLabel="Talk to a professional"
+                accessibilityRole="button"
+            >
+                <View style={styles.fabContent}>
+                    <View style={styles.fabIconContainer}>
+                        <Icon name="volunteer-activism" size={24} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.fabLabel}>Professional help</Text>
+                </View>
+            </TouchableOpacity>
         </SafeAreaView>
     )
 }
@@ -21,22 +223,198 @@ const styles = StyleSheet.create({
         backgroundColor: '#F4F7EF',
     },
 
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
     title: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '700',
         color: '#4E8C4A',
+        marginBottom: 16,
     },
 
-    subtitle: {
-        marginTop: 8,
-        fontSize: 15,
+    list: {
+        padding: 20,
+        paddingBottom: 110,
+    },
+
+    empty: {
+        textAlign: 'center',
+        marginTop: 30,
         color: '#687068',
+    },
+
+    postCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#E0E8DC',
+    },
+
+    postHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+
+    author: {
+        fontWeight: '700',
+        color: '#243024',
+    },
+
+    date: {
+        marginTop: 3,
+        fontSize: 12,
+        color: '#8A918A',
+    },
+
+    actions: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+
+    content: {
+        marginTop: 14,
+        color: '#243024',
+        fontSize: 16,
+        lineHeight: 23,
+    },
+
+    postTitle: {
+        marginTop: 14,
+        color: '#243024',
+        fontSize: 18,
+        fontWeight: '700',
+    },
+
+    postImage: {
+        width: '100%',
+        height: 220,
+        marginTop: 14,
+        borderRadius: 10,
+    },
+
+    editTitleInput: {
+        marginTop: 12,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#C8D8C3',
+        borderRadius: 8,
+        color: '#243024',
+        fontWeight: '700',
+    },
+
+    editInput: {
+        marginTop: 10,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#C8D8C3',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    inlineActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 16,
+        marginTop: 8,
+    },
+
+    actionText: {
+        color: '#4E8C4A',
+        fontWeight: '700',
+    },
+
+    cancel: {
+        color: '#687068',
+    },
+
+    deleteText: {
+        color: '#B64C4C',
+    },
+
+    commentHeading: {
+        marginTop: 18,
+        color: '#687068',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    comment: {
+        marginTop: 10,
+        paddingLeft: 10,
+        borderLeftWidth: 2,
+        borderLeftColor: '#D8E1D4',
+    },
+
+    commentAuthor: {
+        color: '#243024',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    commentContent: {
+        marginTop: 2,
+        color: '#4D594D',
+    },
+
+    commentComposer: {
+        flexDirection: 'row',
+        marginTop: 16,
+        alignItems: 'center',
+    },
+
+    commentInput: {
+        flex: 1,
+        minHeight: 42,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: '#D8E1D4',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    commentButton: {
+        marginLeft: 8,
+        width: 42,
+        height: 42,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#4E8C4A',
+    },
+
+    fab: {
+        position: 'absolute',
+        bottom: 80,
+        right: 24,
+        alignItems: 'center',
+    },
+
+    fabContent: {
+        alignItems: 'center',
+    },
+
+    fabIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#4E8C4A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+
+    fabLabel: {
+        marginTop: 8,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4E8C4A',
     },
 })
 

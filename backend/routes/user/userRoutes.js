@@ -2,7 +2,9 @@ import express from 'express'
 import {
     getCurrentUser,
     updateProfile,
-    deleteAccount
+    deleteAccount,
+    getApprovedProfessionals,
+    getProfessionCategories
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 
@@ -13,5 +15,9 @@ router.get('/me', authMiddleware, getCurrentUser)
 router.put('/me', authMiddleware, updateProfile)
 
 router.delete('/me', authMiddleware, deleteAccount)
+
+router.get('/professionals', getApprovedProfessionals)
+
+router.get('/profession-categories', getProfessionCategories)
 
 export default router

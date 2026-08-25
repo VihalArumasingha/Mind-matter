@@ -1,4 +1,5 @@
 import User from '../../models/User.js'
+import ProfessionalApplication from '../../models/ProfessionalApplication.js'
 
 export const getCurrentUser = async (req, res) => {
     try {
@@ -97,6 +98,80 @@ export const deleteAccount = async (req, res) => {
 
         res.status(500).json({
             message: 'Server error while deleting account'
+        })
+    }
+}
+
+export const getApprovedProfessionals = async (req, res) => {
+    try {
+        const { search = '', specialization = '' } = req.query
+
+        let filter = { status: 'approved' }
+
+        if (search) {
+            filter.$or = [
+                { fullName: { $regex: search, $options: 'i' } },
+                { specialization: { $regex: search, $options: 'i' } },
+                { profession: { $regex: search, $options: 'i' } }
+            ]
+        }
+
+        if (specialization) {
+            filter.profession = { $regex: specialization, $options: 'i' }
+        }
+
+        const professionals = await ProfessionalApplication.find(filter)
+            .select('-documents')
+            .sort({ createdAt: -1 })
+
+        res.status(200).json({
+            success: true,
+            professionals
+        })
+    } catch (error) {
+        console.error('[Get Approved Professionals Error]', error)
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching professionals'
+        })
+    }
+}
+
+export const getProfessionCategories = async (req, res) => {
+    try {
+        // Get unique profession categories from approved professionals
+        const uniqueProfessions = await ProfessionalApplication.aggregate([
+            { $match: { status: 'approved' } },
+            { $group: { _id: '$profession' } },
+            { $sort: { _id: 1 } }
+        ])
+
+        // Default categories if no professionals exist
+        const defaultCategories = [
+            'Clinical Psychologist',
+            'Licensed Counselor (LPC)',
+            'Psychiatrist (MD)',
+            'Licensed Social Worker (LCSW)',
+            'Therapist',
+            'CBT Specialist',
+            'Psychologist'
+        ]
+
+        const categories = uniqueProfessions.length > 0 
+            ? uniqueProfessions.map(p => p._id)
+            : defaultCategories
+
+        res.status(200).json({
+            success: true,
+            categories
+        })
+    } catch (error) {
+        console.error('[Get Profession Categories Error]', error)
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching profession categories'
         })
     }
 }
