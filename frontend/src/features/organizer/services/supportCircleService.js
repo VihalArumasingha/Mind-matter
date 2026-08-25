@@ -106,6 +106,23 @@ export const getPendingRequests = async (token, circleId) => {
     return data
 }
 
+export const getAllPendingRequests = async token => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles/requests/all`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load join requests')
+    }
+
+    return data
+}
+
 export const respondToRequest = async (token, membershipId, decision) => {
     const response = await fetch(`${API_BASE_URL}/api/support-circles/requests/${membershipId}`, {
         method: 'PATCH',
