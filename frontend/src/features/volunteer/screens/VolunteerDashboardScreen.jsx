@@ -116,12 +116,19 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
         </View>
 
         {/* Availability toggle card */}
-        <View style={styles.availabilityCard}>
+        <View style={[styles.availabilityCard, !isAvailable && styles.availabilityCardInactive]}>
           <View style={styles.availabilityLeft}>
-            <Text style={styles.availabilityLabel}>Availability status</Text>
+            <Text style={[styles.availabilityLabel, !isAvailable && styles.availabilityLabelInactive]}>
+              Availability status
+            </Text>
             <View style={styles.availabilityStatusRow}>
-              {isAvailable && <View style={styles.statusIndicatorDot} />}
-              <Text style={styles.availabilityValue}>
+              <View
+                style={[
+                  styles.statusIndicatorDot,
+                  !isAvailable && styles.statusIndicatorDotInactive,
+                ]}
+              />
+              <Text style={[styles.availabilityValue, !isAvailable && styles.availabilityValueInactive]}>
                 {isAvailable ? 'Open for sessions' : 'Not available'}
               </Text>
             </View>
@@ -129,9 +136,9 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           <Switch
             value={isAvailable}
             onValueChange={handleToggleAvailability}
-            trackColor={{ false: COLORS.switchInactive, true: COLORS.greenLight }}
+            trackColor={{ false: COLORS.switchInactive, true: COLORS.green }}
             thumbColor={COLORS.white}
-            ios_backgroundColor={COLORS.greenLight}
+            ios_backgroundColor={COLORS.switchInactive}
           />
         </View>
 

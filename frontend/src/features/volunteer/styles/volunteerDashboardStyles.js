@@ -110,7 +110,7 @@ export const styles = StyleSheet.create({
 
   /* ---- Availability Card ---- */
   availabilityCard: {
-    backgroundColor: COLORS.green,
+    backgroundColor: COLORS.greenBg,
     borderRadius: 20,
     paddingVertical: 18,
     paddingHorizontal: 20,
@@ -118,11 +118,18 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 18,
-    shadowColor: COLORS.greenDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#C5DCCE',
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  availabilityCardInactive: {
+    backgroundColor: '#F3F5F3',
+    borderColor: COLORS.border,
+    shadowOpacity: 0.03,
   },
   availabilityLeft: {
     flex: 1,
@@ -130,9 +137,12 @@ export const styles = StyleSheet.create({
   availabilityLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#D4EAD9',
+    color: COLORS.green,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  availabilityLabelInactive: {
+    color: COLORS.textMuted,
   },
   availabilityStatusRow: {
     flexDirection: 'row',
@@ -146,10 +156,16 @@ export const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: COLORS.onlineDot,
   },
+  statusIndicatorDotInactive: {
+    backgroundColor: '#C4CDC7',
+  },
   availabilityValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.textDark,
+  },
+  availabilityValueInactive: {
+    color: COLORS.textMuted,
   },
 
   /* ---- Stats Row ---- */
