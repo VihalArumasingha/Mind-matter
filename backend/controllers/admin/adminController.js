@@ -387,7 +387,9 @@ export const approveProfessional = async (req, res) => {
     // Update user role if userId exists
     if (application.userId) {
       await User.findByIdAndUpdate(application.userId, {
-        role: 'therapist'
+        role: application.profession === 'Community Organizer'
+          ? 'communityOrganizer'
+          : 'therapist'
       });
     }
     
