@@ -1,5 +1,6 @@
 import User from '../../models/User.js'
 import ProfessionalApplication from '../../models/ProfessionalApplication.js'
+import {uploadToCloudinary} from '../../middleware/uploadMiddleware.js'
 
 export const getCurrentUser = async (req, res) => {
     try {
@@ -52,6 +53,11 @@ export const updateProfile = async (req, res) => {
 
         if (profilePicture !== undefined) {
             user.profilePicture = profilePicture
+        }
+
+        if (req.file) {
+            const image = await uploadToCloudinary(req.file.buffer, 'mindmatter_profile_pictures')
+            user.profilePicture = image.secure_url
         }
 
         await user.save()
