@@ -17,6 +17,23 @@ export const getMyCircles = async token => {
     return data
 }
 
+export const getCircleById = async (token, circleId) => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles/${circleId}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load circle')
+    }
+
+    return data
+}
+
 export const createCircle = async (token, circleData) => {
     const response = await fetch(`${API_BASE_URL}/api/support-circles`, {
         method: 'POST',
@@ -103,6 +120,57 @@ export const respondToRequest = async (token, membershipId, decision) => {
 
     if (!response.ok) {
         throw new Error(data.message || 'Failed to respond to request')
+    }
+
+    return data
+}
+
+export const getCircleMembers = async (token, circleId) => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles/${circleId}/members`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load members')
+    }
+
+    return data
+}
+
+export const removeMember = async (token, membershipId) => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles/members/${membershipId}/remove`, {
+        method: 'PATCH',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to remove member')
+    }
+
+    return data
+}
+
+export const getDashboardStats = async token => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles/dashboard-stats`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load dashboard stats')
     }
 
     return data
