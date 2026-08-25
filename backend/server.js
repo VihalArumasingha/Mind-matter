@@ -5,6 +5,7 @@ import 'dotenv/config'; // Automatically loads environment variables from .env f
 import connectDB from './config/db.js'; // Note: You MUST include the '.js' extension here!
 import authRoutes from './routes/authentication/authRoutes.js'
 import userRoutes from './routes/user/userRoutes.js'
+import moodRoutes from './routes/user/moodRoutes.js'
 import supportCircleRoutes from './routes/supportCircleOrganizer/supportCircle/supportCircleRoutes.js'
 import groupMembershipRoutes from './routes/supportCircleOrganizer/groupMembership/groupMembershipRoutes.js'
 import adminRoutes from './routes/admin/adminRoutes.js'
@@ -33,6 +34,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/users/moods', moodRoutes);
 app.use('/api/support-circles', supportCircleRoutes);
 app.use('/api/group-memberships', groupMembershipRoutes);
 app.use('/api/admin', adminRoutes);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -12,6 +13,7 @@ import {
     View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import {pick, types} from '@react-native-documents/picker'
 import { useAuth } from '../../../context/AuthContext'
 import { updateProfile } from '../services/profileService'
 
@@ -20,6 +22,7 @@ const EditProfileScreen = ({ navigation }) => {
 
     const [name, setName] = useState('')
     const [bio, setBio] = useState('')
+    const [profilePicture, setProfilePicture] = useState(null)
     const [isSaving, setIsSaving] = useState(false)
 
     useEffect(() => {
@@ -39,6 +42,7 @@ const EditProfileScreen = ({ navigation }) => {
             const data = await updateProfile(token, {
                 name: name.trim(),
                 bio: bio.trim(),
+                profilePicture,
             })
 
             updateUser(data.user)
@@ -57,6 +61,21 @@ const EditProfileScreen = ({ navigation }) => {
             Alert.alert('Update failed', error.message)
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const chooseProfilePicture = async () => {
+        try {
+            const [selectedImage] = await pick({type: [types.images]})
+            setProfilePicture({
+                uri: selectedImage.uri,
+                name: selectedImage.name || `profile-${Date.now()}.jpg`,
+                type: selectedImage.type || 'image/jpeg',
+            })
+        } catch (error) {
+            if (error?.code !== 'OPERATION_CANCELED') {
+                Alert.alert('Unable to choose image', error.message)
+            }
         }
     }
 
@@ -84,14 +103,23 @@ const EditProfileScreen = ({ navigation }) => {
 
                     <View style={styles.avatarContainer}>
                         <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                            </Text>
+                            {profilePicture?.uri || user?.profilePicture ? (
+                                <Image
+                                    source={{uri: profilePicture?.uri || user.profilePicture}}
+                                    style={styles.avatarImage}
+                                />
+                            ) : (
+                                <Text style={styles.avatarText}>
+                                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </Text>
+                            )}
                         </View>
 
-                        <Text style={styles.avatarHint}>
-                            Profile picture
-                        </Text>
+                        <Pressable style={styles.avatarButton} onPress={chooseProfilePicture}>
+                            <Text style={styles.avatarButtonText}>
+                                {profilePicture ? 'Change photo' : 'Upload photo'}
+                            </Text>
+                        </Pressable>
                     </View>
 
                     <View style={styles.form}>
@@ -228,6 +256,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#DDEBD8',
+    },
+
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 48,
+    },
+
+    avatarButton: {
+        marginTop: 10,
+    },
+
+    avatarButtonText: {
+        color: '#4E8C4A',
+        fontSize: 13,
+        fontWeight: '700',
     },
 
     avatarText: {
