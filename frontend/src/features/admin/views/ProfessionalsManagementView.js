@@ -54,21 +54,14 @@ const ProfessionalsManagementView = ({ applications = [], onApprove, onReject, o
 />
     <ScrollView style={adminStyles.bodyArea} showsVerticalScrollIndicator={false}>
 
-      <View style={{ backgroundColor: COLORS.surfaceDark, borderRadius: 10, padding: 12, marginBottom: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ backgroundColor: COLORS.primary, borderRadius: 10, padding: 18, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flex: 1, marginRight: 10 }}>
-          <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: 'bold' }}>
-            Therapist Registration Form
+          <Text style={{ color: white, fontSize: 22, fontWeight: 'bold', textAlign: 'center' }}>
+            Professional Management
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>
-            Users submit application & documents. Admin reviews submitted details here.
-          </Text>
+          
         </View>
-        <TouchableOpacity
-          style={[adminStyles.btn, adminStyles.btnPrimary, { paddingHorizontal: 12, paddingVertical: 8 }]}
-          onPress={onOpenApplyForm}
-        >
-          <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>+ User Apply Form</Text>
-        </TouchableOpacity>
+        
       </View>
 
       <View style={adminStyles.filterBar}>
