@@ -1,5 +1,7 @@
 import User from '../../models/User.js'
 import ProfessionalApplication from '../../models/ProfessionalApplication.js'
+import Availability from '../../models/Availability.js'
+import AvailabilitySlot from '../../models/AvailabilitySlot.js'
 
 export const getCurrentUser = async (req, res) => {
     try {
@@ -175,3 +177,75 @@ export const getProfessionCategories = async (req, res) => {
         })
     }
 }
+
+export const getProfessionalAvailability = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        let targetUserIds = [id];
+        const profApp = await ProfessionalApplication.findById(id);
+        if (profApp) {
+            if (profApp.userId) {
+                targetUserIds.push(profApp.userId);
+            }
+            if (profApp.email) {
+                const userByEmail = await User.findOne({ email: profApp.email.toLowerCase() });
+                if (userByEmail) {
+                    targetUserIds.push(userByEmail._id);
+                }
+            }
+        } else {
+            const userById = await User.findById(id);
+            if (userById && userById.email) {
+                targetUserIds.push(userById._id);
+                const appByEmail = await ProfessionalApplication.findOne({ email: userById.email.toLowerCase() });
+                if (appByEmail) {
+                    targetUserIds.push(appByEmail._id);
+                }
+            }
+        }
+
+        const [availability, slots] = await Promise.all([
+            Availability.findOne({ user: { $in: targetUserIds } }),
+            AvailabilitySlot.find({ user: { $in: targetUserIds } }).sort({ date: 1, start: 1 })
+        ]);
+
+        const slotsByDate = {};
+        slots.forEach((slot) => {
+            const dateKey = slot.date;
+            if (!slotsByDate[dateKey]) {
+                slotsByDate[dateKey] = [];
+            }
+            slotsByDate[dateKey].push({
+                id: String(slot._id),
+                date: slot.date,
+                start: slot.start,
+                end: slot.end,
+                slotDuration: slot.slotDuration || '',
+                breakStart: slot.breakStart || '',
+                breakEnd: slot.breakEnd || '',
+                breakDuration: slot.breakDuration || '',
+            });
+        });
+
+        const availableDates = Object.keys(slotsByDate).filter(
+            (d) => slotsByDate[d] && slotsByDate[d].length > 0
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                isAvailable: availability ? availability.isAvailable : true,
+                slotsByDate,
+                availableDates,
+            }
+        });
+    } catch (error) {
+        console.error('[Get Professional Availability Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error fetching professional availability'
+        });
+    }
+}
+

@@ -5,6 +5,7 @@ import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 import ProfessionalPostsScreen from '../features/professionalSupport/screens/ProfessionalPostsScreen'
+import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -30,8 +31,14 @@ const UserNavigator = () => {
                 name="ProfessionalPosts"
                 component={ProfessionalPostsScreen}
             />
+
+            <Stack.Screen
+                name="ProfessionalAvailabilityBooking"
+                component={ProfessionalAvailabilityBookingScreen}
+            />
         </Stack.Navigator>
     )
 }
+
 
 export default UserNavigator

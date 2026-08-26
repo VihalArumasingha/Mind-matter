@@ -4,7 +4,8 @@ import {
     updateProfile,
     deleteAccount,
     getApprovedProfessionals,
-    getProfessionCategories
+    getProfessionCategories,
+    getProfessionalAvailability
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 
@@ -19,5 +20,7 @@ router.delete('/me', authMiddleware, deleteAccount)
 router.get('/professionals', getApprovedProfessionals)
 
 router.get('/profession-categories', getProfessionCategories)
+
+router.get('/professionals/:id/availability', getProfessionalAvailability)
 
 export default router
