@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, BackHandler,
@@ -205,7 +205,8 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
         <Text style={styles.successTitle}>Application Submitted!</Text>
         <Text style={styles.successDesc}>
           Thank you for applying to be a verified therapist on MindMatter. Administrators
-          will review your credentials and license documents shortly.
+          will review your credentials and license documents shortly. Once approved, you'll be able
+          to login with your account email and password to access the volunteer dashboard.
         </Text>
         <View style={styles.successInfoBox}>
           <Text style={styles.successInfoText}>📄 {Object.keys(uploadedDocs).length} document(s) attached</Text>

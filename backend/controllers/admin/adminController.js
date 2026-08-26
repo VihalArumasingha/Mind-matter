@@ -3,6 +3,7 @@ import ProfessionalApplication from '../../models/ProfessionalApplication.js';
 import Report from '../../models/Report.js';
 import AuditLog from '../../models/AuditLog.js';
 import { uploadFilesToCloudinary } from '../../middleware/uploadMiddleware.js';
+import bcrypt from 'bcryptjs';
 
 export const getDashboardOverview = async (req, res) => {
   try {
@@ -279,6 +280,7 @@ export const submitProfessionalApplication = async (req, res) => {
     const {
       fullName,
       email,
+      password,
       phone,
       profession,
       licenseNum,
@@ -294,6 +296,7 @@ export const submitProfessionalApplication = async (req, res) => {
         error: 'Full Name, Email, and License Number are required'
       });
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -314,12 +317,13 @@ export const submitProfessionalApplication = async (req, res) => {
     if (req.files && req.files.length > 0) {
       try {
         uploadedDocuments = await uploadFilesToCloudinary(req.files, 'professionals');
-        console.log('Files uploaded to Cloudinary:', uploadedDocuments);
+        console.log('Files processed for application:', uploadedDocuments);
       } catch (uploadError) {
         console.error('File upload error:', uploadError);
+        const errMsg = uploadError?.message || uploadError?.error?.message || (typeof uploadError === 'string' ? uploadError : 'Document upload failed');
         return res.status(500).json({
           success: false,
-          error: 'Failed to upload documents: ' + uploadError.message
+          error: 'Failed to upload documents: ' + errMsg
         });
       }
     }
@@ -327,6 +331,7 @@ export const submitProfessionalApplication = async (req, res) => {
       userId: userId || null,
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
+      password: password ? password.trim() : '',
       phone: phone || '',
       profession: profession || 'Clinical Psychologist',
       licenseNum: licenseNum.trim(),
@@ -372,23 +377,80 @@ export const approveProfessional = async (req, res) => {
     const { id } = req.params;
     const adminName = req.user?.name || 'Admin User';
     
+    console.log('Approving professional application with ID:', id);
+    
     const application = await ProfessionalApplication.findById(id);
     if (!application) {
+      console.log('Application not found with ID:', id);
       return res.status(404).json({
         success: false,
         message: 'Application not found'
       });
     }
     
+    console.log('Found application:', application.fullName, 'Email:', application.email, 'User ID:', application.userId);
+    
     application.status = 'approved';
     application.reviewedBy = adminName;
     await application.save();
     
-    // Update user role if userId exists
+    console.log('Application status updated to approved');
+    
+    // Handle user account creation or update
+    let user;
+
     if (application.userId) {
-      await User.findByIdAndUpdate(application.userId, {
-        role: 'therapist'
-      });
+      console.log('Updating existing user with ID:', application.userId);
+      // Update existing user to therapist role - skip documents to avoid schema conflicts
+      user = await User.findByIdAndUpdate(application.userId, {
+        role: 'therapist',
+        phone: application.phone,
+        profession: application.profession,
+        licenseNum: application.licenseNum,
+        specialization: application.specialization,
+        expYears: application.expYears,
+        bio: application.bio
+      }, { returnDocument: 'after' });
+      console.log('Updated user role to therapist:', user.name, 'New role:', user.role);
+    } else {
+      console.log('Checking for existing user with email:', application.email);
+      // Check if user already exists with this email
+      const existingUser = await User.findOne({ email: application.email });
+      
+      if (existingUser) {
+        console.log('Found existing user with email, updating role to therapist:', existingUser.name);
+        // Update existing user to therapist role - skip documents to avoid schema conflicts
+        user = await User.findByIdAndUpdate(existingUser._id, {
+          role: 'therapist',
+          phone: application.phone,
+          profession: application.profession,
+          licenseNum: application.licenseNum,
+          specialization: application.specialization,
+          expYears: application.expYears,
+          bio: application.bio
+        }, { returnDocument: 'after' });
+        console.log('Updated existing user role to therapist:', user.name, 'New role:', user.role);
+      } else {
+        console.log('Creating new user with therapist role');
+        // Create new user with therapist role
+        const hashedPassword = application.password 
+          ? await bcrypt.hash(application.password, 10)
+          : await bcrypt.hash('Therapist@123', 10); // Default password for cases where password wasn't provided
+        
+        user = await User.create({
+          name: application.fullName,
+          email: application.email,
+          password: hashedPassword,
+          role: 'therapist',
+          phone: application.phone,
+          profession: application.profession,
+          licenseNum: application.licenseNum,
+          specialization: application.specialization,
+          expYears: application.expYears,
+          bio: application.bio
+        });
+        console.log('Created new user with therapist role:', user.name, 'Role:', user.role);
+      }
     }
     
     await AuditLog.create({
@@ -402,7 +464,14 @@ export const approveProfessional = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      application
+      message: 'Professional application approved successfully. User account created/updated.',
+      application,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
   } catch (error) {
     console.error('Error approving professional:', error);
