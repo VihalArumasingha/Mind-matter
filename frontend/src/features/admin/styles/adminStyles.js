@@ -25,6 +25,7 @@ export const COLORS = {
   danger: '#DC2626', 
   dangerBg: '#FEF2F2',
   info: '#2563EB', 
+ infor: '#dbe7ff', 
   infoBg: '#EFF6FF',
   purple: '#7C3AED', 
   purpleBg: '#F5F3FF'
@@ -242,6 +243,34 @@ export const adminStyles = StyleSheet.create({
     paddingVertical: 2
   },
 
+    commentItem: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.primary
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  commentAuthor: {
+    color: COLORS.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 12
+  },
+  commentDate: {
+    color: COLORS.textMuted,
+    fontSize: 10
+  },
+  commentContent: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 18
+  },
   // Cards
   card: {
     backgroundColor: COLORS.cardDark,
@@ -299,8 +328,28 @@ export const adminStyles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500'
   },
+postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: COLORS.surfaceDark,
+  },
+  modalImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: COLORS.surfaceDark,
+  },
+  modalTitleText: {
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
 
-  // Tables
+
   tableContainer: {
     backgroundColor: COLORS.cardDark,
     borderRadius: 12,
