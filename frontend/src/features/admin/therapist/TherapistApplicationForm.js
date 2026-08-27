@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, BackHandler,
@@ -7,11 +7,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
+import { PROFESSION_CATEGORIES } from '../../../config/professions';
+import { useAuth } from '../../../context/AuthContext';
 
 const COLORS = {
-  primary: '#4E824D',
-  primaryLight: '#F4F7EF',
-  bg: '#F4F7EF',
+  primary: '#0D9488',
+  primaryLight: '#CCFBF1',
+  bg: '#F0FDFA',
   card: '#FFFFFF',
   surface: '#F1F5F9',
   border: '#CBD5E1',
@@ -22,22 +24,15 @@ const COLORS = {
   successBg: '#ECFDF5',
   danger: '#DC2626',
   dangerBg: '#FEF2F2',
-  info: '#55ab71',
+  info: '#2563EB',
   infoBg: '#EFF6FF',
 };
 
-const PROFESSIONS = [
-  'Clinical Psychologist',
-  'Licensed Counselor (LPC)',
-  'Psychiatrist (MD)',
-  'Licensed Social Worker (LCSW)',
-];
-
 const DOC_TYPES = [
-  { key: 'license', label: 'State License Certificate', desc: 'Official state board license', required: true },
-  { key: 'degree', label: 'Degree / Diploma', desc: 'University degree transcript', required: false },
-  { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport', required: false },
-  { key: 'references', label: 'Professional References', desc: 'Reference letter', required: false },
+  { key: 'license', label: 'State License Certificate', desc: 'Official state board license (PDF)', required: true },
+  { key: 'degree', label: 'Degree / Diploma', desc: 'University degree transcript (PDF)', required: false },
+  { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport (PDF/JPG)', required: false },
+  { key: 'references', label: 'Professional References', desc: 'Reference letter (PDF/DOC)', required: false },
 ];
 
 const FormField = ({ label, required, children }) => (
@@ -72,10 +67,11 @@ const StepBar = ({ step }) => (
 
 const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [profession, setProfession] = useState('Clinical Psychologist');
+  const [profession, setProfession] = useState(PROFESSION_CATEGORIES[0]);
   const [licenseNum, setLicenseNum] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [expYears, setExpYears] = useState('5');
@@ -86,6 +82,8 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const [focusedField, setFocusedField] = useState(null);
   const [step, setStep] = useState(1);
   const [pickingDoc, setPickingDoc] = useState(null);
+
+
 
   useEffect(() => {
     const onBackPress = () => {
@@ -157,41 +155,30 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
     }
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('fullName', fullName.trim());
-      formData.append('email', email.trim());
-      formData.append('phone', phone.trim());
-      formData.append('profession', profession);
-      formData.append('licenseNum', licenseNum.trim());
-      formData.append('specialization', specialization.trim() || 'General Mental Health Support');
-      formData.append('expYears', parseInt(expYears, 10) || 1);
-      formData.append('bio', bio.trim());
-      formData.append('userId', userId || '');
-
-      Object.values(uploadedDocs).forEach((doc) => {
-        formData.append('documents', {
+      const formData = {
+        fullName: fullName.trim(),
+        email: email.trim(), // Save the form email as-is in the application
+        phone: phone.trim(),
+        profession: profession,
+        licenseNum: licenseNum.trim(),
+        specialization: specialization.trim() || 'General Mental Health Support',
+        expYears: parseInt(expYears, 10) || 1,
+        bio: bio.trim(),
+        userId: userId || user?._id || '', // Use logged-in user's ID for account linking
+        userEmail: user?.email || '', // Use logged-in user's email for account linking
+        user: user, // Pass the entire user object
+        documents: Object.values(uploadedDocs).map((doc) => ({
           uri: doc.uri,
           type: doc.mimeType || 'application/pdf',
           name: doc.fileName || 'document.pdf',
-        });
-      });
+        })),
+      };
 
-      console.log('Submitting FormData...');
+      console.log('Submitting application - Form email:', email.trim(), 'Account email:', user?.email);
 
-      const response = await fetch('http://10.0.2.2:5000/api/admin/professionals/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
+      const data = await submitTherapistApplicationWithFiles(formData);
       console.log('Response:', data);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit application');
-      }
       setSubmittedSuccess(true);
       if (onSubmitted) onSubmitted();
     } catch (err) {
@@ -211,7 +198,8 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
         <Text style={styles.successTitle}>Application Submitted!</Text>
         <Text style={styles.successDesc}>
           Thank you for applying to be a verified therapist on MindMatter. Administrators
-          will review your credentials and license documents shortly.
+          will review your credentials and license documents shortly. Once approved, you'll be able
+          to login with your account email and password to access the volunteer dashboard.
         </Text>
         <View style={styles.successInfoBox}>
           <Text style={styles.successInfoText}>📄 {Object.keys(uploadedDocs).length} document(s) attached</Text>
@@ -270,7 +258,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
       <FormField label="Profession Category" required>
         <View style={styles.chipsWrap}>
-          {PROFESSIONS.map((p) => (
+          {PROFESSION_CATEGORIES.map((p) => (
             <TouchableOpacity
               key={p}
               style={[styles.chip, profession === p && styles.chipActive]}
@@ -384,7 +372,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
                       onPress={() => handlePickDoc(doc.key)}
                       disabled={isPicking}
                     >
-                      <Text style={styles.replaceBtnText}>{isPicking ? '...' : 'Replace'}</Text>
+                      <Text style={styles.replaceBtnText}>{isPicking ? '...' : '↺ Replace'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.removeDocBtn} onPress={() => removeDoc(doc.key)}>
                       <Text style={styles.removeDocBtnText}>✕</Text>
@@ -567,7 +555,7 @@ const styles = StyleSheet.create({
     marginBottom: 16, borderLeftWidth: 4, borderLeftColor: COLORS.info,
   },
   docInfoTitle: { color: COLORS.info, fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  docInfoDesc: { color: '#042011', fontSize: 12, lineHeight: 18 },
+  docInfoDesc: { color: '#1E40AF', fontSize: 12, lineHeight: 18 },
 
   docRow: {
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
