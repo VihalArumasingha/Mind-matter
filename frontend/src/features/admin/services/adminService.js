@@ -111,24 +111,24 @@ export const getProfessionalApplicationsApi = async (token, status = 'all') => {
 
 export const submitTherapistApplicationWithFiles  = async (formData) => {
   try {
-    console.log('Submitting application:', formData);
+    console.log('Submitting application - Form email:', formData.email, 'Account email:', formData.userEmail);
     
     const response = await fetch(`${API_BASE_URL}/api/admin/professionals/applications/apply`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${formData.token || ''}`,
       },
       body: JSON.stringify({
         fullName: formData.fullName,
-        email: formData.email,
+        email: formData.email, // Save form email as-is in the application
+        accountEmail: formData.userEmail, // Use logged-in user's email for account linking
         phone: formData.phone || '',
         profession: formData.profession || 'Clinical Psychologist',
         licenseNum: formData.licenseNum,
         specialization: formData.specialization || 'General Mental Health Support',
         expYears: formData.expYears || 1,
         bio: formData.bio || '',
-        userId: formData.userId || null,
+        userId: formData.userId || formData.user?._id || null, // Use logged-in user's ID
         documents: formData.documents || [],
       }),
     });

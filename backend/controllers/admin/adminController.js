@@ -280,6 +280,7 @@ export const submitProfessionalApplication = async (req, res) => {
     const {
       fullName,
       email,
+      accountEmail,
       password,
       phone,
       profession,
@@ -330,7 +331,8 @@ export const submitProfessionalApplication = async (req, res) => {
     const applicationData = {
       userId: userId || null,
       fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
+      email: email.trim().toLowerCase(), // Save form email as-is in the application
+      accountEmail: accountEmail?.trim().toLowerCase() || email.trim().toLowerCase(), // Store account email separately for linking
       password: password ? password.trim() : '',
       phone: phone || '',
       profession: profession || 'Clinical Psychologist',
@@ -413,12 +415,13 @@ export const approveProfessional = async (req, res) => {
       }, { returnDocument: 'after' });
       console.log('Updated user role to therapist:', user.name, 'New role:', user.role);
     } else {
-      console.log('Checking for existing user with email:', application.email);
-      // Check if user already exists with this email
-      const existingUser = await User.findOne({ email: application.email });
+      console.log('Checking for existing user with account email:', application.accountEmail);
+      // Check if user already exists with account email (use accountEmail for linking)
+      const emailToCheck = application.accountEmail || application.email;
+      const existingUser = await User.findOne({ email: emailToCheck });
       
       if (existingUser) {
-        console.log('Found existing user with email, updating role to therapist:', existingUser.name);
+        console.log('Found existing user with account email, updating role to therapist:', existingUser.name);
         // Update existing user to therapist role - skip documents to avoid schema conflicts
         user = await User.findByIdAndUpdate(existingUser._id, {
           role: 'therapist',
@@ -431,15 +434,15 @@ export const approveProfessional = async (req, res) => {
         }, { returnDocument: 'after' });
         console.log('Updated existing user role to therapist:', user.name, 'New role:', user.role);
       } else {
-        console.log('Creating new user with therapist role');
-        // Create new user with therapist role
+        console.log('Creating new user with therapist role using account email');
+        // Create new user with therapist role using account email
         const hashedPassword = application.password 
           ? await bcrypt.hash(application.password, 10)
           : await bcrypt.hash('Therapist@123', 10); // Default password for cases where password wasn't provided
         
         user = await User.create({
           name: application.fullName,
-          email: application.email,
+          email: application.accountEmail || application.email, // Use account email for user account
           password: hashedPassword,
           role: 'therapist',
           phone: application.phone,
