@@ -368,7 +368,7 @@ const UsersManagementView = ({
                     selectedUser.violations.slice().reverse().map((v, i) => (
                       <View key={i} style={adminStyles.docCard}>
                         <View style={{ flex: 1 }}>
-                          <Text style={adminStyles.docTitle}>⚠️ {v.reason}</Text>
+                        
                           <Text style={adminStyles.docSub}>
                             Issued by {v.adminName || 'Admin'} on {new Date(v.date).toLocaleDateString()}
                           </Text>
@@ -417,7 +417,7 @@ const UsersManagementView = ({
           <View style={adminStyles.modalOverlay}>
             <View style={[adminStyles.modalBox, { maxWidth: 420 }]}>
               <View style={adminStyles.modalHeader}>
-                <Text style={adminStyles.modalTitle}>⚠️ Issue Warning</Text>
+                <Text style={adminStyles.modalTitle}> Issue Warning</Text>
                 <TouchableOpacity style={adminStyles.closeButton} onPress={() => setModalType(null)}>
                   <Text style={adminStyles.closeButtonText}>✕</Text>
                 </TouchableOpacity>
