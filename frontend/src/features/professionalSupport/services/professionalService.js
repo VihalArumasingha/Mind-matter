@@ -40,7 +40,8 @@ export const getProfessionCategories = async (token) => {
 
 export const getProfessionalAvailability = async (token, professionalId) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/users/professionals/${professionalId}/availability`, {
+        const timestamp = new Date().getTime()
+        const response = await fetch(`${API_BASE_URL}/api/users/professionals/${professionalId}/availability?_t=${timestamp}`, {
             method: 'GET',
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -73,4 +74,28 @@ export const getProfessionalAvailability = async (token, professionalId) => {
         }
     }
 }
-
+
+export const createProfessionalBooking = async (token, bookingData) => {
+    const response = await fetch(`${API_BASE_URL}/api/users/bookings`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        // Handle specific error for already booked slots
+        if (response.status === 409) {
+            throw new Error(data.message || 'This time slot is already booked. Please select a different time.')
+        }
+        throw new Error(data.message || 'Failed to submit booking')
+    }
+
+    return data
+}
+
+

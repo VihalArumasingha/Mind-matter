@@ -1,5 +1,5 @@
 import React from 'react'
-import {ActivityIndicator, StyleSheet, View} from 'react-native'
+import {ActivityIndicator, StyleSheet, View, Text} from 'react-native'
 import {NavigationContainer} from '@react-navigation/native'
 import {createNativeStackNavigator} from '@react-navigation/native-stack'
 import {useAuth} from '../context/AuthContext'
@@ -43,15 +43,28 @@ const LoadingScreen = () => {
                 size="large"
                 color="#4E8C4A"
             />
+            <Text style={styles.loadingText}>Loading...</Text>
         </View>
     )
 }
 
 const RootNavigator = () => {
-    const {user, isLoading} = useAuth()
+    const {user, isLoading, error} = useAuth()
+
+    console.log('[RootNavigator] Render state:', { isLoading, error, hasUser: !!user })
 
     if (isLoading) {
+        console.log('[RootNavigator] Showing loading screen')
         return <LoadingScreen />
+    }
+
+    if (error) {
+        console.log('[RootNavigator] Showing error screen:', error)
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Error: {error}</Text>
+            </View>
+        )
     }
 
     const renderRoleNavigator = () => {
@@ -93,6 +106,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F4F7EF',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#4E8C4A',
+        fontWeight: '600',
+    },
+    errorContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F4F7EF',
+        padding: 20,
+    },
+    errorText: {
+        color: 'red',
+        fontSize: 16,
+        textAlign: 'center',
     },
 })
 
