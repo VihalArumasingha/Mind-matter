@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { 
+  ActivityIndicator,
+  Image,
   Alert, 
   Pressable, 
   ScrollView, 
@@ -7,17 +9,44 @@ import {
   Text, 
   View,
   Modal,        
-  TouchableOpacity 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
 import { deleteAccount } from '../services/profileService';
 import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
+import { getMyPosts } from '../../posts/services/postService';
+import { useFocusEffect } from '@react-navigation/native';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, token } = useAuth();
   
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [myPosts, setMyPosts] = useState([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
+  const loadMyPosts = React.useCallback(async () => {
+    if (!token) {
+      setMyPosts([]);
+      setIsLoadingPosts(false);
+      return;
+    }
+
+    try {
+      setIsLoadingPosts(true);
+      const data = await getMyPosts(token);
+      setMyPosts(data.posts || []);
+    } catch (error) {
+      Alert.alert('Unable to load posts', error.message);
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }, [token]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMyPosts();
+    }, [loadMyPosts])
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -79,9 +108,13 @@ const ProfileScreen = ({ navigation }) => {
 
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </Text>
+            {user?.profilePicture ? (
+              <Image source={{ uri: user.profilePicture }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            )}
           </View>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
@@ -119,6 +152,38 @@ const ProfileScreen = ({ navigation }) => {
           onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </Pressable>
+
+        <View style={styles.section}>
+          <View style={styles.postsTitleRow}>
+            <Text style={styles.sectionTitle}>My Posts</Text>
+            <Pressable onPress={() => navigation.navigate('MyPosts')} hitSlop={10} style={styles.postsLink}>
+              <Text style={styles.postCount}>{myPosts.length}</Text>
+              <Text style={styles.postsArrow}>›</Text>
+            </Pressable>
+          </View>
+
+          {isLoadingPosts ? (
+            <ActivityIndicator color="#4E8C4A" style={styles.postsLoader} />
+          ) : myPosts.length === 0 ? (
+            <View style={styles.emptyPosts}>
+              <Text style={styles.emptyPostsText}>You have not shared any posts yet.</Text>
+            </View>
+          ) : (
+            myPosts.slice(0, 1).map(post => (
+              <View key={post._id} style={styles.postCard}>
+                <Text style={styles.postDate}>
+                  {new Date(post.createdAt).toLocaleDateString()}
+                </Text>
+                <Text style={styles.postTitle}>{post.title || 'Untitled post'}</Text>
+                <Text style={styles.postContent}>{post.description || post.content}</Text>
+                {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={styles.postImage} /> : null}
+                <Text style={styles.commentCount}>
+                  {post.comments?.length || 0} {post.comments?.length === 1 ? 'comment' : 'comments'}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>More</Text>
@@ -237,6 +302,12 @@ const styles = StyleSheet.create({
         marginBottom: 13,
     },
 
+      avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 46,
+      },
+
     avatarText: {
         fontSize: 36,
         fontWeight: '700',
@@ -324,6 +395,93 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+
+      postsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      },
+
+      postsLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+
+      postsArrow: {
+        marginLeft: 6,
+        color: '#4E824D',
+        fontSize: 27,
+      },
+
+      postCount: {
+        minWidth: 26,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        textAlign: 'center',
+        backgroundColor: '#E2EEDB',
+        color: '#4E824D',
+        fontSize: 12,
+        fontWeight: '700',
+      },
+
+      postsLoader: {
+        marginVertical: 20,
+      },
+
+      emptyPosts: {
+        padding: 18,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E9DF',
+      },
+
+      emptyPostsText: {
+        color: '#7A827A',
+        textAlign: 'center',
+      },
+
+      postCard: {
+        marginBottom: 10,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E9DF',
+      },
+
+      postDate: {
+        color: '#858C85',
+        fontSize: 12,
+      },
+
+      postContent: {
+        marginTop: 8,
+        color: '#303630',
+        fontSize: 15,
+        lineHeight: 21,
+      },
+
+      postTitle: {
+        marginTop: 8,
+        color: '#303630',
+        fontSize: 16,
+        fontWeight: '700',
+      },
+
+      postImage: {
+        width: '100%',
+        height: 160,
+        marginTop: 10,
+        borderRadius: 10,
+      },
+
+      commentCount: {
+        marginTop: 12,
+        color: '#7A827A',
+        fontSize: 12,
+      },
 
     menuItem: {
         minHeight: 72,

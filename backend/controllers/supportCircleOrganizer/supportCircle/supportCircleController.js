@@ -5,15 +5,16 @@ import Session from '../../../models/Session.js'
 // FM-46: Create a new support circle
 export const createSupportCircle = async (req, res) => {
     try {
-        const { topic, description, meetingType, maxCapacity, category, coverImage } = req.body
+        const { topic, description, meetingTypes, maxCapacity, category, rules, coverImage } = req.body
 
         const circle = await SupportCircle.create({
             ownerId: req.user._id,
             topic,
             description,
-            meetingType,
+            meetingTypes,
             maxCapacity,
             category,
+            rules,
             coverImage
         })
 
@@ -32,7 +33,7 @@ export const createSupportCircle = async (req, res) => {
         console.error('[Create Support Circle Error]', error)
 
         res.status(500).json({
-            message: 'Server error while creating support circle'
+            message: error.message || 'Server error while creating support circle'
         })
     }
 }
@@ -56,7 +57,7 @@ export const updateSupportCircle = async (req, res) => {
             })
         }
 
-        const allowedUpdates = ['topic', 'description', 'meetingType', 'maxCapacity', 'category', 'coverImage']
+        const allowedUpdates = ['topic', 'description', 'meetingTypes', 'maxCapacity', 'category', 'rules', 'coverImage']
 
         allowedUpdates.forEach((field) => {
             if (req.body[field] !== undefined) {
@@ -73,7 +74,7 @@ export const updateSupportCircle = async (req, res) => {
         console.error('[Update Support Circle Error]', error)
 
         res.status(500).json({
-            message: 'Server error while updating support circle'
+            message: error.message || 'Server error while updating support circle'
         })
     }
 }
@@ -187,6 +188,36 @@ export const getPendingJoinRequests = async (req, res) => {
         })
     } catch (error) {
         console.error('[Get Pending Join Requests Error]', error)
+
+        res.status(500).json({
+            message: 'Server error while fetching join requests'
+        })
+    }
+}
+
+// List pending join requests across ALL of the organizer's circles
+// (used by the Requests tab on the dashboard)
+export const getAllPendingJoinRequests = async (req, res) => {
+    try {
+        const circles = await SupportCircle.find({
+            ownerId: req.user._id,
+            status: { $ne: 'deleted' }
+        })
+
+        const circleIds = circles.map((circle) => circle._id)
+
+        const requests = await GroupMembership.find({
+            groupId: { $in: circleIds },
+            status: 'pending'
+        })
+            .populate('userId', 'name email profilePicture bio')
+            .populate('groupId', 'topic')
+
+        res.status(200).json({
+            requests
+        })
+    } catch (error) {
+        console.error('[Get All Pending Join Requests Error]', error)
 
         res.status(500).json({
             message: 'Server error while fetching join requests'
@@ -351,13 +382,50 @@ export const getDashboardStats = async (req, res) => {
             .limit(5)
             .populate('circleId', 'topic')
 
+        // Recent activity feed: latest membership changes + latest sessions,
+        // merged and sorted by most recent first
+        const recentMemberships = await GroupMembership.find({
+            groupId: { $in: circleIds },
+            status: { $in: ['approved', 'pending'] }
+        })
+            .sort({ updatedAt: -1 })
+            .limit(5)
+            .populate('userId', 'name')
+            .populate('groupId', 'topic')
+
+        const recentSessions = await Session.find({
+            circleId: { $in: circleIds }
+        })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .populate('circleId', 'topic')
+
+        const membershipActivity = recentMemberships.map((membership) => ({
+            message:
+                membership.status === 'approved'
+                    ? `${membership.userId?.name || 'A member'} joined ${membership.groupId?.topic || 'a circle'}`
+                    : `${membership.userId?.name || 'Someone'} requested to join ${membership.groupId?.topic || 'a circle'}`,
+            timestamp: membership.updatedAt
+        }))
+
+        const sessionActivity = recentSessions.map((session) => ({
+            message: `Session '${session.title}' scheduled for ${session.circleId?.topic || 'a circle'}`,
+            timestamp: session.createdAt
+        }))
+
+        const recentActivity = [...membershipActivity, ...sessionActivity]
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 5)
+
         res.status(200).json({
             totalCircles: circles.length,
             totalMembers,
             pendingRequests,
             // Post moderation isn't built yet (Sprint 3) — placeholder until it is
             pendingPostApprovals: 0,
-            upcomingSessions
+            upcomingSessionsCount: upcomingSessions.length,
+            upcomingSessions,
+            recentActivity
         })
     } catch (error) {
         console.error('[Get Dashboard Stats Error]', error)

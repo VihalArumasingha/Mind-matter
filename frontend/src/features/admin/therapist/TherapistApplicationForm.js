@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
 import { PROFESSION_CATEGORIES } from '../../../config/professions';
+import { API_BASE_URL } from '../../../config/api';
 
 const COLORS = {
   primary: '#0D9488',
@@ -172,7 +173,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
       console.log('Submitting FormData...');
 
-      const response = await fetch('http://10.0.2.2:5000/api/admin/professionals/applications/apply', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/professionals/applications/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'multipart/form-data',

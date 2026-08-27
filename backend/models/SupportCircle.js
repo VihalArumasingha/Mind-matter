@@ -20,9 +20,13 @@ const supportCircleSchema = new mongoose.Schema(
             trim: true
         },
 
-        meetingType: {
-            type: String,
-            enum: ['online', 'in-person', 'hybrid'],
+         meetingTypes: {
+            type: [String],
+            enum: ['online', 'physical'],
+            validate: {
+                validator: (value) => Array.isArray(value) && value.length > 0,
+                message: 'At least one meeting type must be selected'
+            },
             required: true
         },
 

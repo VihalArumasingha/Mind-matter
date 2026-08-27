@@ -31,7 +31,7 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
-const uploadToCloudinary = (buffer, folder = 'professionals', publicId = null) => {
+export const uploadToCloudinary = (buffer, folder = 'professionals', publicId = null) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -57,6 +57,7 @@ const uploadToCloudinary = (buffer, folder = 'professionals', publicId = null) =
 
 export const uploadMultiple = upload.array('documents', 10);
 export const uploadSingle = upload.single('document');
+export const uploadSingleProfilePicture = upload.single('profilePicture');
 
 export const uploadFilesToCloudinary = async (files, folder = 'professionals') => {
   try {
