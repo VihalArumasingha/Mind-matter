@@ -55,14 +55,12 @@ const ProfessionalsManagementView = ({ applications = [], onApprove, onReject, o
     <ScrollView style={adminStyles.bodyArea} showsVerticalScrollIndicator={false}>
 
       <View style={{ backgroundColor: COLORS.primary, borderRadius: 10, padding: 18, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flex: 1, marginRight: 10 }}>
-          <Text style={{ color: white, fontSize: 22, fontWeight: 'bold', textAlign: 'center' }}>
-            Professional Management
-          </Text>
-          
-        </View>
-        
-      </View>
+  <View style={{ flex: 1, marginRight: 10 }}>
+    <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 'bold', textAlign: 'center' }}>
+      Professional Management
+    </Text>
+  </View>
+</View>
 
       <View style={adminStyles.filterBar}>
         <View style={adminStyles.filterChips}>
