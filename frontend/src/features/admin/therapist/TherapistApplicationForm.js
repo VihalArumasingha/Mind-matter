@@ -8,7 +8,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
 import { PROFESSION_CATEGORIES } from '../../../config/professions';
-import { API_BASE_URL } from '../../../config/api';
 import { useAuth } from '../../../context/AuthContext';
 
 const COLORS = {
@@ -84,15 +83,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const [step, setStep] = useState(1);
   const [pickingDoc, setPickingDoc] = useState(null);
 
-  // Autofill email and name from logged-in user
-  useEffect(() => {
-    if (user?.email) {
-      setEmail(user.email);
-    }
-    if (user?.name) {
-      setFullName(user.name);
-    }
-  }, [user?.email, user?.name]);
+
 
   useEffect(() => {
     const onBackPress = () => {
@@ -164,41 +155,30 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
     }
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('fullName', fullName.trim());
-      formData.append('email', email.trim());
-      formData.append('phone', phone.trim());
-      formData.append('profession', profession);
-      formData.append('licenseNum', licenseNum.trim());
-      formData.append('specialization', specialization.trim() || 'General Mental Health Support');
-      formData.append('expYears', parseInt(expYears, 10) || 1);
-      formData.append('bio', bio.trim());
-      formData.append('userId', userId || '');
-
-      Object.values(uploadedDocs).forEach((doc) => {
-        formData.append('documents', {
+      const formData = {
+        fullName: fullName.trim(),
+        email: email.trim(), // Save the form email as-is in the application
+        phone: phone.trim(),
+        profession: profession,
+        licenseNum: licenseNum.trim(),
+        specialization: specialization.trim() || 'General Mental Health Support',
+        expYears: parseInt(expYears, 10) || 1,
+        bio: bio.trim(),
+        userId: userId || user?._id || '', // Use logged-in user's ID for account linking
+        userEmail: user?.email || '', // Use logged-in user's email for account linking
+        user: user, // Pass the entire user object
+        documents: Object.values(uploadedDocs).map((doc) => ({
           uri: doc.uri,
           type: doc.mimeType || 'application/pdf',
           name: doc.fileName || 'document.pdf',
-        });
-      });
+        })),
+      };
 
-      console.log('Submitting FormData...');
+      console.log('Submitting application - Form email:', email.trim(), 'Account email:', user?.email);
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/professionals/applications/apply`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
+      const data = await submitTherapistApplicationWithFiles(formData);
       console.log('Response:', data);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit application');
-      }
       setSubmittedSuccess(true);
       if (onSubmitted) onSubmitted();
     } catch (err) {

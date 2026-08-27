@@ -18,6 +18,12 @@ const professionalApplicationSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    accountEmail: {
+      type: String,
+      required: false,
+      trim: true,
+      default: ''
+    },
     password: {
       type: String,
       required: false
