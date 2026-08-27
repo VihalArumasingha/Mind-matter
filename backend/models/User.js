@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ['user', 'volunteer', 'communityOrganizer', 'admin'],
+            enum: ['user', 'volunteer', 'therapist', 'communityOrganizer', 'admin'],
             default: 'user'
         },
 
@@ -36,30 +36,61 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: ''
         },
+
+        // Therapist-specific fields
+        phone: {
+            type: String,
+            default: ''
+        },
+        profession: {
+            type: String,
+            default: ''
+        },
+        licenseNum: {
+            type: String,
+            default: ''
+        },
+        specialization: {
+            type: String,
+            default: ''
+        },
+        expYears: {
+            type: Number,
+            default: 0
+        },
+        documents: [{
+            title: String,
+            url: String,
+            type: String,
+            fileName: String,
+            mimeType: String,
+            publicId: String
+        }],
+
         status: {
-      type: String,
-      enum: ['active', 'warned', 'suspended'],
-      default: 'active'
-    },
-    warningsCount: {
-      type: Number,
-      default: 0
-    },
-    suspensionReason: {
-      type: String,
-      default: ''
-    },
-    suspendedUntil: {
-      type: Date,
-      default: null
-    },
-    violations: [
-      {
-        reason: { type: String },
-        adminName: { type: String },
-        date: { type: Date, default: Date.now }
-      }
-    ]
+            type: String,
+            enum: ['active', 'warned', 'suspended'],
+            default: 'active'
+        },
+        warningsCount: {
+            type: Number,
+            default: 0
+        },
+        suspensionReason: {
+            type: String,
+            default: ''
+        },
+        suspendedUntil: {
+            type: Date,
+            default: null
+        },
+        violations: [
+            {
+                reason: { type: String },
+                adminName: { type: String },
+                date: { type: Date, default: Date.now }
+            }
+        ]
     },
     {
         timestamps: true

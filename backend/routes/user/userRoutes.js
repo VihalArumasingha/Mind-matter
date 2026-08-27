@@ -4,7 +4,10 @@ import {
     updateProfile,
     deleteAccount,
     getApprovedProfessionals,
-    getProfessionCategories
+    getProfessionCategories,
+    getProfessionalAvailability,
+    createBooking,
+    getUserBookings
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 import {uploadSingleProfilePicture} from '../../middleware/uploadMiddleware.js'
@@ -20,5 +23,11 @@ router.delete('/me', authMiddleware, deleteAccount)
 router.get('/professionals', getApprovedProfessionals)
 
 router.get('/profession-categories', getProfessionCategories)
+
+router.get('/professionals/:id/availability', getProfessionalAvailability)
+
+router.post('/bookings', authMiddleware, createBooking)
+
+router.get('/bookings', authMiddleware, getUserBookings)
 
 export default router

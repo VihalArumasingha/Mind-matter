@@ -5,6 +5,7 @@ import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 import ProfessionalPostsScreen from '../features/professionalSupport/screens/ProfessionalPostsScreen'
+import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 
@@ -34,9 +35,15 @@ const UserNavigator = () => {
             />
 
             <Stack.Screen
+                name="ProfessionalAvailabilityBooking"
+                component={ProfessionalAvailabilityBookingScreen}
+            />
+
+            <Stack.Screen
                 name="MoodHistory"
                 component={MoodHistoryScreen}
             />
+
             <Stack.Screen
                 name="MyPosts"
                 component={MyPostsScreen}
@@ -44,5 +51,6 @@ const UserNavigator = () => {
         </Stack.Navigator>
     )
 }
+
 
 export default UserNavigator

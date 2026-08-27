@@ -80,10 +80,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleBecomeVolunteer = () => {
-    if (user?.role === 'therapist' || user?.role === 'professional') {
+    if (user?.role === 'therapist' || user?.role === 'volunteer') {
       Alert.alert(
         'Already Verified',
-        'You are already a verified therapist/professional on MindMatter.'
+        'You are already a verified therapist/volunteer on MindMatter. You have access to the volunteer dashboard.'
       );
       return;
     }

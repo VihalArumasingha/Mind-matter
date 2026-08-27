@@ -18,6 +18,10 @@ const professionalApplicationSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    password: {
+      type: String,
+      required: false
+    },
     phone: {
       type: String,
       default: ''

@@ -91,7 +91,10 @@ const ProfessionalHelpScreen = ({navigation}) => {
                     </View>
                 </View>
             </View>
-            <TouchableOpacity style={styles.bookButton}>
+            <TouchableOpacity
+                style={styles.bookButton}
+                onPress={() => navigation.navigate('ProfessionalAvailabilityBooking', { professional: item })}
+            >
                 <Text style={styles.bookButtonText}>Book Session</Text>
             </TouchableOpacity>
         </View>
