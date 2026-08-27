@@ -9,6 +9,7 @@ import { pick, types, isErrorWithCode, errorCodes } from '@react-native-document
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
 import { PROFESSION_CATEGORIES } from '../../../config/professions';
 import { API_BASE_URL } from '../../../config/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const COLORS = {
   primary: '#0D9488',
@@ -67,6 +68,7 @@ const StepBar = ({ step }) => (
 
 const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -81,6 +83,16 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
   const [focusedField, setFocusedField] = useState(null);
   const [step, setStep] = useState(1);
   const [pickingDoc, setPickingDoc] = useState(null);
+
+  // Autofill email and name from logged-in user
+  useEffect(() => {
+    if (user?.email) {
+      setEmail(user.email);
+    }
+    if (user?.name) {
+      setFullName(user.name);
+    }
+  }, [user?.email, user?.name]);
 
   useEffect(() => {
     const onBackPress = () => {
