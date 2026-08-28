@@ -7,6 +7,7 @@ import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
 
 const UserHomeScreen = ({navigation}) => {
+    console.log('[UserHomeScreen] Component rendering')
     const {token, user} = useAuth()
     const [posts, setPosts] = useState([])
     const [commentText, setCommentText] = useState({})
