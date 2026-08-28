@@ -51,7 +51,7 @@ const LoadingScreen = () => {
 const RootNavigator = () => {
     const {user, isLoading, error} = useAuth()
 
-    console.log('[RootNavigator] Render state:', { isLoading, error, hasUser: !!user })
+    console.log('[RootNavigator] Render state:', { isLoading, error, hasUser: !!user, userRole: user?.role, user })
 
     if (isLoading) {
         console.log('[RootNavigator] Showing loading screen')

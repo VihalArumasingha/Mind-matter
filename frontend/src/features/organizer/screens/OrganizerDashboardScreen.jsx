@@ -107,6 +107,10 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             <Text style={styles.statLabel}>Total Circles</Text>
                         </View>
                         <View style={styles.statCard}>
+                            <Text style={styles.statNumber}>{stats?.totalMembers ?? 0}</Text>
+                            <Text style={styles.statLabel}>Total Members</Text>
+                        </View>
+                        <View style={styles.statCard}>
                             <Text style={styles.statNumber}>{stats?.pendingRequests ?? 0}</Text>
                             <Text style={styles.statLabel}>Pending Requests</Text>
                         </View>
@@ -314,15 +318,19 @@ const styles = StyleSheet.create({
 
     statRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         backgroundColor: '#E2EEDB',
         borderRadius: 14,
         padding: 14,
         marginBottom: 20,
+        gap: 0,
     },
 
     statCard: {
-        flex: 1,
+        width: '50%',
         alignItems: 'flex-start',
+        paddingVertical: 6,
+        paddingHorizontal: 4,
     },
 
     statNumber: {

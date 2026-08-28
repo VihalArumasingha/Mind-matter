@@ -198,14 +198,8 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         </View>
         <Text style={styles.successTitle}>Application Submitted!</Text>
         <Text style={styles.successDesc}>
-<<<<<<< HEAD
           Thank you for applying to become a {isOrganizerApplication ? 'community organizer' : 'verified therapist'} on MindMatter. Administrators
-          will review your credentials and documents shortly.
-=======
-          Thank you for applying to be a verified therapist on MindMatter. Administrators
-          will review your credentials and license documents shortly. Once approved, you'll be able
-          to login with your account email and password to access the volunteer dashboard.
->>>>>>> origin/main
+          will review your credentials and documents shortly. Once approved, you'll have access to the {isOrganizerApplication ? 'organizer dashboard' : 'volunteer dashboard'}.
         </Text>
         <View style={styles.successInfoBox}>
           <Text style={styles.successInfoText}>📄 {Object.keys(uploadedDocs).length} document(s) attached</Text>
