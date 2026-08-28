@@ -65,13 +65,14 @@ const StepBar = ({ step }) => (
   </View>
 );
 
-const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
+const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationType = 'professional' }) => {
+  const isOrganizerApplication = applicationType === 'organizer';
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [profession, setProfession] = useState(PROFESSION_CATEGORIES[0]);
+  const [profession, setProfession] = useState(isOrganizerApplication ? 'Community Organizer' : PROFESSION_CATEGORIES[0]);
   const [licenseNum, setLicenseNum] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [expYears, setExpYears] = useState('5');
@@ -142,7 +143,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
   const goToStep2 = () => {
     if (!fullName.trim() || !email.trim() || !licenseNum.trim()) {
-      Alert.alert('Required Fields', 'Please fill Full Name, Email, and License Number.');
+      Alert.alert('Required Fields', 'Please fill Full Name, Email, and License or reference number.');
       return;
     }
     setStep(2);
@@ -150,7 +151,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
 
   const handleSubmit = async () => {
     if (!uploadedDocs.license) {
-      Alert.alert('Missing Document', 'State License Certificate is required to submit your application.');
+      Alert.alert('Missing Document', `${isOrganizerApplication ? 'CV or resume' : 'State License Certificate'} is required to submit your application.`);
       return;
     }
     setSubmitting(true);
@@ -197,9 +198,14 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
         </View>
         <Text style={styles.successTitle}>Application Submitted!</Text>
         <Text style={styles.successDesc}>
+<<<<<<< HEAD
+          Thank you for applying to become a {isOrganizerApplication ? 'community organizer' : 'verified therapist'} on MindMatter. Administrators
+          will review your credentials and documents shortly.
+=======
           Thank you for applying to be a verified therapist on MindMatter. Administrators
           will review your credentials and license documents shortly. Once approved, you'll be able
           to login with your account email and password to access the volunteer dashboard.
+>>>>>>> origin/main
         </Text>
         <View style={styles.successInfoBox}>
           <Text style={styles.successInfoText}>📄 {Object.keys(uploadedDocs).length} document(s) attached</Text>
@@ -256,7 +262,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
         />
       </FormField>
 
-      <FormField label="Profession Category" required>
+      {!isOrganizerApplication && <FormField label="Profession Category" required>
         <View style={styles.chipsWrap}>
           {PROFESSION_CATEGORIES.map((p) => (
             <TouchableOpacity
@@ -268,12 +274,12 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
             </TouchableOpacity>
           ))}
         </View>
-      </FormField>
+      </FormField>}
 
-      <FormField label="State License Number" required>
+      <FormField label={isOrganizerApplication ? 'Professional Reference Number' : 'State License Number'} required>
         <TextInput
           style={[styles.input, focusedField === 'license' && styles.inputFocused]}
-          placeholder="e.g. PSY-99201-CA"
+          placeholder={isOrganizerApplication ? 'e.g. ORG-2026-001' : 'e.g. PSY-99201-CA'}
           placeholderTextColor={COLORS.textMuted}
           autoCapitalize="characters"
           value={licenseNum}
@@ -336,7 +342,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
           <Text style={styles.docInfoTitle}> Credential Document Upload</Text>
           <Text style={styles.docInfoDesc}>
             Tap "Choose File" to select documents from your phone. Files are encrypted and
-            reviewed only by verified MindMatter administrators. License Certificate is required.
+            reviewed only by verified MindMatter administrators. {isOrganizerApplication ? 'CV or resume is required.' : 'License Certificate is required.'}
           </Text>
         </View>
 
@@ -347,7 +353,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
             <View key={doc.key} style={[styles.docRow, uploaded && styles.docRowUploaded]}>
               <View style={styles.docRowLeft}>
                 <Text style={styles.docRowLabel}>
-                  {doc.label}
+                  {isOrganizerApplication && doc.key === 'license' ? 'CV / Resume' : doc.label}
                   {doc.required && <Text style={styles.requiredStar}> *</Text>}
                 </Text>
                 <Text style={styles.docRowDesc}>{doc.desc}</Text>
@@ -398,7 +404,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId }) => {
         <View style={styles.docSummaryBox}>
           <Text style={styles.docSummaryText}>
             {docCount} of {DOC_TYPES.length} documents attached
-            {!uploadedDocs.license && <Text style={styles.docSummaryWarn}> — License required</Text>}
+            {!uploadedDocs.license && <Text style={styles.docSummaryWarn}> — {isOrganizerApplication ? 'CV required' : 'License required'}</Text>}
           </Text>
           <View style={styles.docProgressTrack}>
             <View style={[styles.docProgressFill, { width: `${(docCount / DOC_TYPES.length) * 100}%` }]} />

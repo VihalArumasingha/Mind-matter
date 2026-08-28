@@ -72,6 +72,14 @@ const OrganizerDashboardScreen = ({navigation}) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
+                <Pressable
+                    style={styles.menuButton}
+                    accessibilityLabel="Open profile and navigation"
+                    accessibilityRole="button"
+                    hitSlop={12}
+                    onPress={() => navigation.navigate('OrganizerProfile')}>
+                    <Text style={styles.menuIcon}>☰</Text>
+                </Pressable>
                 <Text style={styles.brand}>MindMatter</Text>
                 <Text style={styles.bellIcon}>🔔</Text>
             </View>
@@ -239,9 +247,23 @@ const styles = StyleSheet.create({
     },
 
     brand: {
+        flex: 1,
+        marginLeft: 16,
         fontSize: 18,
         fontWeight: '700',
         color: '#252A25',
+    },
+
+    menuIcon: {
+        fontSize: 24,
+        color: '#0AA35C',
+    },
+
+    menuButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     bellIcon: {

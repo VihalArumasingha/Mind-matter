@@ -404,6 +404,13 @@ export const approveProfessional = async (req, res) => {
     let user;
 
     if (application.userId) {
+<<<<<<< HEAD
+      await User.findByIdAndUpdate(application.userId, {
+        role: application.profession === 'Community Organizer'
+          ? 'communityOrganizer'
+          : 'therapist'
+      });
+=======
       console.log('Updating existing user with ID:', application.userId);
       // Update existing user to therapist role - skip documents to avoid schema conflicts
       user = await User.findByIdAndUpdate(application.userId, {
@@ -456,6 +463,7 @@ export const approveProfessional = async (req, res) => {
         });
         console.log('Created new user with therapist role:', user.name, 'Role:', user.role);
       }
+>>>>>>> origin/main
     }
     
     await AuditLog.create({

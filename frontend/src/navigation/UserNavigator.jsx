@@ -5,9 +5,13 @@ import UserBottomTabs from './UserBottomTabs'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import ProfessionalHelpScreen from '../features/professionalSupport/screens/ProfessionalHelpScreen'
 import ProfessionalPostsScreen from '../features/professionalSupport/screens/ProfessionalPostsScreen'
+<<<<<<< HEAD
+import OrganizerApplicationScreen from '../features/profile/screens/OrganizerApplicationScreen'
+=======
 import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
+>>>>>>> origin/main
 
 const Stack = createNativeStackNavigator()
 
@@ -35,6 +39,10 @@ const UserNavigator = () => {
             />
 
             <Stack.Screen
+<<<<<<< HEAD
+                name="OrganizerApplication"
+                component={OrganizerApplicationScreen}
+=======
                 name="ProfessionalAvailabilityBooking"
                 component={ProfessionalAvailabilityBookingScreen}
             />
@@ -47,6 +55,7 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MyPosts"
                 component={MyPostsScreen}
+>>>>>>> origin/main
             />
         </Stack.Navigator>
     )

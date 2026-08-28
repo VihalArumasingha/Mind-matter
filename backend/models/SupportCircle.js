@@ -47,6 +47,12 @@ const supportCircleSchema = new mongoose.Schema(
             default: ''
         },
 
+        rules: {
+            type: String,
+            trim: true,
+            default: ''
+        },
+
         coverImage: {
             type: String,
             default: ''
