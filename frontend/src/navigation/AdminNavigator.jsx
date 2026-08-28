@@ -23,11 +23,15 @@ import {
   suspendUserApi,
   unsuspendUserApi,
   approveProfessionalApi,
-  rejectProfessionalApi
+  rejectProfessionalApi,
+  keepPostApi,
+  restrictPostApi,
+  removePostApi
 } from '../features/admin/services/adminService';
 import { useAuth } from '../context/AuthContext';
 import UsersManagementView from '../features/admin/views/UsersManagementView';
 import ProfessionalsManagementView from '../features/admin/views/ProfessionalsManagementView';
+import PostsManagementView from '../features/admin/views/PostsManagementView';
 
 const Stack = createNativeStackNavigator();
 
@@ -333,15 +337,19 @@ const CommunitiesScreen = ({ navigation }) => {
 const PostsScreen = ({ navigation }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { token } = useAuth();
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getPostsApi(token);
+      console.log('Posts fetched:', response?.length || 0);
       setPosts(response || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setError(error.message || 'Failed to load posts');
     } finally {
       setLoading(false);
     }
@@ -353,17 +361,80 @@ const PostsScreen = ({ navigation }) => {
     }, [token])
   );
 
+  const handleKeepPost = async (postId) => {
+    try {
+      await keepPostApi(token, postId);
+      Alert.alert('Success', 'Post marked as approved and kept active');
+      await fetchPosts(); 
+    } catch (error) {
+      console.error('Error keeping post:', error);
+      Alert.alert('Error', error.message || 'Failed to keep post');
+    }
+  };
+
+  const handleRestrictPost = async (postId, reason) => {
+    try {
+      await restrictPostApi(token, postId, reason);
+      Alert.alert('Success', 'Post restricted with warning label');
+      fetchPosts(); 
+    } catch (error) {
+      console.error('Error restricting post:', error);
+      Alert.alert('Error', error.message || 'Failed to restrict post');
+    }
+  };
+
+  const handleRemovePost = async (postId) => {
+    Alert.alert(
+      'Remove Post',
+      'Are you sure you want to remove this post? This action can be reversed if needed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removePostApi(token, postId);
+              Alert.alert('Success', 'Post removed successfully');
+              fetchPosts(); // Refresh the list
+            } catch (error) {
+              console.error('Error removing post:', error);
+              Alert.alert('Error', error.message || 'Failed to remove post');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4E8C4A" />
+        <Text style={styles.loadingText}>Loading posts...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={fetchPosts}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.placeholderContainer}>
-      <Text style={styles.placeholderText}>Posts Management</Text>
-      <Text style={styles.placeholderSubtext}>Total: {posts.length}</Text>
-      <Pressable 
-        style={[styles.retryButton, { marginTop: 20 }]} 
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.retryButtonText}>Go Back</Text>
-      </Pressable>
-    </View>
+    <PostsManagementView 
+      posts={posts}
+      onKeepPost={handleKeepPost}
+      onRestrictPost={handleRestrictPost}
+      onRemovePost={handleRemovePost}
+      onRefresh={fetchPosts}
+    />
   );
 };
 

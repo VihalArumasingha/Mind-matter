@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, BackHandler,
@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { submitTherapistApplicationWithFiles } from '../../admin/services/adminService';
 import { PROFESSION_CATEGORIES } from '../../../config/professions';
+import { useAuth } from '../../../context/AuthContext';
 
 const COLORS = {
   primary: '#0D9488',
@@ -67,6 +68,7 @@ const StepBar = ({ step }) => (
 const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationType = 'professional' }) => {
   const isOrganizerApplication = applicationType === 'organizer';
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -81,6 +83,8 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
   const [focusedField, setFocusedField] = useState(null);
   const [step, setStep] = useState(1);
   const [pickingDoc, setPickingDoc] = useState(null);
+
+
 
   useEffect(() => {
     const onBackPress = () => {
@@ -152,41 +156,30 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
     }
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('fullName', fullName.trim());
-      formData.append('email', email.trim());
-      formData.append('phone', phone.trim());
-      formData.append('profession', profession);
-      formData.append('licenseNum', licenseNum.trim());
-      formData.append('specialization', specialization.trim() || 'General Mental Health Support');
-      formData.append('expYears', parseInt(expYears, 10) || 1);
-      formData.append('bio', bio.trim());
-      formData.append('userId', userId || '');
-
-      Object.values(uploadedDocs).forEach((doc) => {
-        formData.append('documents', {
+      const formData = {
+        fullName: fullName.trim(),
+        email: email.trim(), // Save the form email as-is in the application
+        phone: phone.trim(),
+        profession: profession,
+        licenseNum: licenseNum.trim(),
+        specialization: specialization.trim() || 'General Mental Health Support',
+        expYears: parseInt(expYears, 10) || 1,
+        bio: bio.trim(),
+        userId: userId || user?._id || '', // Use logged-in user's ID for account linking
+        userEmail: user?.email || '', // Use logged-in user's email for account linking
+        user: user, // Pass the entire user object
+        documents: Object.values(uploadedDocs).map((doc) => ({
           uri: doc.uri,
           type: doc.mimeType || 'application/pdf',
           name: doc.fileName || 'document.pdf',
-        });
-      });
+        })),
+      };
 
-      console.log('Submitting FormData...');
+      console.log('Submitting application - Form email:', email.trim(), 'Account email:', user?.email);
 
-      const response = await fetch('http://10.0.2.2:5000/api/admin/professionals/applications/apply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
+      const data = await submitTherapistApplicationWithFiles(formData);
       console.log('Response:', data);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit application');
-      }
       setSubmittedSuccess(true);
       if (onSubmitted) onSubmitted();
     } catch (err) {
@@ -205,8 +198,14 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         </View>
         <Text style={styles.successTitle}>Application Submitted!</Text>
         <Text style={styles.successDesc}>
+<<<<<<< HEAD
           Thank you for applying to become a {isOrganizerApplication ? 'community organizer' : 'verified therapist'} on MindMatter. Administrators
           will review your credentials and documents shortly.
+=======
+          Thank you for applying to be a verified therapist on MindMatter. Administrators
+          will review your credentials and license documents shortly. Once approved, you'll be able
+          to login with your account email and password to access the volunteer dashboard.
+>>>>>>> origin/main
         </Text>
         <View style={styles.successInfoBox}>
           <Text style={styles.successInfoText}>📄 {Object.keys(uploadedDocs).length} document(s) attached</Text>

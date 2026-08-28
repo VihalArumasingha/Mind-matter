@@ -18,13 +18,21 @@ export const getProfile = async token => {
 }
 
 export const updateProfile = async (token, profileData) => {
+    const {profilePicture, ...fields} = profileData
+    const body = profilePicture ? new FormData() : JSON.stringify(fields)
+
+    if (profilePicture) {
+        Object.entries(fields).forEach(([key, value]) => body.append(key, value))
+        body.append('profilePicture', profilePicture)
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/users/me`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json',
+            ...(profilePicture ? {} : {'Content-Type': 'application/json'}),
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(profileData),
+        body,
     })
 
     const data = await response.json()

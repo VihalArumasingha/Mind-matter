@@ -80,10 +80,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleBecomeVolunteer = () => {
-    if (user?.role === 'therapist' || user?.role === 'professional') {
+    if (user?.role === 'therapist' || user?.role === 'volunteer') {
       Alert.alert(
         'Already Verified',
-        'You are already a verified therapist/professional on MindMatter.'
+        'You are already a verified therapist/volunteer on MindMatter. You have access to the volunteer dashboard.'
       );
       return;
     }
@@ -116,9 +116,13 @@ const ProfileScreen = ({ navigation }) => {
 
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </Text>
+            {user?.profilePicture ? (
+              <Image source={{ uri: user.profilePicture }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            )}
           </View>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
@@ -160,7 +164,10 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.postsTitleRow}>
             <Text style={styles.sectionTitle}>My Posts</Text>
-            <Text style={styles.postCount}>{myPosts.length}</Text>
+            <Pressable onPress={() => navigation.navigate('MyPosts')} hitSlop={10} style={styles.postsLink}>
+              <Text style={styles.postCount}>{myPosts.length}</Text>
+              <Text style={styles.postsArrow}>›</Text>
+            </Pressable>
           </View>
 
           {isLoadingPosts ? (
@@ -170,7 +177,7 @@ const ProfileScreen = ({ navigation }) => {
               <Text style={styles.emptyPostsText}>You have not shared any posts yet.</Text>
             </View>
           ) : (
-            myPosts.map(post => (
+            myPosts.slice(0, 1).map(post => (
               <View key={post._id} style={styles.postCard}>
                 <Text style={styles.postDate}>
                   {new Date(post.createdAt).toLocaleDateString()}
@@ -305,6 +312,12 @@ const styles = StyleSheet.create({
         marginBottom: 13,
     },
 
+      avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 46,
+      },
+
     avatarText: {
         fontSize: 36,
         fontWeight: '700',
@@ -397,6 +410,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+      },
+
+      postsLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+
+      postsArrow: {
+        marginLeft: 6,
+        color: '#4E824D',
+        fontSize: 27,
       },
 
       postCount: {

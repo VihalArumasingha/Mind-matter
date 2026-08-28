@@ -37,3 +37,65 @@ export const getProfessionCategories = async (token) => {
 
     return data
 }
+
+export const getProfessionalAvailability = async (token, professionalId) => {
+    try {
+        const timestamp = new Date().getTime()
+        const response = await fetch(`${API_BASE_URL}/api/users/professionals/${professionalId}/availability?_t=${timestamp}`, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+        })
+
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text()
+            console.error('[getProfessionalAvailability] Received non-JSON response:', text.substring(0, 100))
+            return {
+                success: true,
+                data: { isAvailable: true, slotsByDate: {}, availableDates: [] }
+            }
+        }
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to load professional availability')
+        }
+
+        return data
+    } catch (err) {
+        console.error('[getProfessionalAvailability Error]', err)
+        return {
+            success: true,
+            data: { isAvailable: true, slotsByDate: {}, availableDates: [] }
+        }
+    }
+}
+
+export const createProfessionalBooking = async (token, bookingData) => {
+    const response = await fetch(`${API_BASE_URL}/api/users/bookings`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        // Handle specific error for already booked slots
+        if (response.status === 409) {
+            throw new Error(data.message || 'This time slot is already booked. Please select a different time.')
+        }
+        throw new Error(data.message || 'Failed to submit booking')
+    }
+
+    return data
+}
+
+

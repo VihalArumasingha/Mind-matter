@@ -51,7 +51,28 @@ const postSchema = new mongoose.Schema(
             type: String,
             default: ''
         },
-        comments: [commentSchema]
+        comments: [commentSchema],
+        status: {
+      type: String,
+      enum: ['active', 'restricted', 'removed', 'pending'],
+      default: 'active'
+    },
+    needsReview: {
+            type: Boolean,
+            default: true  
+        },
+    restrictionReason: {
+      type: String,
+      default: null
+    },
+    reportsCount: {
+      type: Number,
+      default: 0
+    },
+    likes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }]
     },
     { timestamps: true }
 )

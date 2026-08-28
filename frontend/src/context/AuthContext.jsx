@@ -12,27 +12,35 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [token, setToken] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState(null)
 
     useEffect(() => {
+        console.log('[AuthContext] Component mounted, starting session restore...')
         restoreSession()
     }, [])
 
     const restoreSession = async () => {
         try {
+            console.log('[AuthContext] Starting session restore...')
             const credentials = await Keychain.getGenericPassword()
 
             if (!credentials) {
+                console.log('[AuthContext] No credentials found, user not logged in')
                 setIsLoading(false)
                 return
             }
 
             const storedToken = credentials.password
+            console.log('[AuthContext] Found credentials, fetching current user...')
 
             const data = await getCurrentUser(storedToken)
 
             setToken(storedToken)
             setUser(data.user)
+            console.log('[AuthContext] Session restored successfully')
         } catch (error) {
+            console.log('[AuthContext] Session restore error:', error)
+            setError(error.message)
             await Keychain.resetGenericPassword()
             setToken(null)
             setUser(null)
@@ -79,6 +87,7 @@ export const AuthProvider = ({ children }) => {
                 user,
                 token,
                 isLoading,
+                error,
                 isAuthenticated: !!user,
                 login,
                 logout,

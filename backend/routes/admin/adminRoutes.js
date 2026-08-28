@@ -14,7 +14,12 @@ import {
   resolveReport,
   dismissReport,
   getAuditLogs,
-  getAnalytics
+  getAnalytics,
+  getPosts,
+  keepPost,
+  restrictPost,
+  removePost,
+  deletePostPermanently
 } from '../../controllers/admin/adminController.js';
 import {uploadMultiple} from '../../middleware/uploadMiddleware.js';
 
@@ -36,6 +41,11 @@ router.put('/reports/:id/investigate', investigateReport);
 router.put('/reports/:id/resolve', resolveReport);
 router.put('/reports/:id/dismiss', dismissReport);
 
+router.get('/posts', getPosts);
+router.put('/posts/:id/keep', keepPost);
+router.put('/posts/:id/restrict', restrictPost);
+router.put('/posts/:id/remove', removePost);
+router.delete('/posts/:id', deletePostPermanently);
 router.get('/audit-logs', getAuditLogs);
 
 router.get('/analytics', getAnalytics);
