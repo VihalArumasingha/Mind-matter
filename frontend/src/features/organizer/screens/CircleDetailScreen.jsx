@@ -112,14 +112,24 @@ const CircleDetailScreen = ({navigation, route}) => {
             <View style={styles.actionGrid}>
                 <Pressable
                     style={styles.actionCard}
-                    onPress={() => navigation.navigate('JoinRequests', {circleId})}>
+                    onPress={() =>
+                        navigation.navigate('JoinRequests', {
+                            circleId,
+                            circleTitle: circle.topic,
+                        })
+                    }>
                     <Text style={styles.actionCardTitle}>Join requests</Text>
                     <Text style={styles.actionCardSubtitle}>Review & approve</Text>
                 </Pressable>
 
                 <Pressable
                     style={styles.actionCard}
-                    onPress={() => navigation.navigate('MemberList', {circleId})}>
+                    onPress={() =>
+                        navigation.navigate('MemberList', {
+                            circleId,
+                            circleTitle: circle.topic,
+                        })
+                    }>
                     <Text style={styles.actionCardTitle}>Members</Text>
                     <Text style={styles.actionCardSubtitle}>View & manage</Text>
                 </Pressable>
@@ -150,17 +160,35 @@ const CircleDetailScreen = ({navigation, route}) => {
                 </View>
             ) : (
                 sessions.map(session => (
-                    <Pressable
-                        key={session._id}
-                        style={styles.sessionCard}
-                        onPress={() =>
-                            navigation.navigate('SessionForm', {circleId, sessionId: session._id})
-                        }>
+                    <View key={session._id} style={styles.sessionCard}>
                         <View style={styles.sessionInfo}>
                             <Text style={styles.sessionTitle}>{session.title}</Text>
                             <Text style={styles.sessionMeta}>
                                 {new Date(session.scheduledAt).toLocaleString()} · {session.location}
                             </Text>
+                            {/* ── Quick links ── */}
+                            <View style={styles.sessionLinkRow}>
+                                <Pressable
+                                    onPress={() =>
+                                        navigation.navigate('SessionForm', {
+                                            circleId,
+                                            sessionId: session._id,
+                                        })
+                                    }>
+                                    <Text style={styles.sessionLink}>Edit</Text>
+                                </Pressable>
+                                <Text style={styles.sessionLinkDot}>·</Text>
+                                <Pressable
+                                    onPress={() =>
+                                        navigation.navigate('Attendance', {
+                                            sessionId: session._id,
+                                            sessionTitle: session.title,
+                                            circleId,
+                                        })
+                                    }>
+                                    <Text style={styles.sessionLink}>Attendance</Text>
+                                </Pressable>
+                            </View>
                         </View>
                         <View
                             style={[
@@ -181,7 +209,7 @@ const CircleDetailScreen = ({navigation, route}) => {
                                 {session.status}
                             </Text>
                         </View>
-                    </Pressable>
+                    </View>
                 ))
             )}
         </ScrollView>
@@ -338,6 +366,24 @@ const styles = StyleSheet.create({
     statusBadgeText: {
         fontSize: 11,
         fontWeight: '500',
+    },
+
+    sessionLinkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 6,
+    },
+
+    sessionLink: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4E8C4A',
+    },
+
+    sessionLinkDot: {
+        fontSize: 12,
+        color: '#9DA89D',
     },
 })
 
