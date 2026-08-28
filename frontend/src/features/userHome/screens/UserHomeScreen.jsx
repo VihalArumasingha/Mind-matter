@@ -6,6 +6,15 @@ import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
 
+const MOODS = [
+    {value: 'happy', label: 'Happy', emoji: '😊'},
+    {value: 'calm', label: 'Calm', emoji: '😌'},
+    {value: 'anxious', label: 'Anxious', emoji: '😟'},
+    {value: 'sad', label: 'Sad', emoji: '😢'},
+    {value: 'tired', label: 'Tired', emoji: '😴'},
+    {value: 'grateful', label: 'Grateful', emoji: '🍃'},
+]
+
 const UserHomeScreen = ({navigation}) => {
     console.log('[UserHomeScreen] Component rendering')
     const {token, user} = useAuth()
@@ -67,20 +76,37 @@ const UserHomeScreen = ({navigation}) => {
     }
 
     const renderPost = ({item: post}) => {
+        const isAnonymous = post.isAnonymous
+        const authorName = isAnonymous ? 'Anonymous' : (post.author?.name || 'MindMatter user')
+        const moodInfo = MOODS.find(item => item.value === post.mood)
+
         return (
             <View style={styles.postCard}>
                 <View style={styles.postHeader}>
                     <View style={styles.authorInfo}>
                         <View style={styles.authorAvatar}>
-                            {post.author?.profilePicture ? <Image source={{uri: post.author.profilePicture}} style={styles.authorImage} /> : <Text style={styles.authorInitial}>{post.author?.name?.charAt(0)?.toUpperCase() || 'M'}</Text>}
+                            {isAnonymous ? (
+                                <Icon name="masks" size={20} color="#397A49" />
+                            ) : post.author?.profilePicture ? (
+                                <Image source={{uri: post.author.profilePicture}} style={styles.authorImage} />
+                            ) : (
+                                <Text style={styles.authorInitial}>{post.author?.name?.charAt(0)?.toUpperCase() || 'M'}</Text>
+                            )}
                         </View>
                         <View>
-                            <Text style={styles.author}>{post.author?.name || 'MindMatter user'}</Text>
+                            <Text style={styles.author}>{authorName}</Text>
                             <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString()}</Text>
                         </View>
                     </View>
                     <Icon name="more-horiz" size={23} color="#243024" />
                 </View>
+                {post.title ? <Text style={styles.postTitle}>{post.title}</Text> : null}
+                {moodInfo ? (
+                    <View style={styles.moodBadge}>
+                        <Text style={styles.moodBadgeEmoji}>{moodInfo.emoji}</Text>
+                        <Text style={styles.moodBadgeText}>Feeling {moodInfo.label}</Text>
+                    </View>
+                ) : null}
                 <Text style={styles.content}>{post.description || post.content}</Text>
                 {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
 
@@ -233,6 +259,35 @@ const styles = StyleSheet.create({
         color: '#243024',
         fontSize: 14,
         lineHeight: 22,
+    },
+
+    postTitle: {
+        marginTop: 12,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#17231A',
+    },
+
+    moodBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginTop: 10,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 14,
+        backgroundColor: '#EAF3E7',
+        gap: 6,
+    },
+
+    moodBadgeEmoji: {
+        fontSize: 13,
+    },
+
+    moodBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#397A49',
     },
 
     postImage: {

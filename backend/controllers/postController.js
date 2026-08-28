@@ -12,6 +12,8 @@ const findPost = id => Post.findById(id).populate(postPopulation)
 
 const isValidId = id => mongoose.isValidObjectId(id)
 
+const MOOD_OPTIONS = ['happy', 'calm', 'anxious', 'sad', 'tired', 'grateful']
+
 const uploadPostImage = file => new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
         {folder: 'mindmatter_feed_posts', resource_type: 'image'},
@@ -24,6 +26,8 @@ const uploadPostImage = file => new Promise((resolve, reject) => {
 const readPostFields = body => ({
     title: typeof body.title === 'string' ? body.title.trim() : '',
     description: typeof body.description === 'string' ? body.description.trim() : '',
+    isAnonymous: body.isAnonymous === true || body.isAnonymous === 'true',
+    mood: MOOD_OPTIONS.includes(body.mood) ? body.mood : null,
 })
 
 const validatePostFields = ({title, description}) => {
@@ -33,13 +37,27 @@ const validatePostFields = ({title, description}) => {
     return null
 }
 
+// Masks author identity on anonymous posts while the real author stays stored for ownership checks
+const serializePost = post => {
+    if (!post) return post
+    const plain = typeof post.toObject === 'function' ? post.toObject() : post
+
+    if (plain.isAnonymous) {
+        plain.author = {_id: plain.author?._id, name: 'Anonymous', profilePicture: null}
+    }
+
+    return plain
+}
+
+const serializePosts = posts => posts.map(serializePost)
+
 export const getFeedPosts = async (req, res) => {
     try {
         const posts = await Post.find()
             .sort({ createdAt: -1 })
             .populate(postPopulation)
 
-        res.status(200).json({ posts })
+        res.status(200).json({ posts: serializePosts(posts) })
     } catch (error) {
         console.error('[Get Feed Posts Error]', error)
         res.status(500).json({ message: 'Server error while fetching posts' })
@@ -71,7 +89,7 @@ export const getPost = async (req, res) => {
             return res.status(404).json({ message: 'Post not found' })
         }
 
-        res.status(200).json({ post })
+        res.status(200).json({ post: serializePost(post) })
     } catch (error) {
         console.error('[Get Post Error]', error)
         res.status(500).json({ message: 'Server error while fetching post' })
@@ -100,7 +118,7 @@ export const createPost = async (req, res) => {
             await post.save()
         }
 
-        res.status(201).json({ post: await findPost(post._id) })
+        res.status(201).json({ post: serializePost(await findPost(post._id)) })
     } catch (error) {
         console.error('[Create Post Error]', error)
         res.status(500).json({ message: 'Server error while creating post' })
@@ -135,6 +153,8 @@ export const updatePost = async (req, res) => {
         post.title = fields.title
         post.description = fields.description
         post.content = fields.description
+        post.isAnonymous = fields.isAnonymous
+        post.mood = fields.mood
 
         if (req.file) {
             const image = await uploadPostImage(req.file)
@@ -144,7 +164,7 @@ export const updatePost = async (req, res) => {
 
         await post.save()
 
-        res.status(200).json({ post: await findPost(post._id) })
+        res.status(200).json({ post: serializePost(await findPost(post._id)) })
     } catch (error) {
         console.error('[Update Post Error]', error)
         res.status(500).json({ message: 'Server error while updating post' })
@@ -206,7 +226,7 @@ export const addComment = async (req, res) => {
         post.comments.push({ user: req.user._id, content })
         await post.save()
 
-        res.status(201).json({ post: await findPost(post._id) })
+        res.status(201).json({ post: serializePost(await findPost(post._id)) })
     } catch (error) {
         console.error('[Add Comment Error]', error)
         res.status(500).json({ message: 'Server error while adding comment' })
@@ -246,7 +266,7 @@ export const updateComment = async (req, res) => {
         comment.content = content
         await post.save()
 
-        res.status(200).json({ post: await findPost(post._id) })
+        res.status(200).json({ post: serializePost(await findPost(post._id)) })
     } catch (error) {
         console.error('[Update Comment Error]', error)
         res.status(500).json({ message: 'Server error while updating comment' })
@@ -275,7 +295,7 @@ export const deleteComment = async (req, res) => {
         comment.deleteOne()
         await post.save()
 
-        res.status(200).json({ post: await findPost(post._id) })
+        res.status(200).json({ post: serializePost(await findPost(post._id)) })
     } catch (error) {
         console.error('[Delete Comment Error]', error)
         res.status(500).json({ message: 'Server error while deleting comment' })
