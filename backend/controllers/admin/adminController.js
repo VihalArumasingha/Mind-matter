@@ -404,17 +404,12 @@ export const approveProfessional = async (req, res) => {
     let user;
 
     if (application.userId) {
-<<<<<<< HEAD
-      await User.findByIdAndUpdate(application.userId, {
-        role: application.profession === 'Community Organizer'
-          ? 'communityOrganizer'
-          : 'therapist'
-      });
-=======
       console.log('Updating existing user with ID:', application.userId);
-      // Update existing user to therapist role - skip documents to avoid schema conflicts
+      const roleToSet = application.profession === 'Community Organizer'
+        ? 'communityOrganizer'
+        : 'therapist';
       user = await User.findByIdAndUpdate(application.userId, {
-        role: 'therapist',
+        role: roleToSet,
         phone: application.phone,
         profession: application.profession,
         licenseNum: application.licenseNum,
@@ -422,7 +417,7 @@ export const approveProfessional = async (req, res) => {
         expYears: application.expYears,
         bio: application.bio
       }, { returnDocument: 'after' });
-      console.log('Updated user role to therapist:', user.name, 'New role:', user.role);
+      console.log('Updated user role to:', roleToSet, user?.name, 'New role:', user?.role);
     } else {
       console.log('Checking for existing user with account email:', application.accountEmail);
       // Check if user already exists with account email (use accountEmail for linking)
@@ -463,7 +458,6 @@ export const approveProfessional = async (req, res) => {
         });
         console.log('Created new user with therapist role:', user.name, 'Role:', user.role);
       }
->>>>>>> origin/main
     }
     
     await AuditLog.create({
