@@ -3,14 +3,15 @@ import { StyleSheet, Dimensions } from 'react-native';
 const { width } = Dimensions.get('window');
 
 export const COLORS = {
-  primary: '#0D9488', 
+  primary: '#0a6d3d', 
   primaryDark: '#0F766E',
   primaryLight: '#E6FFFA',
   bgDark: '#F8FAFC', 
   cardDark: '#FFFFFF', 
   cardLight: '#FFFFFF',
   surfaceDark: '#F1F5F9', 
-  borderDark: '#E2E8F0', 
+  borderDark: '#E2E8F0',
+  borderDarker: '#0a6d3d',
   borderLight: '#CBD5E1',
   textPrimary: '#0F172A', 
   textSecondary: '#475569', 
@@ -65,10 +66,10 @@ export const adminStyles = StyleSheet.create({
     zIndex: 1000,
     elevation: 25,
     borderRightWidth: 1,
-    borderRightColor: COLORS.borderDark,
+    borderRightColor: COLORS.borderDarker,
     paddingHorizontal: 14,
     paddingBottom: 16,
-    shadowColor: '#000',
+    shadowColor: 'transparent',
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 10
