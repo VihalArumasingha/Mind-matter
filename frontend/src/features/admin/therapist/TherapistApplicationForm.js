@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, StyleSheet, BackHandler,
@@ -28,11 +28,17 @@ const COLORS = {
   infoBg: '#EFF6FF',
 };
 
-const DOC_TYPES = [
+const PROFESSIONAL_DOC_TYPES = [
   { key: 'license', label: 'State License Certificate', desc: 'Official state board license (PDF)', required: true },
   { key: 'degree', label: 'Degree / Diploma', desc: 'University degree transcript (PDF)', required: false },
   { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport (PDF/JPG)', required: false },
   { key: 'references', label: 'Professional References', desc: 'Reference letter (PDF/DOC)', required: false },
+];
+
+const ORGANIZER_DOC_TYPES = [
+  { key: 'resume', label: 'Resume / CV', desc: 'Your relevant experience and community background (PDF/DOC)', required: true },
+  { key: 'id', label: 'Government ID', desc: 'National/State ID or Passport (PDF/JPG)', required: false },
+  { key: 'references', label: 'Community Reference', desc: 'Optional reference or volunteer note (PDF/DOC)', required: false },
 ];
 
 const FormField = ({ label, required, children }) => (
@@ -59,7 +65,7 @@ const StepBar = ({ step }) => (
     </View>
     <View style={styles.stepLabelRow}>
       <Text style={[styles.stepLabelText, step === 1 && styles.stepLabelActive]}>Personal Info</Text>
-      <View style={{ flex: 1 }} />
+      <View style={styles.stepSpacer} />
       <Text style={[styles.stepLabelText, step === 2 && styles.stepLabelActive]}>Upload Docs</Text>
     </View>
   </View>
@@ -74,9 +80,12 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
   const [phone, setPhone] = useState('');
   const [profession, setProfession] = useState(isOrganizerApplication ? 'Community Organizer' : PROFESSION_CATEGORIES[0]);
   const [licenseNum, setLicenseNum] = useState('');
+  const [communityFocus, setCommunityFocus] = useState('');
   const [specialization, setSpecialization] = useState('');
   const [expYears, setExpYears] = useState('5');
   const [bio, setBio] = useState('');
+  const currentDocTypes = isOrganizerApplication ? ORGANIZER_DOC_TYPES : PROFESSIONAL_DOC_TYPES;
+  const requiredDocKey = isOrganizerApplication ? 'resume' : 'license';
   const [uploadedDocs, setUploadedDocs] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
@@ -142,32 +151,37 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
   };
 
   const goToStep2 = () => {
-    if (!fullName.trim() || !email.trim() || !licenseNum.trim()) {
-      Alert.alert('Required Fields', 'Please fill Full Name, Email, and License or reference number.');
+    if (!fullName.trim() || !email.trim() || (!isOrganizerApplication && !licenseNum.trim())) {
+      Alert.alert(
+        'Required Fields',
+        isOrganizerApplication
+          ? 'Please fill in your full name and email address.'
+          : 'Please fill Full Name, Email, and License or reference number.'
+      );
       return;
     }
     setStep(2);
   };
 
   const handleSubmit = async () => {
-    if (!uploadedDocs.license) {
-      Alert.alert('Missing Document', `${isOrganizerApplication ? 'CV or resume' : 'State License Certificate'} is required to submit your application.`);
+    if (!uploadedDocs[requiredDocKey]) {
+      Alert.alert('Missing Document', `${isOrganizerApplication ? 'Your resume or CV' : 'State License Certificate'} is required to submit your application.`);
       return;
     }
     setSubmitting(true);
     try {
       const formData = {
         fullName: fullName.trim(),
-        email: email.trim(), // Save the form email as-is in the application
+        email: email.trim(),
         phone: phone.trim(),
         profession: profession,
-        licenseNum: licenseNum.trim(),
-        specialization: specialization.trim() || 'General Mental Health Support',
-        expYears: parseInt(expYears, 10) || 1,
+        licenseNum: isOrganizerApplication ? communityFocus.trim() : licenseNum.trim(),
+        specialization: isOrganizerApplication ? (communityFocus.trim() || 'Community Engagement') : (specialization.trim() || 'General Mental Health Support'),
+        expYears: isOrganizerApplication ? 1 : (parseInt(expYears, 10) || 1),
         bio: bio.trim(),
-        userId: userId || user?._id || '', // Use logged-in user's ID for account linking
-        userEmail: user?.email || '', // Use logged-in user's email for account linking
-        user: user, // Pass the entire user object
+        userId: userId || user?._id || '',
+        userEmail: user?.email || '',
+        user: user,
         documents: Object.values(uploadedDocs).map((doc) => ({
           uri: doc.uri,
           type: doc.mimeType || 'application/pdf',
@@ -229,10 +243,10 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         />
       </FormField>
 
-      <FormField label="Professional Email" required>
+      <FormField label={isOrganizerApplication ? 'Email Address' : 'Professional Email'} required>
         <TextInput
           style={[styles.input, focusedField === 'email' && styles.inputFocused]}
-          placeholder="e.g. sarah.c@psychology.org"
+          placeholder={isOrganizerApplication ? 'e.g. hello@community.org' : 'e.g. sarah.c@psychology.org'}
           placeholderTextColor={COLORS.textMuted}
           keyboardType="email-address"
           autoCapitalize="none"
@@ -270,48 +284,70 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         </View>
       </FormField>}
 
-      <FormField label={isOrganizerApplication ? 'Professional Reference Number' : 'State License Number'} required>
-        <TextInput
-          style={[styles.input, focusedField === 'license' && styles.inputFocused]}
-          placeholder={isOrganizerApplication ? 'e.g. ORG-2026-001' : 'e.g. PSY-99201-CA'}
-          placeholderTextColor={COLORS.textMuted}
-          autoCapitalize="characters"
-          value={licenseNum}
-          onChangeText={setLicenseNum}
-          onFocus={() => setFocusedField('license')}
-          onBlur={() => setFocusedField(null)}
-        />
-      </FormField>
+      {isOrganizerApplication ? (
+        <FormField label="Community Focus / Experience">
+          <TextInput
+            style={[styles.input, focusedField === 'license' && styles.inputFocused]}
+            placeholder="e.g. Youth outreach, wellness workshops, local support groups"
+            placeholderTextColor={COLORS.textMuted}
+            value={communityFocus}
+            onChangeText={setCommunityFocus}
+            onFocus={() => setFocusedField('license')}
+            onBlur={() => setFocusedField(null)}
+          />
+        </FormField>
+      ) : (
+        <FormField label="State License Number" required>
+          <TextInput
+            style={[styles.input, focusedField === 'license' && styles.inputFocused]}
+            placeholder="e.g. PSY-99201-CA"
+            placeholderTextColor={COLORS.textMuted}
+            autoCapitalize="characters"
+            value={licenseNum}
+            onChangeText={setLicenseNum}
+            onFocus={() => setFocusedField('license')}
+            onBlur={() => setFocusedField(null)}
+          />
+        </FormField>
+      )}
 
-      <FormField label="Specializations & Therapeutic Focus">
-        <TextInput
-          style={[styles.input, focusedField === 'spec' && styles.inputFocused]}
-          placeholder="e.g. CBT, Trauma Recovery, Adolescent Anxiety"
-          placeholderTextColor={COLORS.textMuted}
-          value={specialization}
-          onChangeText={setSpecialization}
-          onFocus={() => setFocusedField('spec')}
-          onBlur={() => setFocusedField(null)}
-        />
-      </FormField>
+      {!isOrganizerApplication && (
+        <>
+          <FormField label="Specializations & Therapeutic Focus">
+            <TextInput
+              style={[styles.input, focusedField === 'spec' && styles.inputFocused]}
+              placeholder="e.g. CBT, Trauma Recovery, Adolescent Anxiety"
+              placeholderTextColor={COLORS.textMuted}
+              value={specialization}
+              onChangeText={setSpecialization}
+              onFocus={() => setFocusedField('spec')}
+              onBlur={() => setFocusedField(null)}
+            />
+          </FormField>
 
-      <FormField label="Years of Clinical Experience">
-        <TextInput
-          style={[styles.input, focusedField === 'exp' && styles.inputFocused]}
-          placeholder="e.g. 5"
-          placeholderTextColor={COLORS.textMuted}
-          keyboardType="numeric"
-          value={expYears}
-          onChangeText={setExpYears}
-          onFocus={() => setFocusedField('exp')}
-          onBlur={() => setFocusedField(null)}
-        />
-      </FormField>
+          <FormField label="Years of Clinical Experience">
+            <TextInput
+              style={[styles.input, focusedField === 'exp' && styles.inputFocused]}
+              placeholder="e.g. 5"
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="numeric"
+              value={expYears}
+              onChangeText={setExpYears}
+              onFocus={() => setFocusedField('exp')}
+              onBlur={() => setFocusedField(null)}
+            />
+          </FormField>
+        </>
+      )}
 
-      <FormField label="Professional Bio & Background">
+      <FormField label={isOrganizerApplication ? 'Why do you want to be a community organizer?' : 'Professional Bio & Background'}>
         <TextInput
           style={[styles.input, styles.textarea, focusedField === 'bio' && styles.inputFocused]}
-          placeholder="Describe your clinical background, methodology, and what drives your practice..."
+          placeholder={
+            isOrganizerApplication
+              ? 'Tell us about your community work, your motivation, and the causes you care about...'
+              : 'Describe your clinical background, methodology, and what drives your practice...'
+          }
           placeholderTextColor={COLORS.textMuted}
           multiline
           textAlignVertical="top"
@@ -333,21 +369,21 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
     return (
       <View>
         <View style={styles.docInfoBanner}>
-          <Text style={styles.docInfoTitle}> Credential Document Upload</Text>
+          <Text style={styles.docInfoTitle}>{isOrganizerApplication ? 'Community Organizer Documents' : 'Credential Document Upload'}</Text>
           <Text style={styles.docInfoDesc}>
-            Tap "Choose File" to select documents from your phone. Files are encrypted and
-            reviewed only by verified MindMatter administrators. {isOrganizerApplication ? 'CV or resume is required.' : 'License Certificate is required.'}
+            Tap "Choose File" to select documents from your phone. Files are encrypted and reviewed only by
+            MindMatter administrators. {isOrganizerApplication ? 'A resume or CV is required.' : 'License Certificate is required.'}
           </Text>
         </View>
 
-        {DOC_TYPES.map((doc) => {
+        {currentDocTypes.map((doc) => {
           const uploaded = uploadedDocs[doc.key];
           const isPicking = pickingDoc === doc.key;
           return (
             <View key={doc.key} style={[styles.docRow, uploaded && styles.docRowUploaded]}>
               <View style={styles.docRowLeft}>
                 <Text style={styles.docRowLabel}>
-                  {isOrganizerApplication && doc.key === 'license' ? 'CV / Resume' : doc.label}
+                  {doc.label}
                   {doc.required && <Text style={styles.requiredStar}> *</Text>}
                 </Text>
                 <Text style={styles.docRowDesc}>{doc.desc}</Text>
@@ -397,11 +433,11 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
 
         <View style={styles.docSummaryBox}>
           <Text style={styles.docSummaryText}>
-            {docCount} of {DOC_TYPES.length} documents attached
-            {!uploadedDocs.license && <Text style={styles.docSummaryWarn}> — {isOrganizerApplication ? 'CV required' : 'License required'}</Text>}
+            {docCount} of {currentDocTypes.length} documents attached
+            {!uploadedDocs[requiredDocKey] && <Text style={styles.docSummaryWarn}> — {isOrganizerApplication ? 'Resume required' : 'License required'}</Text>}
           </Text>
           <View style={styles.docProgressTrack}>
-            <View style={[styles.docProgressFill, { width: `${(docCount / DOC_TYPES.length) * 100}%` }]} />
+            <View style={[styles.docProgressFill, { width: `${(docCount / currentDocTypes.length) * 100}%` }]} />
           </View>
         </View>
 
@@ -410,7 +446,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
             <Text style={styles.secondaryBtnText}>← Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.primaryBtn, { flex: 1, marginLeft: 10 }, submitting && styles.btnDisabled]}
+            style={[styles.primaryBtn, styles.primaryBtnWide, submitting && styles.btnDisabled]}
             onPress={handleSubmit}
             disabled={submitting}
           >
@@ -425,7 +461,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
       <ScrollView
         style={styles.container}
@@ -435,9 +471,11 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Professional Application</Text>
+          <Text style={styles.headerTitle}>{isOrganizerApplication ? 'Community Organizer Application' : 'Professional Application'}</Text>
           <Text style={styles.headerSubtitle}>
-            Apply to provide verified peer-support counseling and therapeutic sessions.
+            {isOrganizerApplication
+              ? 'Apply to support your community through outreach, events, and member engagement.'
+              : 'Apply to provide verified peer-support counseling and therapeutic sessions.'}
           </Text>
         </View>
 
@@ -469,6 +507,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
 };
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: COLORS.bg },
   container: { flex: 1, backgroundColor: COLORS.bg },
   contentContainer: { 
     paddingHorizontal: 16, 
@@ -497,6 +536,7 @@ const styles = StyleSheet.create({
   stepLine: { flex: 1, height: 2, backgroundColor: COLORS.border, marginHorizontal: 6 },
   stepLineActive: { backgroundColor: COLORS.primary },
   stepLabelRow: { flexDirection: 'row', marginBottom: 16, paddingHorizontal: 4 },
+  stepSpacer: { flex: 1 },
   stepLabelText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '600' },
   stepLabelActive: { color: COLORS.primary },
 
