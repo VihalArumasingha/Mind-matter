@@ -7,6 +7,7 @@ import {
     Text,
     View,
 } from 'react-native'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {
@@ -17,11 +18,17 @@ import {
 } from '../services/supportCircleService'
 
 const TABS = ['Overview', 'My Circles', 'Request']
+const BOTTOM_TABS = [
+    {key: 'dashboard', label: 'Dashboard', icon: 'view-dashboard-outline'},
+    {key: 'requests', label: 'Requests', icon: 'clipboard-list-outline'},
+    {key: 'profile', label: 'Profile', icon: 'account-outline'},
+]
 
 const OrganizerDashboardScreen = ({navigation}) => {
     const {token, user} = useAuth()
 
     const [activeTab, setActiveTab] = useState('Overview')
+    const [activeBottomTab, setActiveBottomTab] = useState('dashboard')
     const [stats, setStats] = useState(null)
     const [circles, setCircles] = useState([])
     const [requests, setRequests] = useState([])
@@ -59,6 +66,22 @@ const OrganizerDashboardScreen = ({navigation}) => {
         } catch (err) {
             setError(err.message || 'Failed to respond to request')
         }
+    }
+
+    const handleTabChange = tabName => {
+        if (tabName === 'profile') {
+            setActiveBottomTab('profile')
+            navigation.navigate('OrganizerProfile')
+            return
+        }
+
+        setActiveBottomTab(tabName)
+        if (tabName === 'requests') {
+            setActiveTab('Request')
+            return
+        }
+
+        setActiveTab('Overview')
     }
 
     if (isLoading) {
@@ -224,6 +247,28 @@ const OrganizerDashboardScreen = ({navigation}) => {
                     )}
                 </ScrollView>
             )}
+
+            <View style={styles.bottomNav}>
+                {BOTTOM_TABS.map(item => {
+                    const isActive = activeBottomTab === item.key
+
+                    return (
+                        <Pressable
+                            key={item.key}
+                            style={[styles.bottomNavItem, isActive && styles.bottomNavItemActive]}
+                            onPress={() => handleTabChange(item.key)}>
+                            <MaterialCommunityIcons
+                                name={item.icon}
+                                size={22}
+                                color={isActive ? '#4E8C4A' : '#707770'}
+                            />
+                            <Text style={[styles.bottomNavLabel, isActive && styles.bottomNavLabelActive]}>
+                                {item.label}
+                            </Text>
+                        </Pressable>
+                    )
+                })}
+            </View>
         </View>
     )
 }
@@ -313,7 +358,51 @@ const styles = StyleSheet.create({
 
     content: {
         padding: 16,
-        paddingBottom: 32,
+        paddingBottom: 96,
+    },
+
+    bottomNav: {
+        position: 'absolute',
+        left: 12,
+        right: 12,
+        bottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderWidth: 1,
+        borderColor: '#E5E9E1',
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+
+    bottomNavItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+
+    bottomNavItemActive: {
+        backgroundColor: '#E2EEDB',
+    },
+
+    bottomNavLabel: {
+        marginTop: 4,
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#707770',
+    },
+
+    bottomNavLabelActive: {
+        color: '#4E8C4A',
     },
 
     statRow: {
