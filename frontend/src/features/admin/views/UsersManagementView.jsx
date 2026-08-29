@@ -109,8 +109,6 @@ const UsersManagementView = ({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7EF' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7EF" />
       <ScrollView 
         style={adminStyles.bodyArea} 
         showsVerticalScrollIndicator={false}
@@ -123,14 +121,7 @@ const UsersManagementView = ({
           />
         }
       >
-        <View style={[adminStyles.card, { backgroundColor: COLORS.primary, borderColor: COLORS.primaryDark }]}>
-          <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>
-           User Management
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 4 }}>
-            Total Users: {users.length} • Active: {users.filter(u => u.status === 'active').length}
-          </Text>
-        </View>
+        
         <View style={adminStyles.filterBar}>
           
           <View style={{ marginBottom: 10, width: '100%' }}>
@@ -350,7 +341,7 @@ const UsersManagementView = ({
 
                   {selectedUser.status === 'suspended' && (
                     <View style={{ backgroundColor: COLORS.dangerBg, padding: 12, borderRadius: 8, marginBottom: 14 }}>
-                      <Text style={{ color: COLORS.danger, fontWeight: 'bold', fontSize: 12 }}>🚫 Suspension Active</Text>
+                      <Text style={{ color: COLORS.danger, fontWeight: 'bold', fontSize: 12 }}>Suspension Active</Text>
                       <Text style={{ color: COLORS.textPrimary, fontSize: 11, marginTop: 2 }}>
                         Reason: {selectedUser.suspensionReason || 'N/A'}
                       </Text>
@@ -462,7 +453,7 @@ const UsersManagementView = ({
           <View style={adminStyles.modalOverlay}>
             <View style={[adminStyles.modalBox, { maxWidth: 420 }]}>
               <View style={adminStyles.modalHeader}>
-                <Text style={adminStyles.modalTitle}>🚫 Suspend Account</Text>
+                <Text style={adminStyles.modalTitle}>Suspend Account</Text>
                 <TouchableOpacity style={adminStyles.closeButton} onPress={() => setModalType(null)}>
                   <Text style={adminStyles.closeButtonText}>✕</Text>
                 </TouchableOpacity>
@@ -513,7 +504,6 @@ const UsersManagementView = ({
           </View>
         </Modal>
       </ScrollView>
-    </SafeAreaView>
   );
 };
 
