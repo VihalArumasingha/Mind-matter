@@ -135,11 +135,10 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   availabilityLabel: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: COLORS.green,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.1,
   },
   availabilityLabelInactive: {
     color: COLORS.textMuted,
