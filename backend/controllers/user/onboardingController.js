@@ -1,4 +1,5 @@
 import OnboardingResponse from '../../models/OnboardingResponse.js'
+import { generateRecommendations } from '../../utils/onboardingRecommendations.js'
 
 export const submitOnboarding = async (req, res) => {
     try {
@@ -18,6 +19,9 @@ export const submitOnboarding = async (req, res) => {
             personalGoal
         }
 
+        const recommendationCategories =
+            generateRecommendations(answers)
+
         const onboarding = await OnboardingResponse.findOneAndUpdate(
             {
                 userId: req.user._id
@@ -25,6 +29,7 @@ export const submitOnboarding = async (req, res) => {
             {
                 userId: req.user._id,
                 answers,
+                recommendationCategories,
                 completedAt: new Date()
             },
             {
