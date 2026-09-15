@@ -14,7 +14,8 @@ import sessionRoutes from './routes/supportCircleOrganizer/session/sessionRoutes
 import attendanceRoutes from './routes/supportCircleOrganizer/attendance/attendanceRoutes.js'
 import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
-
+import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPostRoutes.js'
+import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 
 
 const app = express();
@@ -43,6 +44,8 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/group-posts', groupPostRoutes);
+app.use('/api/moderation', moderationRoutes);
 
 // Start the server
 app.listen(PORT, '0.0.0.0', () => {

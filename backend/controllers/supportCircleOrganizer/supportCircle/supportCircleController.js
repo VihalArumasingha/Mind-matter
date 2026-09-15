@@ -1,6 +1,7 @@
 import SupportCircle from '../../../models/SupportCircle.js'
 import GroupMembership from '../../../models/GroupMembership.js'
 import Session from '../../../models/Session.js'
+import Post from '../../../models/Post.js'
 
 // FM-46: Create a new support circle
 export const createSupportCircle = async (req, res) => {
@@ -366,6 +367,12 @@ export const getDashboardStats = async (req, res) => {
 
         const circleIds = circles.map((circle) => circle._id)
 
+        const pendingPostApprovals = await Post.countDocuments({
+    supportCircle: { $in: circleIds },
+    status: 'pending',
+    needsReview: true
+})
+
         const totalMembers = circles.reduce((total, circle) => total + circle.currentMemberCount, 0)
 
         const pendingRequests = await GroupMembership.countDocuments({
@@ -421,8 +428,7 @@ export const getDashboardStats = async (req, res) => {
             totalCircles: circles.length,
             totalMembers,
             pendingRequests,
-            // Post moderation isn't built yet (Sprint 3) — placeholder until it is
-            pendingPostApprovals: 0,
+            pendingPostApprovals,
             upcomingSessionsCount: upcomingSessions.length,
             upcomingSessions,
             recentActivity
