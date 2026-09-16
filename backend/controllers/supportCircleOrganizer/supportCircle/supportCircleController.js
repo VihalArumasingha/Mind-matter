@@ -134,6 +134,27 @@ export const getMySupportCircles = async (req, res) => {
     }
 }
 
+// Get active support circles for member discovery
+export const getAvailableSupportCircles = async (req, res) => {
+    try {
+        const circles = await SupportCircle.find({
+            status: 'active'
+        })
+            .sort({ createdAt: -1 })
+
+        res.status(200).json({
+            circles
+        })
+    } catch (error) {
+        console.error('[Get Available Support Circles Error]', error)
+
+        res.status(500).json({
+            message: 'Server error while fetching available support circles'
+        })
+    }
+}
+
+
 // Get a single support circle by id
 export const getSupportCircleById = async (req, res) => {
     try {
