@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, { useState } from 'react'
 import {
     ActivityIndicator,
     Pressable,
@@ -8,11 +8,12 @@ import {
     View,
 } from 'react-native'
 
-import {useAuth} from '../../../context/AuthContext'
-import {onboardingQuestions} from '../data/onboardingQuestions'
+import { useAuth } from '../../../context/AuthContext'
+import { onboardingQuestions } from '../data/onboardingQuestions'
+import { submitOnboarding } from '../services/onboardingService'
 
-const OnboardingScreen = ({navigation}) => {
-    const {token} = useAuth()
+const OnboardingScreen = ({ navigation }) => {
+    const { token } = useAuth()
 
     const [currentIndex, setCurrentIndex] = useState(0)
     const [answers, setAnswers] = useState({})
@@ -49,8 +50,14 @@ const OnboardingScreen = ({navigation}) => {
         setError('')
 
         try {
+            const data = await submitOnboarding(
+                token,
+                updatedAnswers
+            )
+
             navigation.navigate('OnboardingResult', {
-                answers: updatedAnswers,
+                recommendations:
+                    data.onboarding.recommendationCategories,
             })
         } catch (error) {
             setError(error.message)
@@ -99,7 +106,7 @@ const OnboardingScreen = ({navigation}) => {
                             style={[
                                 styles.option,
                                 selectedOption === option.value &&
-                                    styles.selectedOption,
+                                styles.selectedOption,
                             ]}
                             onPress={() =>
                                 selectOption(option.value)
@@ -108,7 +115,7 @@ const OnboardingScreen = ({navigation}) => {
                                 style={[
                                     styles.optionText,
                                     selectedOption === option.value &&
-                                        styles.selectedOptionText,
+                                    styles.selectedOptionText,
                                 ]}>
                                 {option.label}
                             </Text>
