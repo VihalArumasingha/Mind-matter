@@ -175,6 +175,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         email: email.trim(),
         phone: phone.trim(),
         profession: profession,
+        applicationType: isOrganizerApplication ? 'communityOrganizer' : 'professional',
         licenseNum: isOrganizerApplication ? communityFocus.trim() : licenseNum.trim(),
         specialization: isOrganizerApplication ? (communityFocus.trim() || 'Community Engagement') : (specialization.trim() || 'General Mental Health Support'),
         expYears: isOrganizerApplication ? 1 : (parseInt(expYears, 10) || 1),

@@ -6,6 +6,7 @@ const MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '•' },
   { id: 'users', label: 'Users', icon: '•' },
   { id: 'professionals', label: 'Professionals', icon: '•', badgeKey: 'pendingPros' },
+  { id: 'community-organizer-requests', label: 'Community Organizer Requests', icon: '•', badgeKey: 'pendingCommunityOrganizers' },
   { id: 'communities', label: 'Communities / Groups', icon: '•' },
   { id: 'posts', label: 'Posts', icon: '•' },
   { id: 'reports', label: 'Reports', icon: '•', badgeKey: 'openReports' },
