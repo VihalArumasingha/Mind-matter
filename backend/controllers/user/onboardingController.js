@@ -1,5 +1,5 @@
 import OnboardingResponse from '../../models/OnboardingResponse.js'
-import {generateRecommendations} from '../../utils/onboardingRecommendations.js'
+import { generateRecommendations } from '../../utils/onboardingRecommendations.js'
 
 export const getOnboardingStatus = async (req, res) => {
     try {
@@ -29,13 +29,24 @@ export const submitOnboarding = async (req, res) => {
             personalGoal
         } = req.body
 
-        const answers = {
+        const requiredAnswers = {
             supportArea,
             currentFeeling,
             preferredSupport,
             socialConnection,
             personalGoal
         }
+
+        const missingAnswer = Object.entries(requiredAnswers)
+            .find(([, value]) => !value)
+
+        if (missingAnswer) {
+            return res.status(400).json({
+                message: 'Please answer all five onboarding questions'
+            })
+        }
+
+        const answers = requiredAnswers
 
         const recommendationCategories =
             generateRecommendations(answers)
