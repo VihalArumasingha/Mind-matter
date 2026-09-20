@@ -1259,7 +1259,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="close"
                                     size={24}
-                                    color="#252A25"
+                                    color="#1F3A2B"
                                 />
                             </Pressable>
                         </View>
@@ -1273,7 +1273,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="home-outline"
                                     size={23}
-                                    color="#4E8C4A"
+                                    color="#EEF7EE"
                                 />
                                 <Text style={styles.drawerItemText}>Home</Text>
                             </Pressable>
@@ -1284,7 +1284,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="account-group-outline"
                                     size={23}
-                                    color="#4E8C4A"
+                                    color="#EEF7EE"
                                 />
                                 <Text style={styles.drawerItemText}>Communities</Text>
                             </Pressable>
@@ -1302,9 +1302,9 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="account-multiple-outline"
                                     size={23}
-                                    color="#4E8C4A"
+                                    color={activeTab === 'My Circles' ? '#1F3A2B' : '#EEF7EE'}
                                 />
-                                <Text style={styles.drawerItemText}>My Circles</Text>
+                                <Text style={activeTab === 'My Circles' ? styles.drawerItemActiveText : styles.drawerItemText}>My Circles</Text>
                             </Pressable>
 
                             <Pressable
@@ -1320,9 +1320,9 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="clipboard-list-outline"
                                     size={23}
-                                    color="#4E8C4A"
+                                    color={activeTab === 'Request' ? '#1F3A2B' : '#EEF7EE'}
                                 />
-                                <Text style={styles.drawerItemText}>Requests</Text>
+                                <Text style={activeTab === 'Request' ? styles.drawerItemActiveText : styles.drawerItemText}>Requests</Text>
                             </Pressable>
 
                             <Pressable
@@ -1331,7 +1331,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 <MaterialCommunityIcons
                                     name="account-outline"
                                     size={23}
-                                    color="#4E8C4A"
+                                    color="#EEF7EE"
                                 />
                                 <Text style={styles.drawerItemText}>Profile</Text>
                             </Pressable>
@@ -1377,7 +1377,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                     size={22}
                                     color={
                                         isActive
-                                            ? '#4E8C4A'
+                                            ? '#4F954F'
                                             : '#707770'
                                     }
                                 />
@@ -1408,14 +1408,14 @@ const OrganizerDashboardScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F4F7EF',
+        backgroundColor: '#F5F8F3',
     },
 
     loadingContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F4F7EF',
+        backgroundColor: '#F5F8F3',
     },
 
   
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
     },
 
     tabActive: {
-        backgroundColor: '#4E8C4A',
+        backgroundColor: '#4F954F',
     },
 
     tabText: {
@@ -1587,7 +1587,7 @@ const styles = StyleSheet.create({
     drawer: {
         width: '78%',
         maxWidth: 330,
-        backgroundColor: '#F7F9F4',
+        backgroundColor: '#4F954F',
         paddingTop: 22,
         paddingHorizontal: 18,
         paddingBottom: 20,
@@ -1642,7 +1642,7 @@ const styles = StyleSheet.create({
     drawerUserName: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#252A25',
+        color: '#F4F9F3',
     },
 
     drawerRoleRow: {
@@ -1655,7 +1655,7 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         fontSize: 11,
         fontWeight: '600',
-        color: '#4E8C4A',
+        color: '#DDEFE0',
     },
 
     drawerCloseButton: {
@@ -1664,14 +1664,14 @@ const styles = StyleSheet.create({
         borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#EEF7EE',
         borderWidth: 1,
-        borderColor: '#E0E6DC',
+        borderColor: 'rgba(255,255,255,0.15)',
     },
 
     drawerDivider: {
         height: 1,
-        backgroundColor: '#E0E6DC',
+        backgroundColor: 'rgba(255,255,255,0.18)',
         marginTop: 18,
         marginBottom: 14,
     },
@@ -1696,7 +1696,14 @@ const styles = StyleSheet.create({
         marginLeft: 14,
         fontSize: 14,
         fontWeight: '600',
-        color: '#2D362E',
+        color: '#F7FBF7',
+    },
+
+    drawerItemActiveText: {
+        marginLeft: 14,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F3A2B',
     },
 
     drawerBottom: {
@@ -1705,14 +1712,14 @@ const styles = StyleSheet.create({
 
     drawerBottomLine: {
         height: 1,
-        backgroundColor: '#E0E6DC',
+        backgroundColor: 'rgba(255,255,255,0.18)',
         marginBottom: 12,
     },
 
     drawerHint: {
         fontSize: 11,
         lineHeight: 17,
-        color: '#7A827A',
+        color: '#EAF3EE',
         paddingHorizontal: 5,
     },
 
@@ -1760,7 +1767,7 @@ const styles = StyleSheet.create({
     },
 
     bottomNavItemActive: {
-        backgroundColor: '#E2EEDB',
+        backgroundColor: '#D9EBD3',
     },
 
     bottomNavLabel: {
@@ -1771,13 +1778,13 @@ const styles = StyleSheet.create({
     },
 
     bottomNavLabelActive: {
-        color: '#4E8C4A',
+        color: '#4F954F',
     },
 
     statRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        backgroundColor: '#E2EEDB',
+        backgroundColor: '#E5F0E0',
         borderRadius: 14,
         padding: 14,
         marginBottom: 20,
@@ -1830,9 +1837,9 @@ const styles = StyleSheet.create({
         minHeight: 76,
         padding: 12,
         borderRadius: 14,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F9FBF7',
         borderWidth: 1,
-        borderColor: '#E0E7DD',
+        borderColor: '#DCEAD8',
     },
 
     attentionIcon: {
@@ -1844,9 +1851,9 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
 
-    requestAttentionIcon: {backgroundColor: '#EAF4E6'},
-    moderationAttentionIcon: {backgroundColor: '#FBF1E5'},
-    sessionAttentionIcon: {backgroundColor: '#EAF3F4'},
+    requestAttentionIcon: {backgroundColor: '#E5F0E0'},
+    moderationAttentionIcon: {backgroundColor: '#F3EFE6'},
+    sessionAttentionIcon: {backgroundColor: '#EAF4EF'},
 
     attentionContent: {
         flex: 1,
@@ -1890,7 +1897,7 @@ const styles = StyleSheet.create({
 
     viewAllText: {
         marginBottom: 10,
-        color: '#4E8C4A',
+        color: '#4F954F',
         fontSize: 12,
         fontWeight: '700',
     },
@@ -1920,10 +1927,10 @@ const styles = StyleSheet.create({
     activityList: {
         paddingHorizontal: 12,
         paddingVertical: 2,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F9FBF7',
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#E4E9E2',
+        borderColor: '#DDEAD9',
     },
 
     activityRow: {
@@ -1941,7 +1948,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginRight: 10,
         borderRadius: 16,
-        backgroundColor: '#F1F4F0',
+        backgroundColor: '#E5F0E0',
     },
 
     activityContent: {flex: 1, minWidth: 0},
