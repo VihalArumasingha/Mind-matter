@@ -1,5 +1,6 @@
 export const generateRecommendations = answers => {
     const recommendations = new Set()
+
     const {
         supportArea,
         currentFeeling,
@@ -10,22 +11,37 @@ export const generateRecommendations = answers => {
 
     if (supportArea === 'stress') {
         recommendations.add('Stress Management')
-    } else if (supportArea === 'anxiety') {
+    }
+
+    if (supportArea === 'anxiety') {
         recommendations.add('Anxiety Support')
-    } else if (supportArea === 'relationships') {
+    }
+
+    if (supportArea === 'relationships') {
         recommendations.add('Relationships and Communication')
-    } else if (supportArea === 'loneliness') {
+    }
+
+    if (supportArea === 'loneliness') {
         recommendations.add('Social Connection')
-    } else if (supportArea === 'grief') {
+    }
+
+    if (supportArea === 'grief') {
         recommendations.add('Grief and Loss Support')
-    } else if (supportArea === 'confidence') {
+    }
+
+    if (supportArea === 'confidence') {
         recommendations.add('Self-Confidence')
-    } else if (supportArea === 'wellbeing') {
+    }
+
+    if (supportArea === 'wellbeing') {
         recommendations.add('General Wellbeing')
     }
 
-    if (currentFeeling === 'overwhelmed' ||
-        currentFeeling === 'stressed') {
+    if (currentFeeling === 'overwhelmed') {
+        recommendations.add('Stress Management')
+    }
+
+    if (currentFeeling === 'stressed') {
         recommendations.add('Stress Management')
     }
 
@@ -43,33 +59,53 @@ export const generateRecommendations = answers => {
 
     if (preferredSupport === 'talking') {
         recommendations.add('Peer Support')
-    } else if (preferredSupport === 'community') {
+    }
+
+    if (preferredSupport === 'community') {
         recommendations.add('Support Communities')
-    } else if (preferredSupport === 'professional') {
+    }
+
+    if (preferredSupport === 'professional') {
         recommendations.add('Professional Support')
-    } else if (preferredSupport === 'coping') {
+    }
+
+    if (preferredSupport === 'coping') {
         recommendations.add('Coping Strategies')
-    } else if (preferredSupport === 'resources') {
+    }
+
+    if (preferredSupport === 'resources') {
         recommendations.add('Wellness Resources')
     }
 
-    if (socialConnection === 'more_connection' ||
-        socialConnection === 'isolated') {
+    if (
+        socialConnection === 'more_connection' ||
+        socialConnection === 'isolated'
+    ) {
         recommendations.add('Social Connection')
         recommendations.add('Support Communities')
     }
 
     if (personalGoal === 'stress') {
         recommendations.add('Stress Management')
-    } else if (personalGoal === 'feelings') {
+    }
+
+    if (personalGoal === 'feelings') {
         recommendations.add('Emotional Wellbeing')
-    } else if (personalGoal === 'confidence') {
+    }
+
+    if (personalGoal === 'confidence') {
         recommendations.add('Self-Confidence')
-    } else if (personalGoal === 'relationships') {
+    }
+
+    if (personalGoal === 'relationships') {
         recommendations.add('Relationships and Communication')
-    } else if (personalGoal === 'connection') {
+    }
+
+    if (personalGoal === 'connection') {
         recommendations.add('Social Connection')
-    } else if (personalGoal === 'wellbeing') {
+    }
+
+    if (personalGoal === 'wellbeing') {
         recommendations.add('General Wellbeing')
     }
 
