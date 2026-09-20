@@ -9,12 +9,9 @@ import {
 } from 'react-native'
 
 const OnboardingResultScreen = ({
-    navigation,
-    route,
+    recommendations,
+    onContinue
 }) => {
-    const recommendations =
-        route.params?.recommendations || []
-
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
@@ -24,12 +21,12 @@ const OnboardingResultScreen = ({
                 </View>
 
                 <Text style={styles.title}>
-                    Your personalized support areas
+                    We've got some ideas for you
                 </Text>
 
                 <Text style={styles.subtitle}>
-                    Based on your answers, we've found some
-                    areas that may be helpful for you to explore.
+                    Based on your answers, these are some
+                    support areas that may be useful to explore.
                 </Text>
 
                 <View style={styles.card}>
@@ -58,9 +55,7 @@ const OnboardingResultScreen = ({
 
                 <Pressable
                     style={styles.button}
-                    onPress={() =>
-                        navigation.navigate('UserTabs')
-                    }>
+                    onPress={onContinue}>
                     <Text style={styles.buttonText}>
                         Continue to MindMatter
                     </Text>
@@ -73,13 +68,13 @@ const OnboardingResultScreen = ({
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F8FAF5',
+        backgroundColor: '#F8FAF5'
     },
 
     container: {
         flexGrow: 1,
         padding: 24,
-        justifyContent: 'center',
+        justifyContent: 'center'
     },
 
     iconContainer: {
@@ -89,13 +84,13 @@ const styles = StyleSheet.create({
         borderRadius: 35,
         backgroundColor: '#E5F1E2',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'center'
     },
 
     icon: {
         fontSize: 32,
         color: '#4E8C4A',
-        fontWeight: '700',
+        fontWeight: '700'
     },
 
     title: {
@@ -103,7 +98,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 27,
         fontWeight: '700',
-        color: '#243224',
+        color: '#243224'
     },
 
     subtitle: {
@@ -111,7 +106,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 14,
         lineHeight: 21,
-        color: '#71806F',
+        color: '#71806F'
     },
 
     card: {
@@ -120,20 +115,20 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 20,
         borderWidth: 1,
-        borderColor: '#E3E9DF',
+        borderColor: '#E3E9DF'
     },
 
     cardTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#243224',
-        marginBottom: 16,
+        marginBottom: 16
     },
 
     recommendation: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 13,
+        marginBottom: 13
     },
 
     dot: {
@@ -141,13 +136,13 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         backgroundColor: '#4E8C4A',
-        marginRight: 10,
+        marginRight: 10
     },
 
     recommendationText: {
         flex: 1,
         fontSize: 14,
-        color: '#4D594D',
+        color: '#4D594D'
     },
 
     disclaimer: {
@@ -155,7 +150,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         lineHeight: 18,
         color: '#899287',
-        textAlign: 'center',
+        textAlign: 'center'
     },
 
     button: {
@@ -164,14 +159,14 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#4E8C4A',
+        backgroundColor: '#4E8C4A'
     },
 
     buttonText: {
         color: '#FFFFFF',
         fontSize: 15,
-        fontWeight: '700',
-    },
+        fontWeight: '700'
+    }
 })
 
 export default OnboardingResultScreen
