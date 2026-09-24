@@ -429,6 +429,25 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
 });
 
 export default styles;

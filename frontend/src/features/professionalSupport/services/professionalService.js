@@ -41,13 +41,21 @@ export const getProfessionCategories = async (token) => {
 export const getProfessionalAvailability = async (token, professionalId) => {
     try {
         const timestamp = new Date().getTime()
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+        
         const response = await fetch(`${API_BASE_URL}/api/users/professionals/${professionalId}/availability?_t=${timestamp}`, {
             method: 'GET',
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
+            signal: controller.signal
         })
+        
+        clearTimeout(timeoutId)
 
         const contentType = response.headers.get('content-type')
         if (!contentType || !contentType.includes('application/json')) {
@@ -68,6 +76,9 @@ export const getProfessionalAvailability = async (token, professionalId) => {
         return data
     } catch (err) {
         console.error('[getProfessionalAvailability Error]', err)
+        if (err.name === 'AbortError') {
+            console.error('[getProfessionalAvailability] Request timed out after 15 seconds')
+        }
         return {
             success: true,
             data: { isAvailable: true, slotsByDate: {}, availableDates: [] }
@@ -76,26 +87,41 @@ export const getProfessionalAvailability = async (token, professionalId) => {
 }
 
 export const createProfessionalBooking = async (token, bookingData) => {
-    const response = await fetch(`${API_BASE_URL}/api/users/bookings`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(bookingData),
-    })
+    try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+        
+        const response = await fetch(`${API_BASE_URL}/api/users/bookings`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bookingData),
+            signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
 
-    const data = await response.json()
+        const data = await response.json()
 
-    if (!response.ok) {
-        // Handle specific error for already booked slots
-        if (response.status === 409) {
-            throw new Error(data.message || 'This time slot is already booked. Please select a different time.')
+        if (!response.ok) {
+            // Handle specific error for already booked slots
+            if (response.status === 409) {
+                throw new Error(data.message || 'This time slot is already booked. Please select a different time.')
+            }
+            throw new Error(data.message || 'Failed to submit booking')
         }
-        throw new Error(data.message || 'Failed to submit booking')
-    }
 
-    return data
+        return data
+    } catch (err) {
+        console.error('[createProfessionalBooking Error]', err)
+        if (err.name === 'AbortError') {
+            throw new Error('Booking request timed out. Please try again.')
+        }
+        throw err
+    }
 }
 
 

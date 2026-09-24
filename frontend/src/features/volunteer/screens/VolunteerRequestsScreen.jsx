@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,74 +8,51 @@ import {
   Alert,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../styles/volunteerDashboardStyles';
-import { acceptVolunteerRequest, declineVolunteerRequest } from '../services/volunteerService';
+import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
-
-const initialRequests = [
-  {
-    id: 'req_1',
-    name: 'Ravindu K.',
-    initials: 'RK',
-    category: 'Emotional support',
-    date: 'Sat, May 24',
-    time: '3:00 PM - 4:00 PM',
-    note: 'Feeling overwhelmed with upcoming exams. Looking for an empathetic listener to chat for a bit.',
-    avatarBg: '#FCE7D6',
-    avatarColor: '#B45309',
-    status: 'pending',
-  },
-  {
-    id: 'req_2',
-    name: 'Nimasha F.',
-    initials: 'NF',
-    category: 'Peer support',
-    date: 'Sun, May 25',
-    time: '10:30 AM - 11:30 AM',
-    note: 'Would like advice and peer support regarding university stress and balancing study routines.',
-    avatarBg: '#E0F2FE',
-    avatarColor: '#0369A1',
-    status: 'pending',
-  },
-  {
-    id: 'req_3',
-    name: 'Chamodi P.',
-    initials: 'CP',
-    category: 'Student support',
-    date: 'Mon, May 26',
-    time: '4:00 PM - 5:00 PM',
-    note: 'Confirmed support session for exam preparation and stress management guidance.',
-    avatarBg: '#EAF3ED',
-    avatarColor: '#2F6B47',
-    status: 'accepted',
-  },
-  {
-    id: 'req_4',
-    name: 'Isuru M.',
-    initials: 'IM',
-    category: 'Listening session',
-    date: 'Wed, May 28',
-    time: '6:30 PM - 7:30 PM',
-    note: 'General listening session regarding career and life transition anxiety.',
-    avatarBg: '#F3E8FF',
-    avatarColor: '#7C3AED',
-    status: 'accepted',
-  },
-];
 
 export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'accepted' | 'history'
-  const [requestsList, setRequestsList] = useState(initialRequests);
+  const [requestsList, setRequestsList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load requests from backend using the same endpoint as dashboard
+  const loadRequests = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getVolunteerDashboardData(token);
+      
+      // Combine pending and upcoming sessions into requests list
+      const allRequests = [
+        ...(data.pendingRequests || []).map(r => ({ ...r, tabCategory: 'pending' })),
+        ...(data.upcomingSessions || []).map(r => ({ ...r, tabCategory: 'accepted' }))
+      ];
+      
+      setRequestsList(allRequests);
+    } catch (error) {
+      console.error('Error loading requests:', error);
+      // Use empty array if API fails
+      setRequestsList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+  }, [token]);
 
   const filteredRequests = requestsList.filter((r) => {
-    if (activeTab === 'pending') return r.status === 'pending';
-    if (activeTab === 'accepted') return r.status === 'accepted';
-    return r.status === 'completed' || r.status === 'declined';
+    if (activeTab === 'pending') return r.status === 'pending' || r.tabCategory === 'pending';
+    if (activeTab === 'accepted') return r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted';
+    return r.status === 'completed' || r.status === 'declined' || r.status === 'cancelled';
   });
 
   const handleAccept = async (requestId, name) => {
@@ -90,14 +67,14 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
             try {
               if (token) {
                 await acceptVolunteerRequest(requestId, token);
+                // Reload requests after acceptance
+                await loadRequests();
               }
+              Alert.alert('Accepted', `Session with ${name} confirmed!`);
             } catch (err) {
-              console.log('Accept request fallback:', err.message);
+              console.log('Accept request error:', err.message);
+              Alert.alert('Error', `Failed to accept request: ${err.message}. Please try again.`);
             }
-            setRequestsList((prev) =>
-              prev.map((r) => (r.id === requestId ? { ...r, status: 'accepted' } : r))
-            );
-            Alert.alert('Accepted', `Session with ${name} confirmed!`);
           },
         },
       ]
@@ -117,14 +94,14 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
             try {
               if (token) {
                 await declineVolunteerRequest(requestId, token);
+                // Reload requests after decline
+                await loadRequests();
               }
+              Alert.alert('Declined', `Request from ${name} declined.`);
             } catch (err) {
-              console.log('Decline request fallback:', err.message);
+              console.log('Decline request error:', err.message);
+              Alert.alert('Error', `Failed to decline request: ${err.message}. Please try again.`);
             }
-            setRequestsList((prev) =>
-              prev.map((r) => (r.id === requestId ? { ...r, status: 'declined' } : r))
-            );
-            Alert.alert('Declined', `Request from ${name} declined.`);
           },
         },
       ]
@@ -186,7 +163,12 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {filteredRequests.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyStateContainer}>
+            <ActivityIndicator size="large" color={GREEN} />
+            <Text style={styles.emptyTitle}>Loading requests...</Text>
+          </View>
+        ) : filteredRequests.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="clipboard-outline" size={48} color={TEXT_MUTED} />
             <Text style={styles.emptyTitle}>No {activeTab} requests</Text>
@@ -212,7 +194,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                     <Text style={styles.categoryText}>{req.category}</Text>
                   </View>
                 </View>
-                {req.status === 'accepted' && (
+                {(req.status === 'accepted' || req.status === 'confirmed') && (
                   <View style={styles.acceptedBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={GREEN} />
                     <Text style={styles.acceptedBadgeText}>Accepted</Text>
@@ -259,7 +241,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                 </View>
               )}
 
-              {req.status === 'accepted' && (
+              {(req.status === 'accepted' || req.status === 'confirmed') && (
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={styles.messageButton}

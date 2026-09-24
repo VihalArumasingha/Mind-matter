@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { getProfessionalAvailability, createProfessionalBooking } from '../services/professionalService'
-import { generateTimeSlots } from '../../volunteer/utils/slotGenerator'
+import { generateTimeSlots, parseTimeToMinutes } from '../../volunteer/utils/slotGenerator'
 import { useAuth } from '../../../context/AuthContext'
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -90,10 +90,10 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                 setAvailabilityData(res.data)
                 // Keep the currently selected date if it's still valid
                 if (res.data.availableDates && res.data.availableDates.length > 0) {
-                    // Only change date if current selection is no longer available
-                    if (!res.data.slotsByDate[selectedDateStr] || res.data.slotsByDate[selectedDateStr].length === 0) {
+                    // Only change date if current selection is in past or no longer available
+                    if (selectedDateStr < todayStr || !res.data.slotsByDate[selectedDateStr] || res.data.slotsByDate[selectedDateStr].length === 0) {
                         const sorted = [...res.data.availableDates].sort()
-                        const firstUpcoming = sorted.find(d => d >= todayStr) || sorted[0]
+                        const firstUpcoming = sorted.find(d => d >= todayStr) || todayStr
                         if (firstUpcoming) {
                             setSelectedDateStr(firstUpcoming)
                             const [y, m] = firstUpcoming.split('-').map(Number)
@@ -107,13 +107,28 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             }
         } catch (err) {
             console.error('[ProfessionalAvailabilityBooking] Fetch Error:', err)
+            // Show error to user
+            Alert.alert(
+                'Error',
+                'Failed to load availability. Please check your connection and try again.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            )
         } finally {
             setIsLoading(false)
         }
     }
 
     useEffect(() => {
-        fetchAvailability()
+        let isMounted = true
+        const loadAvailability = async () => {
+            if (professional?._id && token && isMounted) {
+                await fetchAvailability()
+            }
+        }
+        loadAvailability()
+        return () => {
+            isMounted = false
+        }
     }, [professional?._id, token])
 
     const showToast = (msg) => {
@@ -153,15 +168,20 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
     }
 
     const calendarGrid = getCalendarDays()
-    const slotsForSelectedDate = availabilityData.slotsByDate[selectedDateStr] || []
+    const isSelectedDatePast = selectedDateStr < todayStr
+    const slotsForSelectedDate = isSelectedDatePast ? [] : (availabilityData.slotsByDate[selectedDateStr] || [])
     const hasSlotsForSelectedDate = slotsForSelectedDate.length > 0
 
     const generatedSubSlots = []
     const bookedSubSlots = []
+    const pastSubSlots = []
     
     if (hasSlotsForSelectedDate) {
         console.log('[Slot Generation] Generating slots for date:', selectedDateStr)
         console.log('[Slot Generation] Booked time ranges:', availabilityData.bookedTimeRanges)
+        
+        const now = new Date()
+        const nowMinutes = now.getHours() * 60 + now.getMinutes()
         
         slotsForSelectedDate.forEach((parentSlot) => {
             const subSlots = generateTimeSlots({
@@ -177,6 +197,9 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             
             subSlots.forEach(slot => {
                 if (!slot.isBreak) {
+                    const slotStartMin = parseTimeToMinutes(slot.start)
+                    const isPastTime = isSelectedDatePast || (selectedDateStr === todayStr && slotStartMin !== null && slotStartMin <= nowMinutes)
+
                     // Check if this sub-slot is already booked
                     const isBooked = availabilityData.bookedTimeRanges?.some(bookedRange => 
                         bookedRange.date === selectedDateStr &&
@@ -184,9 +207,12 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                         slot.end > bookedRange.startTime
                     )
                     
-                    const slotWithMeta = { ...slot, parentSlotId: parentSlot.id, isBooked }
+                    const slotWithMeta = { ...slot, parentSlotId: parentSlot.id, isBooked, isPastTime }
                     
-                    if (isBooked) {
+                    if (isPastTime) {
+                        pastSubSlots.push(slotWithMeta)
+                        console.log(`[Slot Filter] Marked as past: ${selectedDateStr} ${slot.start}-${slot.end}`)
+                    } else if (isBooked) {
                         bookedSubSlots.push(slotWithMeta)
                         console.log(`[Slot Filter] Marked as booked: ${selectedDateStr} ${slot.start}-${slot.end}`)
                     } else {
@@ -197,7 +223,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             })
         })
         
-        console.log('[Slot Generation] Total available slots:', generatedSubSlots.length, 'Booked slots:', bookedSubSlots.length)
+        console.log('[Slot Generation] Total available slots:', generatedSubSlots.length, 'Booked slots:', bookedSubSlots.length, 'Past slots:', pastSubSlots.length)
     }
 
     const handleDateSearch = () => {
@@ -213,6 +239,10 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                 return
             }
         }
+        if (targetDate < todayStr) {
+            Alert.alert('Past Date', 'Cannot book appointments for past dates. Please select today or a future date.')
+            return
+        }
         const [y, m] = targetDate.split('-').map(Number)
         if (y && m) {
             setCurrentYear(y); setCurrentMonth(m - 1)
@@ -224,6 +254,18 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
     const handleOpenBookingForm = () => {
         if (!selectedSlot) {
             Alert.alert('Select Time Slot', 'Please select an available time slot first.')
+            return
+        }
+        if (selectedDateStr < todayStr) {
+            Alert.alert('Past Date', 'Cannot book appointments for past dates.')
+            return
+        }
+        const now = new Date()
+        const nowMinutes = now.getHours() * 60 + now.getMinutes()
+        const slotStartMin = parseTimeToMinutes(selectedSlot.start)
+        if (selectedDateStr === todayStr && slotStartMin !== null && slotStartMin <= nowMinutes) {
+            Alert.alert('Past Time Slot', 'This time slot has already passed and cannot be booked. Please select an upcoming slot.')
+            setSelectedSlot(null)
             return
         }
         setShowBookingForm(true)
@@ -243,11 +285,29 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             Alert.alert('Reason Required', 'Please enter a reason for the session.')
             return
         }
+        if (!selectedSlot) {
+            Alert.alert('Slot Missing', 'Please select a time slot.')
+            return
+        }
+        if (selectedDateStr < todayStr) {
+            Alert.alert('Past Date', 'Cannot book appointments for past dates.')
+            return
+        }
+        const now = new Date()
+        const nowMinutes = now.getHours() * 60 + now.getMinutes()
+        const slotStartMin = parseTimeToMinutes(selectedSlot.start)
+        if (selectedDateStr === todayStr && slotStartMin !== null && slotStartMin <= nowMinutes) {
+            Alert.alert('Past Time Slot', 'This time slot has already passed. Please select an upcoming slot.')
+            setSelectedSlot(null)
+            setShowBookingForm(false)
+            return
+        }
 
         try {
             setIsSubmitting(true)
             console.log('[Booking] Submitting booking for professional:', professional._id, 'slot:', selectedDateStr, selectedSlot.start, '-', selectedSlot.end)
-            await createProfessionalBooking(token, {
+            
+            const result = await createProfessionalBooking(token, {
                 professionalId: professional._id,
                 professionalName: professional.fullName,
                 profession: professional.profession,
@@ -259,14 +319,22 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                 reason: formReason.trim(),
                 notes: formNotes.trim(),
             })
-            console.log('[Booking] Booking successful, refreshing availability...')
-            // Refresh availability to remove the booked slot
-            await fetchAvailability()
+            
+            console.log('[Booking] Booking successful:', result)
+            
+            // Don't refresh availability immediately to avoid blocking
+            // Just close the form and show success
             setShowBookingForm(false)
             setSelectedSlot(null)
             showToast('🎉 Booking submitted! You will be notified once approved.')
-            // Navigate back to the previous screen
-            navigation.goBack()
+            
+            // Navigate back to the previous screen if possible
+            if (navigation.canGoBack()) {
+                navigation.goBack()
+            } else {
+                // If no screen to go back to, navigate to a default screen
+                navigation.navigate('UserHome')
+            }
         } catch (err) {
             console.error('[Submit Booking Error]', err)
             Alert.alert('Booking Failed', err.message || 'Something went wrong. Please try again.')
@@ -453,6 +521,10 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                         <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
                         <Text style={styles.legendText}>Not Available</Text>
                     </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
+                        <Text style={styles.legendText}>Past</Text>
+                    </View>
                 </View>
 
                 {/* Week Labels */}
@@ -468,10 +540,10 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                         if (!cell.inMonth) {
                             return <View key={index} style={[styles.dateCell, styles.dateCellOutside]} />
                         }
-                        const cellSlots = availabilityData.slotsByDate[cell.dateStr] || []
-                        const hasAvailability = cellSlots.length > 0
-                        const isSelected = cell.dateStr === selectedDateStr
                         const isPast = cell.isPast
+                        const cellSlots = availabilityData.slotsByDate[cell.dateStr] || []
+                        const hasAvailability = !isPast && cellSlots.length > 0
+                        const isSelected = cell.dateStr === selectedDateStr
 
                         return (
                             <TouchableOpacity
@@ -480,23 +552,28 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                                 style={[
                                     styles.dateCell,
                                     isPast && styles.dateCellPast,
-                                    hasAvailability && !isSelected && styles.dateCellAvailable,
-                                    !hasAvailability && !isPast && !isSelected && styles.dateCellUnavailable,
-                                    isSelected && styles.dateCellSelected,
+                                    !isPast && hasAvailability && !isSelected && styles.dateCellAvailable,
+                                    !isPast && !hasAvailability && !isSelected && styles.dateCellUnavailable,
+                                    !isPast && isSelected && styles.dateCellSelected,
                                 ]}
-                                onPress={() => { setSelectedDateStr(cell.dateStr); setSelectedSlot(null) }}
+                                onPress={() => { 
+                                    if (isPast) return
+                                    setSelectedDateStr(cell.dateStr)
+                                    setSelectedSlot(null) 
+                                }}
                             >
                                 <Text style={[
                                     styles.dateCellText,
                                     isPast && styles.dateCellTextPast,
-                                    hasAvailability && !isSelected && styles.dateCellTextAvailable,
-                                    !hasAvailability && !isPast && !isSelected && styles.dateCellTextUnavailable,
-                                    isSelected && styles.dateCellTextSelected,
+                                    !isPast && hasAvailability && !isSelected && styles.dateCellTextAvailable,
+                                    !isPast && !hasAvailability && !isSelected && styles.dateCellTextUnavailable,
+                                    !isPast && isSelected && styles.dateCellTextSelected,
                                 ]}>
                                     {cell.day}
                                 </Text>
                                 {hasAvailability && !isPast && <View style={styles.availDot} />}
                                 {!hasAvailability && !isPast && <View style={styles.unavailDot} />}
+                                {isPast && <View style={styles.pastDot} />}
                             </TouchableOpacity>
                         )
                     })}
@@ -507,13 +584,25 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                     <Text style={styles.selectedDateTitle}>
                         {formatDisplayDate(selectedDateStr)}
                     </Text>
-                    {hasSlotsForSelectedDate ? (
-                        <View style={styles.availableBadge}>
-                            <Icon name="check-circle" size={14} color="#4E8C4A" />
-                            <Text style={styles.availableBadgeText}>
-                                {generatedSubSlots.length} available, {bookedSubSlots.length} booked
-                            </Text>
+                    {isSelectedDatePast ? (
+                        <View style={styles.pastBadge}>
+                            <Icon name="history" size={14} color="#6B7280" />
+                            <Text style={styles.pastBadgeText}>Past Date</Text>
                         </View>
+                    ) : hasSlotsForSelectedDate ? (
+                        generatedSubSlots.length > 0 ? (
+                            <View style={styles.availableBadge}>
+                                <Icon name="check-circle" size={14} color="#4E8C4A" />
+                                <Text style={styles.availableBadgeText}>
+                                    {generatedSubSlots.length} available{bookedSubSlots.length > 0 ? `, ${bookedSubSlots.length} booked` : ''}{pastSubSlots.length > 0 ? `, ${pastSubSlots.length} past` : ''}
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={styles.pastBadge}>
+                                <Icon name="schedule" size={14} color="#6B7280" />
+                                <Text style={styles.pastBadgeText}>All Slots Concluded</Text>
+                            </View>
+                        )
                     ) : (
                         <View style={styles.unavailableBadge}>
                             <Icon name="error-outline" size={14} color="#DC2626" />
@@ -531,6 +620,14 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                             <ActivityIndicator size="small" color="#4E8C4A" />
                             <Text style={styles.loadingText}>Loading slots...</Text>
                         </View>
+                    ) : isSelectedDatePast ? (
+                        <View style={[styles.unavailAlertBox, styles.pastAlertBox]}>
+                            <Icon name="history" size={32} color="#9CA3AF" style={{ marginBottom: 6 }} />
+                            <Text style={[styles.unavailAlertTitle, { color: '#6B7280' }]}>Past Date</Text>
+                            <Text style={[styles.unavailAlertSubtitle, { color: '#6B7280' }]}>
+                                You cannot book sessions for past dates. Please choose today or an upcoming date.
+                            </Text>
+                        </View>
                     ) : !hasSlotsForSelectedDate ? (
                         <View style={styles.unavailAlertBox}>
                             <Icon name="event-busy" size={32} color="#DC2626" style={{ marginBottom: 6 }} />
@@ -542,7 +639,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                                 Tip: Pick a date highlighted in GREEN on the calendar.
                             </Text>
                         </View>
-                    ) : (generatedSubSlots.length === 0 && bookedSubSlots.length === 0) ? (
+                    ) : (generatedSubSlots.length === 0 && bookedSubSlots.length === 0 && pastSubSlots.length === 0) ? (
                         <View style={styles.unavailAlertBox}>
                             <Icon name="schedule" size={28} color="#D97706" />
                             <Text style={[styles.unavailAlertTitle, { color: '#B45309' }]}>No Open Slots</Text>
@@ -552,7 +649,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                         </View>
                     ) : (
                         <View style={styles.slotGrid}>
-                            {/* Available slots */}
+                            {/* Available upcoming slots */}
                             {generatedSubSlots.map((slot, index) => {
                                 const isSelected = selectedSlot?.id === slot.id
                                 return (
@@ -577,7 +674,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                                 )
                             })}
                             
-                            {/* Booked slots - visually different and not clickable */}
+                            {/* Booked slots - visually disabled */}
                             {bookedSubSlots.map((slot, index) => (
                                 <TouchableOpacity
                                     key={`booked-${index}`}
@@ -594,7 +691,29 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                                         style={{ marginRight: 6 }}
                                     />
                                     <Text style={styles.slotChipTextBooked}>
-                                        {slot.start} – {slot.end}
+                                        {slot.start} – {slot.end} (Booked)
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+
+                            {/* Past time slots - Ash colour and unbookable */}
+                            {pastSubSlots.map((slot, index) => (
+                                <TouchableOpacity
+                                    key={`past-${index}`}
+                                    style={[styles.slotChip, styles.slotChipPast]}
+                                    onPress={() => {
+                                        Alert.alert('Past Time Slot', 'This time slot has already passed and cannot be booked.')
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Icon
+                                        name="history"
+                                        size={18}
+                                        color="#9CA3AF"
+                                        style={{ marginRight: 6 }}
+                                    />
+                                    <Text style={styles.slotChipTextPast}>
+                                        {slot.start} – {slot.end} (Past)
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -606,9 +725,9 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
                 <TouchableOpacity
                     style={[
                         styles.bookConfirmBtn,
-                        (!hasSlotsForSelectedDate || !selectedSlot) && styles.bookConfirmBtnDisabled,
+                        (!hasSlotsForSelectedDate || !selectedSlot || isSelectedDatePast) && styles.bookConfirmBtnDisabled,
                     ]}
-                    disabled={!hasSlotsForSelectedDate || !selectedSlot}
+                    disabled={!hasSlotsForSelectedDate || !selectedSlot || isSelectedDatePast}
                     onPress={handleOpenBookingForm}
                 >
                     <Text style={styles.bookConfirmBtnText}>
@@ -701,17 +820,23 @@ const styles = StyleSheet.create({
         borderRadius: 10, marginVertical: 2, position: 'relative',
     },
     dateCellOutside: { backgroundColor: 'transparent' },
-    dateCellPast: { opacity: 0.3 },
+    dateCellPast: {
+        backgroundColor: '#E5E7EB', // Ash grey
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        opacity: 0.85,
+    },
     dateCellAvailable: { backgroundColor: '#E8F5E9' },
     dateCellUnavailable: { backgroundColor: '#FEF2F2' },
     dateCellSelected: { backgroundColor: '#2D5A27', borderWidth: 2, borderColor: '#1E3A1A' },
     dateCellText: { fontSize: 14, fontWeight: '600', color: '#374151' },
-    dateCellTextPast: { color: '#9CA3AF' },
+    dateCellTextPast: { color: '#9CA3AF', fontWeight: '500' }, // Ash text
     dateCellTextAvailable: { color: '#2E7D32', fontWeight: '700' },
     dateCellTextUnavailable: { color: '#DC2626' },
     dateCellTextSelected: { color: '#FFFFFF', fontWeight: '800' },
     availDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#2E7D32', position: 'absolute', bottom: 4 },
     unavailDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#EF4444', position: 'absolute', bottom: 4 },
+    pastDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#9CA3AF', position: 'absolute', bottom: 4 },
 
     // ── Date banner ──
     selectedDateBanner: {
@@ -730,6 +855,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
     },
     unavailableBadgeText: { fontSize: 12, fontWeight: '700', color: '#DC2626' },
+    pastBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        backgroundColor: '#E5E7EB', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+    },
+    pastBadgeText: { fontSize: 12, fontWeight: '700', color: '#6B7280' },
 
     // ── Slots ──
     slotsSection: { marginBottom: 20 },
@@ -739,6 +869,9 @@ const styles = StyleSheet.create({
     unavailAlertBox: {
         backgroundColor: '#FFF0F0', borderWidth: 1.5, borderColor: '#F87171',
         borderRadius: 16, padding: 20, alignItems: 'center',
+    },
+    pastAlertBox: {
+        backgroundColor: '#F3F4F6', borderColor: '#D1D5DB',
     },
     unavailAlertTitle: { fontSize: 17, fontWeight: '800', color: '#B91C1C', marginBottom: 4 },
     unavailAlertSubtitle: { fontSize: 13, color: '#7F1D1D', textAlign: 'center', lineHeight: 18, marginBottom: 8 },
@@ -754,9 +887,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB',
         opacity: 0.6,
     },
+    slotChipPast: {
+        backgroundColor: '#E5E7EB', // Ash colour background
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB', // Ash colour border
+    },
     slotChipText: { fontSize: 14, fontWeight: '600', color: '#2D5A27' },
     slotChipTextSelected: { color: '#FFFFFF', fontWeight: '700' },
     slotChipTextBooked: { fontSize: 14, fontWeight: '500', color: '#9CA3AF', textDecorationLine: 'line-through' },
+    slotChipTextPast: { fontSize: 14, fontWeight: '500', color: '#6B7280', textDecorationLine: 'line-through' }, // Ash colour text
 
     // ── Main confirm button ──
     bookConfirmBtn: {

@@ -8,6 +8,7 @@ import ProfessionalPostsScreen from '../features/professionalSupport/screens/Pro
 import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
+import UserNotificationsScreen from '../features/userHome/screens/UserNotificationsScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -47,6 +48,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MyPosts"
                 component={MyPostsScreen}
+            />
+
+            <Stack.Screen
+                name="UserNotifications"
+                component={UserNotificationsScreen}
             />
         </Stack.Navigator>
     )

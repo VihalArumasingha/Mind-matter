@@ -5,22 +5,75 @@ import { API_BASE_URL } from '../../../config/api';
  */
 export const getVolunteerDashboardData = async (token) => {
   try {
+    if (!token) {
+      console.error('[getVolunteerDashboardData] No token provided')
+      return {
+        stats: {
+          completedHours: 0,
+          totalSessions: 0,
+          rating: 0,
+        },
+        isAvailable: true,
+        pendingRequests: [],
+        upcomingSessions: [],
+      }
+    }
+
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+    
     const response = await fetch(`${API_BASE_URL}/api/volunteer/dashboard`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId)
+
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('[getVolunteerDashboardData] Received non-JSON response:', text.substring(0, 100))
+      return {
+        stats: {
+          completedHours: 0,
+          totalSessions: 0,
+          rating: 0,
+        },
+        isAvailable: true,
+        pendingRequests: [],
+        upcomingSessions: [],
+      }
+    }
 
     const data = await response.json();
     if (!response.ok) {
+      if (response.status === 401) {
+        console.error('[getVolunteerDashboardData] Unauthorized - token may be invalid')
+      }
       throw new Error(data.message || 'Failed to fetch dashboard data');
     }
     return data;
   } catch (error) {
     console.error('Error fetching volunteer dashboard data:', error);
-    throw error;
+    if (error.name === 'AbortError') {
+      console.error('[getVolunteerDashboardData] Request timed out after 15 seconds')
+    }
+    // Return empty data on error instead of throwing
+    return {
+      stats: {
+        completedHours: 0,
+        totalSessions: 0,
+        rating: 0,
+      },
+      isAvailable: true,
+      pendingRequests: [],
+      upcomingSessions: [],
+    }
   }
 };
 
@@ -54,24 +107,47 @@ export const updateAvailabilityStatus = async (isAvailable, token) => {
  */
 export const acceptVolunteerRequest = async (requestId, token) => {
   try {
+    const url = `${API_BASE_URL}/api/volunteer/requests/${requestId}/accept`;
+    console.log('[acceptVolunteerRequest] Request URL:', url);
+    console.log('[acceptVolunteerRequest] Request ID:', requestId);
+    console.log('[acceptVolunteerRequest] Token exists:', !!token);
+    
     const response = await fetch(
-      `${API_BASE_URL}/api/volunteer/requests/${requestId}/accept`,
+      url,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           Authorization: `Bearer ${token}`,
         },
       }
     );
 
+    console.log('[acceptVolunteerRequest] Response status:', response.status);
+    console.log('[acceptVolunteerRequest] Response statusText:', response.statusText);
+    
+    const contentType = response.headers.get('content-type');
+    console.log('[acceptVolunteerRequest] Content-Type:', contentType);
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[acceptVolunteerRequest] Received non-JSON response:', text.substring(0, 500));
+      console.error('[acceptVolunteerRequest] Full response text length:', text.length);
+      throw new Error('Server returned non-JSON response. Please try again.');
+    }
+
     const data = await response.json();
+    console.log('[acceptVolunteerRequest] Parsed JSON data:', data);
+    
     if (!response.ok) {
       throw new Error(data.message || 'Failed to accept request');
     }
     return data;
   } catch (error) {
-    console.error('Error accepting request:', error);
+    console.error('[acceptVolunteerRequest] Error:', error);
+    console.error('[acceptVolunteerRequest] Error name:', error.name);
+    console.error('[acceptVolunteerRequest] Error message:', error.message);
     throw error;
   }
 };
@@ -92,6 +168,14 @@ export const declineVolunteerRequest = async (requestId, token) => {
       }
     );
 
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[declineVolunteerRequest] Received non-JSON response:', text.substring(0, 200));
+      console.error('[declineVolunteerRequest] Response status:', response.status);
+      throw new Error('Server returned non-JSON response. Please try again.');
+    }
+
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || 'Failed to decline request');
@@ -100,6 +184,70 @@ export const declineVolunteerRequest = async (requestId, token) => {
   } catch (error) {
     console.error('Error declining request:', error);
     throw error;
+  }
+};
+
+/**
+ * Get volunteer requests from backend
+ */
+export const getVolunteerRequests = async (token, status = 'pending') => {
+  try {
+    if (!token) {
+      console.error('[getVolunteerRequests] No token provided')
+      return {
+        success: true,
+        requests: []
+      }
+    }
+
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+    
+    const response = await fetch(
+      `${API_BASE_URL}/api/volunteer/requests?status=${status}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal
+      }
+    );
+    
+    clearTimeout(timeoutId)
+
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('[getVolunteerRequests] Received non-JSON response:', text.substring(0, 200))
+      console.error('[getVolunteerRequests] Response status:', response.status)
+      console.error('[getVolunteerRequests] Response statusText:', response.statusText)
+      return {
+        success: true,
+        requests: []
+      }
+    }
+
+    const data = await response.json();
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error('[getVolunteerRequests] Unauthorized - token may be invalid')
+      }
+      throw new Error(data.message || 'Failed to fetch requests');
+    }
+    return data;
+  } catch (error) {
+    console.error('Error fetching volunteer requests:', error);
+    if (error.name === 'AbortError') {
+      console.error('[getVolunteerRequests] Request timed out after 15 seconds')
+    }
+    // Return empty requests on error instead of throwing
+    return {
+      success: true,
+      requests: []
+    }
   }
 };
 

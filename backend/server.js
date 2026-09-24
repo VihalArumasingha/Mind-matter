@@ -27,9 +27,26 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Debug route to log all incoming requests
+app.use((req, res, next) => {
+  console.log('[Debug] Incoming request:', req.method, req.url);
+  console.log('[Debug] Full URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+  next();
+});
+
 // Base test route
 app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
+});
+
+// Test volunteer endpoint
+app.get('/api/volunteer/test', (req, res) => {
+    console.log('[Test Endpoint] Volunteer test endpoint called');
+    res.json({
+        success: true,
+        message: 'Volunteer endpoint is working',
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.use('/api/auth', authRoutes);
@@ -39,6 +56,7 @@ app.use('/api/support-circles', supportCircleRoutes);
 app.use('/api/group-memberships', groupMembershipRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/volunteer', volunteerRoutes);
+console.log('[Server] Volunteer routes mounted at /api/volunteer');
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/user-posts', userPostRoutes);

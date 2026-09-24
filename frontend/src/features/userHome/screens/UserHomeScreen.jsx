@@ -5,13 +5,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
+import {API_BASE_URL} from '../../../config/api'
 
 const UserHomeScreen = ({navigation}) => {
-    const {token, user} = useAuth()
+    const {token, user, authFetch} = useAuth()
     const [posts, setPosts] = useState([])
     const [commentText, setCommentText] = useState({})
     const [editingComment, setEditingComment] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [latestApprovedBooking, setLatestApprovedBooking] = useState(null)
 
     const loadPosts = useCallback(async () => {
         try {
@@ -25,9 +28,25 @@ const UserHomeScreen = ({navigation}) => {
         }
     }, [token])
 
+    const loadNotifications = useCallback(async () => {
+        if (!token) return
+        try {
+            const res = await authFetch(`${API_BASE_URL}/api/users/notifications`)
+            if (res.ok) {
+                const data = await res.json()
+                setUnreadCount(data.unreadCount || 0)
+                const approved = (data.notifications || []).find(n => n.type === 'booking_approved' && !n.isRead)
+                setLatestApprovedBooking(approved || null)
+            }
+        } catch (err) {
+            console.log('[UserHomeScreen] Failed to load notifications:', err.message)
+        }
+    }, [token, authFetch])
+
     useFocusEffect(React.useCallback(() => {
         loadPosts()
-    }, [loadPosts]))
+        loadNotifications()
+    }, [loadPosts, loadNotifications]))
 
     const replacePost = post => {
         setPosts(current => current.map(item => item._id === post._id ? post : item))
@@ -140,7 +159,53 @@ const UserHomeScreen = ({navigation}) => {
                 onRefresh={loadPosts}
                 contentContainerStyle={styles.list}
                 ListHeaderComponent={<>
-                    <View style={styles.brandHeader}><View style={styles.brandMark}><Icon name="spa" size={28} color="#4E8C4A" /></View><View><Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text><Text style={styles.brandTagline}>You matter. Your mind matters.</Text></View><Icon name="notifications-none" size={25} color="#17231A" /></View>
+                    <View style={styles.brandHeader}>
+                        <View style={styles.brandMark}>
+                            <Icon name="spa" size={28} color="#4E8C4A" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text>
+                            <Text style={styles.brandTagline}>You matter. Your mind matters.</Text>
+                        </View>
+                        <TouchableOpacity 
+                            style={styles.notificationBellContainer}
+                            onPress={() => navigation.navigate('UserNotifications')}
+                        >
+                            <Icon name="notifications-none" size={26} color="#17231A" />
+                            {unreadCount > 0 && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadBadgeText}>
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                    {latestApprovedBooking && (
+                        <TouchableOpacity
+                            style={styles.approvedBanner}
+                            onPress={() => navigation.navigate('UserNotifications')}
+                            activeOpacity={0.88}
+                        >
+                            <View style={styles.approvedBannerIcon}>
+                                <Icon name="event-available" size={26} color="#2F6B47" />
+                            </View>
+                            <View style={styles.approvedBannerContent}>
+                                <View style={styles.approvedBannerHeader}>
+                                    <Text style={styles.approvedBannerTitle}>Booking Request Accepted! 🎉</Text>
+                                    {!latestApprovedBooking.isRead && (
+                                        <View style={styles.newBadge}>
+                                            <Text style={styles.newBadgeText}>NEW</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.approvedBannerMessage} numberOfLines={2}>
+                                    {latestApprovedBooking.message}
+                                </Text>
+                                <Text style={styles.approvedBannerTap}>Tap to view in notifications →</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><Text style={styles.composerText}>What's on your mind?</Text><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
                     <View style={styles.feedTabs}><Text style={styles.activeTab}>For You</Text><Text style={styles.tab}>Following</Text><Text style={styles.tab}>Latest</Text></View>
                 </>}
@@ -368,6 +433,93 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: '#4E8C4A',
+    },
+
+    approvedBanner: {
+        backgroundColor: '#EAF5EC',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 14,
+        borderWidth: 1.5,
+        borderColor: '#B8DBC2',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        shadowColor: '#2F6B47',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    approvedBannerIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#D6EAD9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+        marginTop: 2,
+    },
+    approvedBannerContent: {
+        flex: 1,
+    },
+    approvedBannerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    approvedBannerTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1C4A2E',
+        flex: 1,
+    },
+    newBadge: {
+        backgroundColor: '#2F6B47',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 6,
+    },
+    newBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    approvedBannerMessage: {
+        fontSize: 13,
+        color: '#2E4C38',
+        lineHeight: 18,
+    },
+    approvedBannerTap: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#2F6B47',
+        marginTop: 6,
+    },
+    notificationBellContainer: {
+        position: 'relative',
+        padding: 6,
+    },
+    unreadBadge: {
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        backgroundColor: '#E53E3E',
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1.5,
+        borderColor: '#F4F7EF',
+    },
+    unreadBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
     },
 })
 

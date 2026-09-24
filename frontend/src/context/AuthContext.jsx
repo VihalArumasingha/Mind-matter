@@ -81,6 +81,24 @@ export const AuthProvider = ({ children }) => {
         setUser(updatedUser)
     }
 
+    // Wrapper around fetch that auto-logs out on 401 (expired/invalid token)
+    const authFetch = async (url, options = {}) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...options.headers,
+        }
+        const res = await fetch(url, { ...options, headers })
+        if (res.status === 401) {
+            console.log('[AuthContext] Received 401 — token expired, logging out...')
+            await Keychain.resetGenericPassword()
+            setToken(null)
+            setUser(null)
+            throw new Error('Session expired. Please log in again.')
+        }
+        return res
+    }
+
     return (
         <AuthContext.Provider
             value={{
@@ -92,6 +110,7 @@ export const AuthProvider = ({ children }) => {
                 login,
                 logout,
                 updateUser,
+                authFetch,
             }}>
             {children}
         </AuthContext.Provider>
