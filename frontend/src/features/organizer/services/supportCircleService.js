@@ -17,6 +17,25 @@ export const getMyCircles = async token => {
     return data
 }
 
+export const getAvailableSupportCircles = async token => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to load available support circles'
+        )
+    }
+
+    return data
+}
+
 export const getCircleById = async (token, circleId) => {
     const response = await fetch(`${API_BASE_URL}/api/support-circles/${circleId}`, {
         method: 'GET',

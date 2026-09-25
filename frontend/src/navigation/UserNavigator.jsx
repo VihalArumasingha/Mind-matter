@@ -9,6 +9,9 @@ import OrganizerApplicationScreen from '../features/profile/screens/OrganizerApp
 import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
+import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+
+
 
 const Stack = createNativeStackNavigator()
 
@@ -53,6 +56,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MyPosts"
                 component={MyPostsScreen}
+            />
+
+            <Stack.Screen
+                name="MemberCircleDetail"
+                component={MemberCircleDetailScreen}
             />
         </Stack.Navigator>
     )
