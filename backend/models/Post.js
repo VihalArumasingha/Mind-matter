@@ -80,19 +80,15 @@ const postSchema = new mongoose.Schema(
             trim: true,
             maxlength: 5000
         },
-
-        // Keep these fields from main
         isAnonymous: {
             type: Boolean,
             default: false
         },
-
         mood: {
             type: String,
             enum: ['happy', 'calm', 'anxious', 'sad', 'tired', 'grateful', null],
             default: null
         },
-
         imageUrl: {
             type: String,
             default: ''

@@ -341,7 +341,6 @@ const PostsManagementView = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
       <ScrollView 
         style={adminStyles.bodyArea} 
         showsVerticalScrollIndicator={false}
@@ -353,11 +352,7 @@ const PostsManagementView = ({
             tintColor={COLORS.primary}
           />
         } >
-        <View style={styles.headerContainer}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Posts Management</Text>
-          </View>
-        </View>
+        
         <View style={styles.dateFilterContainer}>
           <TouchableOpacity 
             style={[styles.dateFilterButton, dateFilter === 'all' && styles.dateFilterActive]}
@@ -709,7 +704,6 @@ const PostsManagementView = ({
           </View>
         </Modal>
       </ScrollView>
-    </SafeAreaView>
   );
 };
 
