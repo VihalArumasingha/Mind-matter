@@ -406,30 +406,39 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 </Pressable>
                             ) : null}
 
-<<<<<<< Updated upstream
-            {hasPendingModeration ? <View style={styles.notificationDotCard} /> : null}
+{hasPendingModeration ? <View style={styles.notificationDotCard} /> : null}
 
-            <View style={styles.moderationIcon}>
-                <Text style={styles.moderationIconText}>
-                    ✓
-                </Text>
-            </View>
-=======
-                            {(stats?.pendingPostApprovals ?? 0) > 0 ? (
-                                <Pressable style={styles.attentionCard} onPress={() => navigation.navigate('Moderation')}>
-                                    <View style={[styles.attentionIcon, styles.moderationAttentionIcon]}>
-                                        <MaterialCommunityIcons name="shield-alert-outline" size={22} color="#B8762B" />
-                                    </View>
-                                    <View style={styles.attentionContent}>
-                                        <Text style={styles.attentionTitle}>
-                                            {stats.pendingPostApprovals} Post{stats.pendingPostApprovals === 1 ? '' : 's'} Awaiting Review
-                                        </Text>
-                                        <Text style={styles.attentionSubtitle}>Community Post Moderation</Text>
-                                    </View>
-                                    <MaterialCommunityIcons name="chevron-right" size={22} color="#758075" />
-                                </Pressable>
-                            ) : null}
->>>>>>> Stashed changes
+{(stats?.pendingPostApprovals ?? 0) > 0 ? (
+    <Pressable
+        style={styles.attentionCard}
+        onPress={() => navigation.navigate('Moderation')}
+    >
+        <View style={[styles.attentionIcon, styles.moderationAttentionIcon]}>
+            <MaterialCommunityIcons
+                name="shield-alert-outline"
+                size={22}
+                color="#B8762B"
+            />
+        </View>
+
+        <View style={styles.attentionContent}>
+            <Text style={styles.attentionTitle}>
+                {stats.pendingPostApprovals} Post
+                {stats.pendingPostApprovals === 1 ? '' : 's'} Awaiting Review
+            </Text>
+
+            <Text style={styles.attentionSubtitle}>
+                Community Post Moderation
+            </Text>
+        </View>
+
+        <MaterialCommunityIcons
+            name="chevron-right"
+            size={22}
+            color="#758075"
+        />
+    </Pressable>
+) : null}
 
                             {(() => {
                                 const registrations = notifications.filter(item =>
