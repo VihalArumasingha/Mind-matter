@@ -20,6 +20,7 @@ import {
     respondToRequest,
 } from '../services/supportCircleService'
 import {getOrganizerNotifications} from '../services/organizerNotificationService'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 
 
 const TABS = ['Overview', 'My Circles', 'Request']
@@ -1228,15 +1229,18 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                     <Text style={styles.drawerUserName} numberOfLines={1}>
                                         {user?.name || 'MindMatter User'}
                                     </Text>
-                                    <View style={styles.drawerRoleRow}>
-                                            <Image
-                                                    source={require('../../../assets/images/community-organizer-badge.png')}
-                                                    style={styles.drawerBadgeIcon}
+                                    {user?.role === 'communityOrganizer' ? (
+                                        <View style={styles.drawerRoleRow}>
+                                            <CommunityOrganizerBadge
+                                                role={user?.role}
+                                                size="small"
+                                                style={styles.drawerBadgeIcon}
                                             />
-                                        <Text style={styles.drawerRole}>
-                                            Community Organizer
-                                        </Text>
-                                    </View>
+                                            <Text style={styles.drawerRole}>
+                                                Community Organizer
+                                            </Text>
+                                        </View>
+                                    ) : null}
                                 </View>
                             </View>
 

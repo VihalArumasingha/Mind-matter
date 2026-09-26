@@ -9,8 +9,8 @@ import {createOrganizerNotification} from '../../../utils/organizerNotifications
 const isValidId = id => mongoose.isValidObjectId(id)
 
 const postPopulation = [
-    { path: 'author', select: 'name profilePicture' },
-    { path: 'comments.user', select: 'name profilePicture' },
+    { path: 'author', select: 'name profilePicture role' },
+    { path: 'comments.user', select: 'name profilePicture role' },
     { path: 'supportCircle', select: 'topic description rules' }
 ]
 

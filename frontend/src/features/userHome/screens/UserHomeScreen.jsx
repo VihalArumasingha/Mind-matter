@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
-import organizerBadge from '../../../assets/images/community-organizer-badge.png'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 
 
 const MOODS = [
@@ -98,12 +98,11 @@ const UserHomeScreen = ({navigation}) => {
                         <View>
                             <View style={styles.authorNameRow}>
                                 <Text style={styles.author}>{authorName}</Text>
-
-                                {!isAnonymous && post.author?.role === 'communityOrganizer' && (
-                                    <Image
-                                        source={organizerBadge}
+                                {!isAnonymous && (
+                                    <CommunityOrganizerBadge
+                                        role={post.author?.role}
+                                        size="small"
                                         style={styles.organizerBadge}
-                                        resizeMode="contain"
                                     />
                                 )}
                             </View>

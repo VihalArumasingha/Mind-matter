@@ -16,7 +16,7 @@ import { deleteAccount } from '../services/profileService';
 import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
 import { getMyPosts } from '../../posts/services/postService';
 import { useFocusEffect } from '@react-navigation/native';
-require('../../../assets/images/community-organizer-badge.png')
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, token } = useAuth();
@@ -128,23 +128,19 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
           <View style={styles.roleBadge}>
-  {user?.role === 'communityOrganizer' ? (
-    <>
-      <Image
-        source={require('../../../assets/images/community-organizer-badge.png')}
-        style={styles.roleBadgeIcon}
-      />
-
-      <Text style={styles.roleText}>
-        Community Organizer
-      </Text>
-    </>
-  ) : (
-    <Text style={styles.roleText}>
-      {user?.role || 'user'}
-    </Text>
-  )}
-</View>
+            {user?.role === 'communityOrganizer' ? (
+              <>
+                <CommunityOrganizerBadge
+                  role={user?.role}
+                  size="normal"
+                  style={styles.roleBadgeIcon}
+                />
+                <Text style={styles.roleText}>Community Organizer</Text>
+              </>
+            ) : (
+              <Text style={styles.roleText}>{user?.role || 'user'}</Text>
+            )}
+          </View>
         </View>
 
         <View style={styles.section}>

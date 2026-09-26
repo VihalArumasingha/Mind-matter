@@ -164,7 +164,7 @@ export const getAttendanceForSession = async (req, res) => {
     try {
         const { sessionId } = req.params
 
-        const attendance = await Attendance.find({ sessionId }).populate('userId', 'name email profilePicture')
+        const attendance = await Attendance.find({ sessionId }).populate('userId', 'name email profilePicture role')
 
         res.status(200).json({
             attendance

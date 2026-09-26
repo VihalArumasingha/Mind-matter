@@ -205,7 +205,7 @@ export const getSupportCircleById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const circle = await SupportCircle.findById(id)
+        const circle = await SupportCircle.findById(id).populate('ownerId', 'name profilePicture role')
 
         if (!circle) {
             return res.status(404).json({
@@ -260,7 +260,7 @@ export const getPendingJoinRequests = async (req, res) => {
             status: 'pending'
         }).populate(
             'userId',
-            'name email profilePicture bio'
+            'name email profilePicture bio role'
         )
 
         res.status(200).json({
@@ -299,7 +299,7 @@ export const getAllPendingJoinRequests = async (req, res) => {
         })
             .populate(
                 'userId',
-                'name email profilePicture bio'
+                'name email profilePicture bio role'
             )
             .populate(
                 'groupId',
@@ -467,7 +467,7 @@ export const getCircleMembers = async (req, res) => {
                 status: 'approved'
             }).populate(
                 'userId',
-                'name email profilePicture'
+                'name email profilePicture role'
             )
 
         res.status(200).json({
