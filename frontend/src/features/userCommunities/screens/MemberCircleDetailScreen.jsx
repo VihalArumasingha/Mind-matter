@@ -1,17 +1,26 @@
 import React, {useCallback, useState} from 'react'
 import {
     ActivityIndicator,
+    Alert,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from 'react-native'
-import {useFocusEffect, useNavigation, useRoute} from '@react-navigation/native'
+import {
+    useFocusEffect,
+    useNavigation,
+    useRoute,
+} from '@react-navigation/native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 
 import {useAuth} from '../../../context/AuthContext'
-import {getCircleById} from '../../organizer/services/supportCircleService'
+import {
+    getCircleById,
+    getMyMemberships,
+    requestToJoinCircle,
+} from '../../organizer/services/supportCircleService'
 
 const MemberCircleDetailScreen = () => {
     const navigation = useNavigation()
@@ -24,7 +33,17 @@ const MemberCircleDetailScreen = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
-    const loadCircle = useCallback(async () => {
+    // Current user's membership for this community
+    const [membership, setMembership] = useState(null)
+
+    // Loading state for the join request
+    const [isJoining, setIsJoining] = useState(false)
+
+    // ─────────────────────────────────────────────────────────────
+    // Load community + current user's membership
+    // ─────────────────────────────────────────────────────────────
+
+    const loadDetail = useCallback(async () => {
         if (!token || !circleId) {
             setLoading(false)
             return
@@ -34,12 +53,29 @@ const MemberCircleDetailScreen = () => {
             setLoading(true)
             setError('')
 
-            const data = await getCircleById(token, circleId)
+            const [{circle: circleData}, membershipData] =
+                await Promise.all([
+                    getCircleById(token, circleId),
+                    getMyMemberships(token),
+                ])
 
-            setCircle(data.circle || data)
+            setCircle(circleData)
+
+            const memberships = membershipData.memberships ?? []
+
+            const currentMembership = memberships.find(
+                item =>
+                    item.groupId?._id === circleId ||
+                    item.groupId === circleId,
+            )
+
+            setMembership(currentMembership ?? null)
         } catch (err) {
             console.error('Failed to load community:', err)
-            setError(err.message || 'Failed to load community')
+
+            setError(
+                err.message || 'Failed to load community',
+            )
         } finally {
             setLoading(false)
         }
@@ -47,15 +83,62 @@ const MemberCircleDetailScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
-            loadCircle()
-        }, [loadCircle]),
+            loadDetail()
+        }, [loadDetail]),
     )
+
+    // ─────────────────────────────────────────────────────────────
+    // Request to join community
+    // ─────────────────────────────────────────────────────────────
+
+    const handleRequestToJoin = async () => {
+        if (!token || !circleId || isJoining) {
+            return
+        }
+
+        try {
+            setIsJoining(true)
+
+            const data = await requestToJoinCircle(
+                token,
+                circleId,
+            )
+
+            // Immediately update the UI with the new membership
+            setMembership(data.membership)
+
+            Alert.alert(
+                'Request Sent',
+                'Your request to join this community has been sent to the organizer.',
+            )
+        } catch (err) {
+            console.error(
+                'Failed to request to join community:',
+                err,
+            )
+
+            Alert.alert(
+                'Unable to Join',
+                err.message ||
+                    'Failed to request to join this community.',
+            )
+        } finally {
+            setIsJoining(false)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Loading state
+    // ─────────────────────────────────────────────────────────────
 
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#4E8C4A" />
+                    <ActivityIndicator
+                        size="large"
+                        color="#4E8C4A"
+                    />
 
                     <Text style={styles.loadingText}>
                         Loading community...
@@ -64,6 +147,10 @@ const MemberCircleDetailScreen = () => {
             </SafeAreaView>
         )
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Error state
+    // ─────────────────────────────────────────────────────────────
 
     if (error || !circle) {
         return (
@@ -76,21 +163,85 @@ const MemberCircleDetailScreen = () => {
                     </Text>
 
                     <Text style={styles.errorText}>
-                        {error || 'We could not find this community.'}
+                        {error ||
+                            'We could not find this community.'}
                     </Text>
 
                     <Pressable
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}>
-                        <Text style={styles.backButtonText}>Go Back</Text>
+                        <Text style={styles.backButtonText}>
+                            Go Back
+                        </Text>
                     </Pressable>
                 </View>
             </SafeAreaView>
         )
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Render join section based on membership status
+    // ─────────────────────────────────────────────────────────────
+
+    const membershipStatus = membership?.status
+
+    const renderJoinAction = () => {
+        // User is already an approved member
+        if (membershipStatus === 'approved') {
+            return (
+                <View style={styles.joinedButton}>
+                    <Text style={styles.joinedButtonText}>
+                        ✓ Joined Community
+                    </Text>
+                </View>
+            )
+        }
+
+        // User has requested to join and is waiting
+        if (membershipStatus === 'pending') {
+            return (
+                <View style={styles.pendingButton}>
+                    <Text style={styles.pendingButtonText}>
+                        Request Pending
+                    </Text>
+                </View>
+            )
+        }
+
+        // Organizer rejected the request
+        if (membershipStatus === 'rejected') {
+            return (
+                <View style={styles.rejectedButton}>
+                    <Text style={styles.rejectedButtonText}>
+                        Request Rejected
+                    </Text>
+                </View>
+            )
+        }
+
+        // User has no membership yet
+        return (
+            <Pressable
+                style={[
+                    styles.joinButton,
+                    isJoining && styles.joinButtonDisabled,
+                ]}
+                onPress={handleRequestToJoin}
+                disabled={isJoining}>
+                {isJoining ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                    <Text style={styles.joinButtonText}>
+                        Request to Join
+                    </Text>
+                )}
+            </Pressable>
+        )
+    }
+
     return (
         <SafeAreaView style={styles.safeArea}>
+            {/* Header */}
             <View style={styles.header}>
                 <Pressable
                     style={styles.backIconButton}
@@ -98,7 +249,9 @@ const MemberCircleDetailScreen = () => {
                     <Text style={styles.backIcon}>‹</Text>
                 </Pressable>
 
-                <Text style={styles.headerTitle}>Community</Text>
+                <Text style={styles.headerTitle}>
+                    Community
+                </Text>
 
                 <View style={styles.headerSpacer} />
             </View>
@@ -106,14 +259,17 @@ const MemberCircleDetailScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}>
+                {/* Hero */}
                 <View style={styles.heroIcon}>
                     <Text style={styles.heroIconText}>♥</Text>
                 </View>
 
+                {/* Community title */}
                 <Text style={styles.title}>
                     {circle.topic || 'Support Community'}
                 </Text>
 
+                {/* Category */}
                 {circle.category ? (
                     <View style={styles.categoryBadge}>
                         <Text style={styles.categoryText}>
@@ -122,18 +278,22 @@ const MemberCircleDetailScreen = () => {
                     </View>
                 ) : null}
 
+                {/* Description */}
                 <Text style={styles.description}>
                     {circle.description ||
                         'A safe space where members can connect and support one another.'}
                 </Text>
 
+                {/* Stats */}
                 <View style={styles.statsCard}>
                     <View style={styles.stat}>
                         <Text style={styles.statNumber}>
                             {circle.currentMemberCount || 0}
                         </Text>
 
-                        <Text style={styles.statLabel}>Members</Text>
+                        <Text style={styles.statLabel}>
+                            Members
+                        </Text>
                     </View>
 
                     <View style={styles.divider} />
@@ -143,20 +303,27 @@ const MemberCircleDetailScreen = () => {
                             {circle.meetingTypes?.length || 0}
                         </Text>
 
-                        <Text style={styles.statLabel}>Meeting types</Text>
+                        <Text style={styles.statLabel}>
+                            Meeting types
+                        </Text>
                     </View>
                 </View>
 
+                {/* About */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>About this community</Text>
+                    <Text style={styles.sectionTitle}>
+                        About this community
+                    </Text>
 
                     <Text style={styles.sectionText}>
-                        This community provides a supportive environment where
-                        people can connect, share experiences and take part in
+                        This community provides a supportive
+                        environment where people can connect,
+                        share experiences and take part in
                         group activities.
                     </Text>
                 </View>
 
+                {/* Meeting options */}
                 {circle.meetingTypes?.length ? (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>
@@ -165,8 +332,13 @@ const MemberCircleDetailScreen = () => {
 
                         <View style={styles.badgesContainer}>
                             {circle.meetingTypes.map(type => (
-                                <View key={type} style={styles.meetingBadge}>
-                                    <Text style={styles.meetingBadgeText}>
+                                <View
+                                    key={type}
+                                    style={styles.meetingBadge}>
+                                    <Text
+                                        style={
+                                            styles.meetingBadgeText
+                                        }>
                                         {type}
                                     </Text>
                                 </View>
@@ -175,21 +347,29 @@ const MemberCircleDetailScreen = () => {
                     </View>
                 ) : null}
 
+                {/* Join card */}
                 <View style={styles.joinCard}>
                     <Text style={styles.joinTitle}>
-                        Interested in joining?
+                        {membershipStatus === 'approved'
+                            ? 'You are a member'
+                            : membershipStatus === 'pending'
+                              ? 'Request under review'
+                              : membershipStatus === 'rejected'
+                                ? 'Join request rejected'
+                                : 'Interested in joining?'}
                     </Text>
 
                     <Text style={styles.joinText}>
-                        Request to join this community and connect with other
-                        members.
+                        {membershipStatus === 'approved'
+                            ? 'You have joined this community and can participate in its activities.'
+                            : membershipStatus === 'pending'
+                              ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
+                              : membershipStatus === 'rejected'
+                                ? 'Your previous request to join this community was rejected by the organizer.'
+                                : 'Request to join this community and connect with other members.'}
                     </Text>
 
-                    <Pressable style={styles.joinButton}>
-                        <Text style={styles.joinButtonText}>
-                            Request to Join
-                        </Text>
-                    </Pressable>
+                    {renderJoinAction()}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -383,6 +563,10 @@ const styles = StyleSheet.create({
         color: '#667464',
     },
 
+    // ─────────────────────────────────────────────
+    // Join button
+    // ─────────────────────────────────────────────
+
     joinButton: {
         marginTop: 16,
         height: 48,
@@ -392,11 +576,80 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
+    joinButtonDisabled: {
+        opacity: 0.7,
+    },
+
     joinButtonText: {
         color: '#FFFFFF',
         fontSize: 15,
         fontWeight: '700',
     },
+
+    // ─────────────────────────────────────────────
+    // Pending state
+    // ─────────────────────────────────────────────
+
+    pendingButton: {
+        marginTop: 16,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#EEF3EE',
+        borderWidth: 1,
+        borderColor: '#D7E2D4',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    pendingButtonText: {
+        color: '#687168',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
+    // ─────────────────────────────────────────────
+    // Joined state
+    // ─────────────────────────────────────────────
+
+    joinedButton: {
+        marginTop: 16,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#DCEBD8',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    joinedButtonText: {
+        color: '#3F7540',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
+    // ─────────────────────────────────────────────
+    // Rejected state
+    // ─────────────────────────────────────────────
+
+    rejectedButton: {
+        marginTop: 16,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#F1E7E5',
+        borderWidth: 1,
+        borderColor: '#E3D2CF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    rejectedButtonText: {
+        color: '#8A5C56',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
+    // ─────────────────────────────────────────────
+    // Loading / error
+    // ─────────────────────────────────────────────
 
     centerContainer: {
         flex: 1,

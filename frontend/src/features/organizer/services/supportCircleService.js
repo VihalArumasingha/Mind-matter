@@ -211,3 +211,47 @@ export const getDashboardStats = async token => {
 
     return data
 }
+
+export const requestToJoinCircle = async (token, circleId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-memberships/${circleId}/join`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to request to join the community',
+        )
+    }
+
+    return data
+}
+
+export const getMyMemberships = async token => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-memberships/mine`,
+        {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to load your community memberships',
+        )
+    }
+
+    return data
+}
