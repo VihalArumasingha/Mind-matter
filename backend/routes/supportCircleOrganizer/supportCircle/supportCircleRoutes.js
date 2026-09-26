@@ -10,7 +10,8 @@ import {
     respondToJoinRequest,
     getCircleMembers,
     removeMember,
-    getDashboardStats
+    getDashboardStats,
+    getAvailableSupportCircles
 } from '../../../controllers/supportCircleOrganizer/supportCircle/supportCircleController.js'
 import authMiddleware from '../../../middleware/authMiddleware.js'
 
@@ -18,6 +19,8 @@ const router = express.Router()
 
 // FM-46
 router.post('/', authMiddleware, createSupportCircle)
+
+router.get('/', authMiddleware, getAvailableSupportCircles)
 
 // FM-47
 router.put('/:id', authMiddleware, updateSupportCircle)

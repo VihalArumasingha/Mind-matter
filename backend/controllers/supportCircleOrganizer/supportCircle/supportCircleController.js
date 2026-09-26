@@ -1,6 +1,7 @@
 import SupportCircle from '../../../models/SupportCircle.js'
 import GroupMembership from '../../../models/GroupMembership.js'
 import Session from '../../../models/Session.js'
+import Post from '../../../models/Post.js'
 
 // FM-46: Create a new support circle
 export const createSupportCircle = async (req, res) => {
@@ -132,6 +133,27 @@ export const getMySupportCircles = async (req, res) => {
         })
     }
 }
+
+// Get active support circles for member discovery
+export const getAvailableSupportCircles = async (req, res) => {
+    try {
+        const circles = await SupportCircle.find({
+            status: 'active'
+        })
+            .sort({ createdAt: -1 })
+
+        res.status(200).json({
+            circles
+        })
+    } catch (error) {
+        console.error('[Get Available Support Circles Error]', error)
+
+        res.status(500).json({
+            message: 'Server error while fetching available support circles'
+        })
+    }
+}
+
 
 // Get a single support circle by id
 export const getSupportCircleById = async (req, res) => {
@@ -366,6 +388,12 @@ export const getDashboardStats = async (req, res) => {
 
         const circleIds = circles.map((circle) => circle._id)
 
+        const pendingPostApprovals = await Post.countDocuments({
+    supportCircle: { $in: circleIds },
+    status: 'pending',
+    needsReview: true
+})
+
         const totalMembers = circles.reduce((total, circle) => total + circle.currentMemberCount, 0)
 
         const pendingRequests = await GroupMembership.countDocuments({
@@ -421,8 +449,7 @@ export const getDashboardStats = async (req, res) => {
             totalCircles: circles.length,
             totalMembers,
             pendingRequests,
-            // Post moderation isn't built yet (Sprint 3) — placeholder until it is
-            pendingPostApprovals: 0,
+            pendingPostApprovals,
             upcomingSessionsCount: upcomingSessions.length,
             upcomingSessions,
             recentActivity
