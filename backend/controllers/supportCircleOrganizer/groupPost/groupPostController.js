@@ -4,6 +4,7 @@ import SupportCircle from '../../../models/SupportCircle.js'
 import GroupMembership from '../../../models/GroupMembership.js'
 import cloudinary from '../../../config/cloudinary.js'
 import {Readable} from 'stream'
+import {createOrganizerNotification} from '../../../utils/organizerNotifications.js'
 
 const isValidId = id => mongoose.isValidObjectId(id)
 
@@ -119,6 +120,18 @@ export const createGroupPost = async (req, res) => {
             status: isOwner ? 'active' : 'pending',
             needsReview: !isOwner
         })
+
+        if (!isOwner) {
+            await createOrganizerNotification({
+                recipient: circle.ownerId,
+                actorId: req.user._id,
+                type: 'POST_MODERATION',
+                title: 'Post Awaiting Moderation',
+                message: `A new post has been submitted to ${circle.topic}.`,
+                circleId: circle._id,
+                postId: post._id,
+            })
+        }
 
         res.status(201).json({
             message: isOwner

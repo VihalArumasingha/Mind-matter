@@ -14,6 +14,7 @@ import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {
     getPendingRequests,
+    getAllPendingRequests,
     respondToRequest,
 } from '../services/supportCircleService'
 
@@ -63,10 +64,9 @@ const JoinRequestsScreen = ({navigation, route}) => {
         try {
             setError('')
 
-            const data = await getPendingRequests(
-                token,
-                circleId,
-            )
+            const data = circleId
+                ? await getPendingRequests(token, circleId)
+                : await getAllPendingRequests(token)
 
             setRequests(data.requests ?? [])
         } catch (err) {
