@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
 
+app.use('/api/users/onboarding', onboardingRoutes)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/users/moods', moodRoutes);
@@ -43,7 +44,6 @@ app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
 app.use('/api/moderation', moderationRoutes);
-app.use('/api/users/onboarding', onboardingRoutes)
 
 const startServer = async () => {
     try {
