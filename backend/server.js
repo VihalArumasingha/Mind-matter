@@ -16,7 +16,7 @@ import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
 import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPostRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
-
+import onboardingRoutes from './routes/user/onboardingRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
 
+app.use('/api/users/onboarding', onboardingRoutes)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/users/moods', moodRoutes);
