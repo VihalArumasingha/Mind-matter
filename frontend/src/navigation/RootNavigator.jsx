@@ -1,8 +1,8 @@
 import React from 'react'
-import {ActivityIndicator, StyleSheet, View, Text} from 'react-native'
-import {NavigationContainer} from '@react-navigation/native'
-import {createNativeStackNavigator} from '@react-navigation/native-stack'
-import {useAuth} from '../context/AuthContext'
+import { ActivityIndicator, StyleSheet, View, Text } from 'react-native'
+import { NavigationContainer } from '@react-navigation/native'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { useAuth } from '../context/AuthContext'
 
 import LoginScreen from '../features/authentication/screens/LoginScreen'
 import RegisterScreen from '../features/authentication/screens/RegisterScreen'
@@ -12,12 +12,13 @@ import UserNavigator from './UserNavigator'
 import VolunteerNavigator from './VolunteerNavigator'
 import OrganizerNavigator from './OrganizerNavigator'
 import AdminNavigator from './AdminNavigator'
+import OnboardingGate from '../features/onboarding/OnboardingGate'
 
 const Stack = createNativeStackNavigator()
 
 const AuthenticationNavigator = () => {
     return (
-        <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen
                 name="Login"
                 component={LoginScreen}
@@ -49,7 +50,7 @@ const LoadingScreen = () => {
 }
 
 const RootNavigator = () => {
-    const {user, isLoading, error} = useAuth()
+    const { user, token, isLoading, error } = useAuth()
 
     console.log('[RootNavigator] Render state:', { isLoading, error, hasUser: !!user, userRole: user?.role, user })
 
@@ -74,7 +75,11 @@ const RootNavigator = () => {
 
         switch (user.role) {
             case 'user':
-                return <UserNavigator />
+                return (
+                    <OnboardingGate token={token}>
+                        <UserNavigator />
+                    </OnboardingGate>
+                )
 
             case 'volunteer':
                 return <VolunteerNavigator />
