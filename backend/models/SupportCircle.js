@@ -20,11 +20,12 @@ const supportCircleSchema = new mongoose.Schema(
             trim: true
         },
 
-         meetingTypes: {
+        meetingTypes: {
             type: [String],
             enum: ['online', 'physical'],
             validate: {
-                validator: (value) => Array.isArray(value) && value.length > 0,
+                validator: value =>
+                    Array.isArray(value) && value.length > 0,
                 message: 'At least one meeting type must be selected'
             },
             required: true
@@ -38,7 +39,8 @@ const supportCircleSchema = new mongoose.Schema(
 
         currentMemberCount: {
             type: Number,
-            default: 1
+            default: 1,
+            min: 0
         },
 
         category: {
@@ -53,7 +55,14 @@ const supportCircleSchema = new mongoose.Schema(
             default: ''
         },
 
+        // Large banner image displayed at the top of the group
         coverImage: {
+            type: String,
+            default: ''
+        },
+
+        // Circular/group profile image
+        profileImage: {
             type: String,
             default: ''
         },
@@ -69,6 +78,9 @@ const supportCircleSchema = new mongoose.Schema(
     }
 )
 
-const SupportCircle = mongoose.model('SupportCircle', supportCircleSchema)
+const SupportCircle = mongoose.model(
+    'SupportCircle',
+    supportCircleSchema
+)
 
 export default SupportCircle
