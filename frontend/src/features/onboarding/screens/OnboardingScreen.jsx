@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, {useState} from 'react'
 import {
     ActivityIndicator,
     Pressable,
@@ -8,13 +8,9 @@ import {
     View,
 } from 'react-native'
 
-import { useAuth } from '../../../context/AuthContext'
-import { onboardingQuestions } from '../data/onboardingQuestions'
-import { submitOnboarding } from '../services/onboardingService'
+import {onboardingQuestions} from '../data/onboardingQuestions'
 
-const OnboardingScreen = ({ navigation }) => {
-    const { token } = useAuth()
-
+const OnboardingScreen = ({onComplete}) => {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [answers, setAnswers] = useState({})
     const [selectedOption, setSelectedOption] = useState(null)
@@ -23,12 +19,7 @@ const OnboardingScreen = ({ navigation }) => {
 
     const currentQuestion = onboardingQuestions[currentIndex]
 
-    const selectOption = value => {
-        setSelectedOption(value)
-        setError('')
-    }
-
-    const goNext = async () => {
+    const handleContinue = async () => {
         if (!selectedOption) {
             setError('Please select an option to continue')
             return
@@ -36,8 +27,10 @@ const OnboardingScreen = ({ navigation }) => {
 
         const updatedAnswers = {
             ...answers,
-            [currentQuestion.id]: selectedOption,
+            [currentQuestion.id]: selectedOption
         }
+
+        setError('')
 
         if (currentIndex < onboardingQuestions.length - 1) {
             setAnswers(updatedAnswers)
@@ -47,18 +40,9 @@ const OnboardingScreen = ({ navigation }) => {
         }
 
         setLoading(true)
-        setError('')
 
         try {
-            const data = await submitOnboarding(
-                token,
-                updatedAnswers
-            )
-
-            navigation.navigate('OnboardingResult', {
-                recommendations:
-                    data.onboarding.recommendationCategories,
-            })
+            await onComplete(updatedAnswers)
         } catch (error) {
             setError(error.message)
         } finally {
@@ -70,23 +54,23 @@ const OnboardingScreen = ({ navigation }) => {
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
                 <Text style={styles.title}>
-                    Let's get to know you
+                    Welcome to MindMatter
                 </Text>
 
                 <Text style={styles.subtitle}>
-                    Your answers help us personalize your MindMatter
-                    experience.
+                    Let's get to know what kind of support
+                    might be useful for you.
                 </Text>
 
-                <View style={styles.progressContainer}>
+                <View style={styles.progressBackground}>
                     <View
                         style={[
                             styles.progress,
                             {
                                 width: `${((currentIndex + 1) /
                                     onboardingQuestions.length) *
-                                    100}%`,
-                            },
+                                    100}%`
+                            }
                         ]}
                     />
                 </View>
@@ -100,27 +84,32 @@ const OnboardingScreen = ({ navigation }) => {
                         {currentQuestion.question}
                     </Text>
 
-                    {currentQuestion.options.map(option => (
-                        <Pressable
-                            key={option.value}
-                            style={[
-                                styles.option,
-                                selectedOption === option.value &&
-                                styles.selectedOption,
-                            ]}
-                            onPress={() =>
-                                selectOption(option.value)
-                            }>
-                            <Text
+                    {currentQuestion.options.map(option => {
+                        const selected =
+                            selectedOption === option.value
+
+                        return (
+                            <Pressable
+                                key={option.value}
                                 style={[
-                                    styles.optionText,
-                                    selectedOption === option.value &&
-                                    styles.selectedOptionText,
-                                ]}>
-                                {option.label}
-                            </Text>
-                        </Pressable>
-                    ))}
+                                    styles.option,
+                                    selected && styles.selectedOption
+                                ]}
+                                onPress={() => {
+                                    setSelectedOption(option.value)
+                                    setError('')
+                                }}>
+                                <Text
+                                    style={[
+                                        styles.optionText,
+                                        selected &&
+                                            styles.selectedOptionText
+                                    ]}>
+                                    {option.label}
+                                </Text>
+                            </Pressable>
+                        )
+                    })}
 
                     {error ? (
                         <Text style={styles.error}>
@@ -132,10 +121,10 @@ const OnboardingScreen = ({ navigation }) => {
                 <Pressable
                     style={[
                         styles.button,
-                        !selectedOption && styles.disabledButton,
+                        !selectedOption && styles.disabledButton
                     ]}
-                    onPress={goNext}
-                    disabled={!selectedOption || loading}>
+                    disabled={!selectedOption || loading}
+                    onPress={handleContinue}>
                     {loading ? (
                         <ActivityIndicator color="#FFFFFF" />
                     ) : (
@@ -154,50 +143,50 @@ const OnboardingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F8FAF5',
+        backgroundColor: '#F8FAF5'
     },
 
     container: {
         flex: 1,
-        padding: 24,
+        padding: 24
     },
 
     title: {
         marginTop: 30,
         fontSize: 28,
         fontWeight: '700',
-        color: '#243224',
+        color: '#243224'
     },
 
     subtitle: {
         marginTop: 8,
         fontSize: 14,
         lineHeight: 21,
-        color: '#71806F',
+        color: '#71806F'
     },
 
-    progressContainer: {
+    progressBackground: {
         height: 7,
         marginTop: 25,
         backgroundColor: '#E2E9DF',
         borderRadius: 10,
-        overflow: 'hidden',
+        overflow: 'hidden'
     },
 
     progress: {
         height: '100%',
-        backgroundColor: '#4E8C4A',
+        backgroundColor: '#4E8C4A'
     },
 
     progressText: {
         marginTop: 8,
         fontSize: 12,
-        color: '#71806F',
+        color: '#71806F'
     },
 
     questionContainer: {
         flex: 1,
-        paddingTop: 40,
+        paddingTop: 40
     },
 
     question: {
@@ -205,7 +194,7 @@ const styles = StyleSheet.create({
         lineHeight: 29,
         fontWeight: '700',
         color: '#243224',
-        marginBottom: 22,
+        marginBottom: 22
     },
 
     option: {
@@ -214,28 +203,28 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#DCE5D9',
         backgroundColor: '#FFFFFF',
-        marginBottom: 10,
+        marginBottom: 10
     },
 
     selectedOption: {
         backgroundColor: '#E5F1E2',
-        borderColor: '#4E8C4A',
+        borderColor: '#4E8C4A'
     },
 
     optionText: {
         fontSize: 15,
-        color: '#4D594D',
+        color: '#4D594D'
     },
 
     selectedOptionText: {
         color: '#356D32',
-        fontWeight: '700',
+        fontWeight: '700'
     },
 
     error: {
         marginTop: 10,
         color: '#B64C4C',
-        fontSize: 13,
+        fontSize: 13
     },
 
     button: {
@@ -243,18 +232,18 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#4E8C4A',
+        backgroundColor: '#4E8C4A'
     },
 
     disabledButton: {
-        opacity: 0.5,
+        opacity: 0.5
     },
 
     buttonText: {
         color: '#FFFFFF',
         fontSize: 15,
-        fontWeight: '700',
-    },
+        fontWeight: '700'
+    }
 })
 
 export default OnboardingScreen
