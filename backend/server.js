@@ -16,7 +16,7 @@ import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
 import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPostRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
-
+import onboardingRoutes from './routes/user/onboardingRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -43,6 +43,7 @@ app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/users/onboarding', onboardingRoutes)
 
 const startServer = async () => {
     try {
