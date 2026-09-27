@@ -3,10 +3,20 @@ import GroupMembership from '../../../models/GroupMembership.js'
 import Session from '../../../models/Session.js'
 import Post from '../../../models/Post.js'
 
+
 // FM-46: Create a new support circle
 export const createSupportCircle = async (req, res) => {
     try {
-        const { topic, description, meetingTypes, maxCapacity, category, rules, coverImage } = req.body
+        const {
+            topic,
+            description,
+            meetingTypes,
+            maxCapacity,
+            category,
+            rules,
+            coverImage,
+            profileImage
+        } = req.body
 
         const circle = await SupportCircle.create({
             ownerId: req.user._id,
@@ -16,7 +26,8 @@ export const createSupportCircle = async (req, res) => {
             maxCapacity,
             category,
             rules,
-            coverImage
+            coverImage,
+            profileImage
         })
 
         // Owner automatically becomes an approved member with role "owner"
@@ -34,10 +45,13 @@ export const createSupportCircle = async (req, res) => {
         console.error('[Create Support Circle Error]', error)
 
         res.status(500).json({
-            message: error.message || 'Server error while creating support circle'
+            message:
+                error.message ||
+                'Server error while creating support circle'
         })
     }
 }
+
 
 // FM-47: Edit an existing support circle's details
 export const updateSupportCircle = async (req, res) => {
@@ -52,15 +66,28 @@ export const updateSupportCircle = async (req, res) => {
             })
         }
 
-        if (circle.ownerId.toString() !== req.user._id.toString()) {
+        if (
+            circle.ownerId.toString() !==
+            req.user._id.toString()
+        ) {
             return res.status(403).json({
-                message: 'Only the circle owner can edit this circle'
+                message:
+                    'Only the circle owner can edit this circle'
             })
         }
 
-        const allowedUpdates = ['topic', 'description', 'meetingTypes', 'maxCapacity', 'category', 'rules', 'coverImage']
+        const allowedUpdates = [
+            'topic',
+            'description',
+            'meetingTypes',
+            'maxCapacity',
+            'category',
+            'rules',
+            'coverImage',
+            'profileImage'
+        ]
 
-        allowedUpdates.forEach((field) => {
+        allowedUpdates.forEach(field => {
             if (req.body[field] !== undefined) {
                 circle[field] = req.body[field]
             }
@@ -75,10 +102,13 @@ export const updateSupportCircle = async (req, res) => {
         console.error('[Update Support Circle Error]', error)
 
         res.status(500).json({
-            message: error.message || 'Server error while updating support circle'
+            message:
+                error.message ||
+                'Server error while updating support circle'
         })
     }
 }
+
 
 // FM-49: Archive (soft delete) a support circle
 export const archiveSupportCircle = async (req, res) => {
@@ -93,13 +123,18 @@ export const archiveSupportCircle = async (req, res) => {
             })
         }
 
-        if (circle.ownerId.toString() !== req.user._id.toString()) {
+        if (
+            circle.ownerId.toString() !==
+            req.user._id.toString()
+        ) {
             return res.status(403).json({
-                message: 'Only the circle owner can archive this circle'
+                message:
+                    'Only the circle owner can archive this circle'
             })
         }
 
         circle.status = 'archived'
+
         await circle.save()
 
         res.status(200).json({
@@ -109,10 +144,12 @@ export const archiveSupportCircle = async (req, res) => {
         console.error('[Archive Support Circle Error]', error)
 
         res.status(500).json({
-            message: 'Server error while archiving support circle'
+            message:
+                'Server error while archiving support circle'
         })
     }
 }
+
 
 // List circles owned by the logged-in organizer
 export const getMySupportCircles = async (req, res) => {
@@ -126,30 +163,38 @@ export const getMySupportCircles = async (req, res) => {
             circles
         })
     } catch (error) {
-        console.error('[Get My Support Circles Error]', error)
+        console.error(
+            '[Get My Support Circles Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching support circles'
+            message:
+                'Server error while fetching support circles'
         })
     }
 }
+
 
 // Get active support circles for member discovery
 export const getAvailableSupportCircles = async (req, res) => {
     try {
         const circles = await SupportCircle.find({
             status: 'active'
-        })
-            .sort({ createdAt: -1 })
+        }).sort({ createdAt: -1 })
 
         res.status(200).json({
             circles
         })
     } catch (error) {
-        console.error('[Get Available Support Circles Error]', error)
+        console.error(
+            '[Get Available Support Circles Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching available support circles'
+            message:
+                'Server error while fetching available support circles'
         })
     }
 }
@@ -172,16 +217,22 @@ export const getSupportCircleById = async (req, res) => {
             circle
         })
     } catch (error) {
-        console.error('[Get Support Circle Error]', error)
+        console.error(
+            '[Get Support Circle Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching support circle'
+            message:
+                'Server error while fetching support circle'
         })
     }
 }
 
-// FM-50 / FM-51: List pending join requests for a circle, with enough
-// applicant info (bio included) for the organizer to review before deciding
+
+// FM-50 / FM-51: List pending join requests for a circle,
+// with enough applicant info (bio included) for the organizer
+// to review before deciding
 export const getPendingJoinRequests = async (req, res) => {
     try {
         const { id } = req.params
@@ -194,28 +245,40 @@ export const getPendingJoinRequests = async (req, res) => {
             })
         }
 
-        if (circle.ownerId.toString() !== req.user._id.toString()) {
+        if (
+            circle.ownerId.toString() !==
+            req.user._id.toString()
+        ) {
             return res.status(403).json({
-                message: 'Only the circle owner can view join requests'
+                message:
+                    'Only the circle owner can view join requests'
             })
         }
 
         const requests = await GroupMembership.find({
             groupId: id,
             status: 'pending'
-        }).populate('userId', 'name email profilePicture bio')
+        }).populate(
+            'userId',
+            'name email profilePicture bio'
+        )
 
         res.status(200).json({
             requests
         })
     } catch (error) {
-        console.error('[Get Pending Join Requests Error]', error)
+        console.error(
+            '[Get Pending Join Requests Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching join requests'
+            message:
+                'Server error while fetching join requests'
         })
     }
 }
+
 
 // List pending join requests across ALL of the organizer's circles
 // (used by the Requests tab on the dashboard)
@@ -226,40 +289,62 @@ export const getAllPendingJoinRequests = async (req, res) => {
             status: { $ne: 'deleted' }
         })
 
-        const circleIds = circles.map((circle) => circle._id)
+        const circleIds = circles.map(
+            circle => circle._id
+        )
 
         const requests = await GroupMembership.find({
             groupId: { $in: circleIds },
             status: 'pending'
         })
-            .populate('userId', 'name email profilePicture bio')
-            .populate('groupId', 'topic')
+            .populate(
+                'userId',
+                'name email profilePicture bio'
+            )
+            .populate(
+                'groupId',
+                'topic'
+            )
 
         res.status(200).json({
             requests
         })
     } catch (error) {
-        console.error('[Get All Pending Join Requests Error]', error)
+        console.error(
+            '[Get All Pending Join Requests Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching join requests'
+            message:
+                'Server error while fetching join requests'
         })
     }
 }
+
 
 // FM-52: Accept or decline a join request
 export const respondToJoinRequest = async (req, res) => {
     try {
         const { membershipId } = req.params
-        const { decision } = req.body // "approved" or "rejected"
+        const { decision } = req.body
 
-        if (!['approved', 'rejected'].includes(decision)) {
+        // decision must be "approved" or "rejected"
+        if (
+            !['approved', 'rejected'].includes(
+                decision
+            )
+        ) {
             return res.status(400).json({
-                message: 'decision must be either "approved" or "rejected"'
+                message:
+                    'decision must be either "approved" or "rejected"'
             })
         }
 
-        const membership = await GroupMembership.findById(membershipId)
+        const membership =
+            await GroupMembership.findById(
+                membershipId
+            )
 
         if (!membership) {
             return res.status(404).json({
@@ -267,40 +352,98 @@ export const respondToJoinRequest = async (req, res) => {
             })
         }
 
-        const circle = await SupportCircle.findById(membership.groupId)
-
-        if (!circle || circle.ownerId.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                message: 'Only the circle owner can respond to join requests'
+        // Only pending requests can be approved/rejected.
+        // This prevents the same membership from being
+        // approved twice and increasing the member count twice.
+        if (membership.status !== 'pending') {
+            return res.status(400).json({
+                message:
+                    `This membership has already been ${membership.status}`
             })
         }
 
-        membership.status = decision
-        await membership.save()
+        const circle =
+            await SupportCircle.findById(
+                membership.groupId
+            )
+
+        if (
+            !circle ||
+            circle.ownerId.toString() !==
+                req.user._id.toString()
+        ) {
+            return res.status(403).json({
+                message:
+                    'Only the circle owner can respond to join requests'
+            })
+        }
+
+        // ---------------------------------------------------------
+        // APPROVE
+        // ---------------------------------------------------------
 
         if (decision === 'approved') {
+            // Re-check capacity at the exact moment of approval.
+            //
+            // Example:
+            // maxCapacity = 5
+            // currentMemberCount = 5
+            //
+            // The request may have been created earlier when
+            // there was still space, so we must check again here.
+            if (
+                circle.currentMemberCount >=
+                circle.maxCapacity
+            ) {
+                return res.status(400).json({
+                    message:
+                        'This support circle is now full. The member cannot be approved.'
+                })
+            }
+
+            membership.status = 'approved'
+
+            await membership.save()
+
             circle.currentMemberCount += 1
+
             await circle.save()
+        }
+
+        // ---------------------------------------------------------
+        // REJECT
+        // ---------------------------------------------------------
+
+        if (decision === 'rejected') {
+            membership.status = 'rejected'
+
+            await membership.save()
         }
 
         res.status(200).json({
             membership
         })
     } catch (error) {
-        console.error('[Respond To Join Request Error]', error)
+        console.error(
+            '[Respond To Join Request Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while responding to join request'
+            message:
+                'Server error while responding to join request'
         })
     }
 }
+
 
 // FM-53: View the current member list for a circle
 export const getCircleMembers = async (req, res) => {
     try {
         const { id } = req.params
 
-        const circle = await SupportCircle.findById(id)
+        const circle =
+            await SupportCircle.findById(id)
 
         if (!circle) {
             return res.status(404).json({
@@ -308,35 +451,51 @@ export const getCircleMembers = async (req, res) => {
             })
         }
 
-        if (circle.ownerId.toString() !== req.user._id.toString()) {
+        if (
+            circle.ownerId.toString() !==
+            req.user._id.toString()
+        ) {
             return res.status(403).json({
-                message: 'Only the circle owner can view the member list'
+                message:
+                    'Only the circle owner can view the member list'
             })
         }
 
-        const members = await GroupMembership.find({
-            groupId: id,
-            status: 'approved'
-        }).populate('userId', 'name email profilePicture')
+        const members =
+            await GroupMembership.find({
+                groupId: id,
+                status: 'approved'
+            }).populate(
+                'userId',
+                'name email profilePicture'
+            )
 
         res.status(200).json({
             members
         })
     } catch (error) {
-        console.error('[Get Circle Members Error]', error)
+        console.error(
+            '[Get Circle Members Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching circle members'
+            message:
+                'Server error while fetching circle members'
         })
     }
 }
+
 
 // FM-54: Remove a member from the circle
 export const removeMember = async (req, res) => {
     try {
         const { membershipId } = req.params
 
-        const membership = await GroupMembership.findById(membershipId)
+        const membership =
+            await GroupMembership.findById(
+                membershipId
+            )
 
         if (!membership) {
             return res.status(404).json({
@@ -344,41 +503,65 @@ export const removeMember = async (req, res) => {
             })
         }
 
-        const circle = await SupportCircle.findById(membership.groupId)
+        const circle =
+            await SupportCircle.findById(
+                membership.groupId
+            )
 
-        if (!circle || circle.ownerId.toString() !== req.user._id.toString()) {
+        if (
+            !circle ||
+            circle.ownerId.toString() !==
+                req.user._id.toString()
+        ) {
             return res.status(403).json({
-                message: 'Only the circle owner can remove a member'
+                message:
+                    'Only the circle owner can remove a member'
             })
         }
 
         if (membership.role === 'owner') {
             return res.status(400).json({
-                message: 'The circle owner cannot be removed'
+                message:
+                    'The circle owner cannot be removed'
             })
         }
 
-        membership.status = 'removed'
-        await membership.save()
+        // Only decrement the count when removing an
+        // actually approved member.
+        if (membership.status === 'approved') {
+            membership.status = 'removed'
 
-        if (circle.currentMemberCount > 0) {
-            circle.currentMemberCount -= 1
-            await circle.save()
+            await membership.save()
+
+            if (circle.currentMemberCount > 0) {
+                circle.currentMemberCount -= 1
+                await circle.save()
+            }
+        } else {
+            membership.status = 'removed'
+
+            await membership.save()
         }
 
         res.status(200).json({
             membership
         })
     } catch (error) {
-        console.error('[Remove Member Error]', error)
+        console.error(
+            '[Remove Member Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while removing member'
+            message:
+                'Server error while removing member'
         })
     }
 }
 
-// FM-70 / FM-71: Aggregate dashboard stats for the logged-in organizer
+
+// FM-70 / FM-71: Aggregate dashboard stats
+// for the logged-in organizer
 export const getDashboardStats = async (req, res) => {
     try {
         const circles = await SupportCircle.find({
@@ -386,79 +569,180 @@ export const getDashboardStats = async (req, res) => {
             status: { $ne: 'deleted' }
         })
 
-        const circleIds = circles.map((circle) => circle._id)
+        const circleIds = circles.map(
+            circle => circle._id
+        )
 
-        const pendingPostApprovals = await Post.countDocuments({
-    supportCircle: { $in: circleIds },
-    status: 'pending',
-    needsReview: true
-})
+        const pendingPostApprovals =
+            await Post.countDocuments({
+                supportCircle: {
+                    $in: circleIds
+                },
+                status: 'pending',
+                needsReview: true
+            })
 
-        const totalMembers = circles.reduce((total, circle) => total + circle.currentMemberCount, 0)
+        const totalMembers =
+            circles.reduce(
+                (total, circle) =>
+                    total +
+                    circle.currentMemberCount,
+                0
+            )
 
-        const pendingRequests = await GroupMembership.countDocuments({
-            groupId: { $in: circleIds },
-            status: 'pending'
-        })
+        const pendingRequests =
+            await GroupMembership.countDocuments({
+                groupId: {
+                    $in: circleIds
+                },
+                status: 'pending'
+            })
 
-        const upcomingSessions = await Session.find({
-            circleId: { $in: circleIds },
-            status: 'upcoming',
-            scheduledAt: { $gte: new Date() }
-        })
-            .sort({ scheduledAt: 1 })
-            .limit(5)
-            .populate('circleId', 'topic')
+        const upcomingSessions =
+            await Session.find({
+                circleId: {
+                    $in: circleIds
+                },
+                status: 'upcoming',
+                scheduledAt: {
+                    $gte: new Date()
+                }
+            })
+                .sort({
+                    scheduledAt: 1
+                })
+                .limit(5)
+                .populate(
+                    'circleId',
+                    'topic'
+                )
 
-        // Recent activity feed: latest membership changes + latest sessions,
+        // Recent activity feed:
+        // latest membership changes + latest sessions,
         // merged and sorted by most recent first
-        const recentMemberships = await GroupMembership.find({
-            groupId: { $in: circleIds },
-            status: { $in: ['approved', 'pending'] }
-        })
-            .sort({ updatedAt: -1 })
-            .limit(5)
-            .populate('userId', 'name')
-            .populate('groupId', 'topic')
+        const recentMemberships =
+            await GroupMembership.find({
+                groupId: {
+                    $in: circleIds
+                },
+                status: {
+                    $in: [
+                        'approved',
+                        'pending'
+                    ]
+                }
+            })
+                .sort({
+                    updatedAt: -1
+                })
+                .limit(5)
+                .populate(
+                    'userId',
+                    'name'
+                )
+                .populate(
+                    'groupId',
+                    'topic'
+                )
 
-        const recentSessions = await Session.find({
-            circleId: { $in: circleIds }
-        })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .populate('circleId', 'topic')
+        const recentSessions =
+            await Session.find({
+                circleId: {
+                    $in: circleIds
+                }
+            })
+                .sort({
+                    createdAt: -1
+                })
+                .limit(5)
+                .populate(
+                    'circleId',
+                    'topic'
+                )
 
-        const membershipActivity = recentMemberships.map((membership) => ({
-            message:
-                membership.status === 'approved'
-                    ? `${membership.userId?.name || 'A member'} joined ${membership.groupId?.topic || 'a circle'}`
-                    : `${membership.userId?.name || 'Someone'} requested to join ${membership.groupId?.topic || 'a circle'}`,
-            timestamp: membership.updatedAt
-        }))
+        const membershipActivity =
+            recentMemberships.map(
+                membership => ({
+                    message:
+                        membership.status ===
+                        'approved'
+                            ? `${
+                                  membership
+                                      .userId
+                                      ?.name ||
+                                  'A member'
+                              } joined ${
+                                  membership
+                                      .groupId
+                                      ?.topic ||
+                                  'a circle'
+                              }`
+                            : `${
+                                  membership
+                                      .userId
+                                      ?.name ||
+                                  'Someone'
+                              } requested to join ${
+                                  membership
+                                      .groupId
+                                      ?.topic ||
+                                  'a circle'
+                              }`,
+                    timestamp:
+                        membership.updatedAt
+                })
+            )
 
-        const sessionActivity = recentSessions.map((session) => ({
-            message: `Session '${session.title}' scheduled for ${session.circleId?.topic || 'a circle'}`,
-            timestamp: session.createdAt
-        }))
+        const sessionActivity =
+            recentSessions.map(
+                session => ({
+                    message: `Session '${session.title}' scheduled for ${
+                        session.circleId
+                            ?.topic ||
+                        'a circle'
+                    }`,
+                    timestamp:
+                        session.createdAt
+                })
+            )
 
-        const recentActivity = [...membershipActivity, ...sessionActivity]
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        const recentActivity = [
+            ...membershipActivity,
+            ...sessionActivity
+        ]
+            .sort(
+                (a, b) =>
+                    new Date(b.timestamp) -
+                    new Date(a.timestamp)
+            )
             .slice(0, 5)
 
         res.status(200).json({
-            totalCircles: circles.length,
+            totalCircles:
+                circles.length,
+
             totalMembers,
+
             pendingRequests,
+
             pendingPostApprovals,
-            upcomingSessionsCount: upcomingSessions.length,
+
+            upcomingSessionsCount:
+                upcomingSessions.length,
+
             upcomingSessions,
+
             recentActivity
         })
     } catch (error) {
-        console.error('[Get Dashboard Stats Error]', error)
+        console.error(
+            '[Get Dashboard Stats Error]',
+            error
+        )
 
         res.status(500).json({
-            message: 'Server error while fetching dashboard stats'
+            message:
+                'Server error while fetching dashboard stats'
         })
     }
 }
