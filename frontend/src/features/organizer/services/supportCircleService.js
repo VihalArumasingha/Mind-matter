@@ -255,3 +255,48 @@ export const getMyMemberships = async token => {
 
     return data
 }
+
+export const updateCircleImages = async (token, circleId, images) => {
+    const formData = new FormData()
+
+    if (images.coverImage?.uri) {
+        formData.append('coverImage', {
+            uri: images.coverImage.uri,
+            type: images.coverImage.type || 'image/jpeg',
+            name:
+                images.coverImage.fileName ||
+                `cover-${Date.now()}.jpg`,
+        })
+    }
+
+    if (images.profileImage?.uri) {
+        formData.append('profileImage', {
+            uri: images.profileImage.uri,
+            type: images.profileImage.type || 'image/jpeg',
+            name:
+                images.profileImage.fileName ||
+                `profile-${Date.now()}.jpg`,
+        })
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/support-circles/${circleId}/images`,
+        {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to update circle images',
+        )
+    }
+
+    return data
+}

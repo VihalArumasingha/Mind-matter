@@ -8,6 +8,10 @@ import MemberListScreen from '../features/organizer/screens/MemberListScreen'
 import SessionFormScreen from '../features/organizer/screens/SessionFormScreen'
 import AttendanceScreen from '../features/organizer/screens/AttendanceScreen'
 import ProfileScreen from '../features/profile/screens/ProfileScreen'
+import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
+import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
+import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+
 
 const Stack = createNativeStackNavigator()
 
@@ -48,11 +52,27 @@ const OrganizerNavigator = () => {
                 component={AttendanceScreen}
             />
 
-            {/* ── Profile ── */}
+           {/* ── Profile ── */}
             <Stack.Screen
                 name="OrganizerProfile"
                 component={ProfileScreen}
             />
+
+            <Stack.Screen
+                name="EditProfile"
+                component={EditProfileScreen}
+            />
+
+            <Stack.Screen
+                name="MyPosts"
+                component={MyPostsScreen}
+            />
+
+            <Stack.Screen
+                name="MemberCircleDetail"
+                component={MemberCircleDetailScreen}
+            />
+
         </Stack.Navigator>
     )
 }
