@@ -235,6 +235,19 @@ const CircleDetailScreen = ({navigation, route}) => {
                 </Text>
             </Pressable>
 
+            {/* VIEW AS MEMBER */}
+            <Pressable
+                style={styles.memberViewButton}
+                onPress={() =>
+                    navigation.navigate('MemberCircleDetail', {
+                        circleId,
+                    })
+                }>
+                <Text style={styles.memberViewButtonText}>
+                    View as Member
+                </Text>
+            </Pressable>
+
             {/* EXISTING ACTIONS */}
             <View style={styles.actionGrid}>
 
@@ -606,6 +619,23 @@ const styles = StyleSheet.create({
 
     primaryButtonText: {
         color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    memberViewButton: {
+    marginHorizontal: 16,
+    backgroundColor: '#E5F2E2',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#BFD8B9',
+    },
+
+    memberViewButtonText: {
+        color: '#3F7540',
         fontSize: 14,
         fontWeight: '700',
     },

@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -259,10 +260,17 @@ const MemberCircleDetailScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}>
-                {/* Hero */}
-                <View style={styles.heroIcon}>
-                    <Text style={styles.heroIconText}>♥</Text>
-                </View>
+                {/* Hero / Group Profile Image */}
+                    <View style={styles.heroIcon}>
+                        {circle.profileImage ? (
+                            <Image
+                                source={{uri: circle.profileImage}}
+                                style={styles.heroProfileImage}
+                            />
+                        ) : (
+                            <Text style={styles.heroIconText}>♥</Text>
+                        )}
+                    </View>
 
                 {/* Community title */}
                 <Text style={styles.title}>
@@ -353,8 +361,8 @@ const MemberCircleDetailScreen = () => {
                         {membershipStatus === 'approved'
                             ? 'You are a member'
                             : membershipStatus === 'pending'
-                              ? 'Request under review'
-                              : membershipStatus === 'rejected'
+                            ? 'Request under review'
+                            : membershipStatus === 'rejected'
                                 ? 'Join request rejected'
                                 : 'Interested in joining?'}
                     </Text>
@@ -363,13 +371,30 @@ const MemberCircleDetailScreen = () => {
                         {membershipStatus === 'approved'
                             ? 'You have joined this community and can participate in its activities.'
                             : membershipStatus === 'pending'
-                              ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
-                              : membershipStatus === 'rejected'
+                            ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
+                            : membershipStatus === 'rejected'
                                 ? 'Your previous request to join this community was rejected by the organizer.'
                                 : 'Request to join this community and connect with other members.'}
                     </Text>
 
                     {renderJoinAction()}
+
+                    {/* CREATE GROUP POST */}
+                    {membershipStatus === 'approved' ? (
+                        <Pressable
+                            style={styles.createPostButton}
+                            onPress={() =>
+                                navigation.navigate('CreatePost', {
+                                    circleId,
+                                    circleTitle: circle.topic,
+                                    isGroupPost: true,
+                                })
+                            }>
+                            <Text style={styles.createPostButtonText}>
+                                Create a Post
+                            </Text>
+                        </Pressable>
+                    ) : null}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -432,6 +457,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
+    },
+
+    heroProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
     },
 
     heroIconText: {
@@ -622,6 +653,21 @@ const styles = StyleSheet.create({
 
     joinedButtonText: {
         color: '#3F7540',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
+    createPostButton: {
+    marginTop: 12,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#4E8C4A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    },
+
+    createPostButtonText: {
+        color: '#FFFFFF',
         fontSize: 15,
         fontWeight: '700',
     },

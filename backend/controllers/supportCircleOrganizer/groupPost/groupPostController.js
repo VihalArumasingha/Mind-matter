@@ -65,37 +65,46 @@ export const createGroupPost = async (req, res) => {
         }
 
         // Only approved members can create posts inside the circle
-        const membership = await GroupMembership.findOne({
-            userId: req.user._id,
-            groupId: circleId,
-            status: 'approved'
-        })
+        // Check the user's membership in this circle
+const membership = await GroupMembership.findOne({
+    userId: req.user._id,
+    groupId: circleId,
+    status: 'approved'
+})
 
-        if (!membership) {
-            return res.status(403).json({
-                message: 'Only approved members can post in this support circle'
-            })
-        }
+if (!membership) {
+    return res.status(403).json({
+        message: 'Only approved members can post in this support circle'
+    })
+}
 
-        const post = await Post.create({
-            author: req.user._id,
-            supportCircle: circleId,
-            title: title.trim(),
-            description: description.trim(),
-            content: description.trim(),
+// Organizer/owner posts are published immediately.
+// Regular member posts require organizer review.
+const isOwner =
+    circle.ownerId.toString() === req.user._id.toString()
 
-            // IMPORTANT:
-            // Group posts must be reviewed by the organizer first.
-            status: 'pending',
-            needsReview: true
-        })
+const postStatus = isOwner ? 'active' : 'pending'
+const needsReview = !isOwner
 
-        const populatedPost = await findPost(post._id)
+const post = await Post.create({
+    author: req.user._id,
+    supportCircle: circleId,
+    title: title.trim(),
+    description: description.trim(),
+    content: description.trim(),
 
-        res.status(201).json({
-            message: 'Post submitted for organizer review',
-            post: populatedPost
-        })
+    status: postStatus,
+    needsReview
+})
+
+const populatedPost = await findPost(post._id)
+
+res.status(201).json({
+    message: isOwner
+        ? 'Group post published successfully'
+        : 'Post submitted for organizer review',
+    post: populatedPost
+})
     } catch (error) {
         console.error('[Create Group Post Error]', error)
 

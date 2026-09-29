@@ -2,6 +2,7 @@ import React, {useCallback, useMemo, useState} from 'react'
 import {
     ActivityIndicator,
     FlatList,
+    Image,
     Pressable,
     StyleSheet,
     Text,
@@ -86,7 +87,14 @@ const CommunitiesScreen = () => {
                 onPress={() => openCommunity(item)}>
                 <View style={styles.cardTopRow}>
                     <View style={styles.iconContainer}>
-                        <Text style={styles.iconText}>♥</Text>
+                        {item.profileImage ? (
+                            <Image
+                                source={{uri: item.profileImage}}
+                                style={styles.communityProfileImage}
+                            />
+                        ) : (
+                            <Text style={styles.iconText}>♥</Text>
+                        )}
                     </View>
 
                     <View style={styles.cardTitleContainer}>
@@ -383,6 +391,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 21,
         color: '#687367',
+    },
+
+    communityProfileImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 16,
     },
 
     cardBottomRow: {
