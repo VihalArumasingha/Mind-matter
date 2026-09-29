@@ -168,6 +168,10 @@ const OrganizerDashboardScreen = ({navigation}) => {
         if (screen === 'Profile') {
             navigation.navigate('OrganizerProfile')
         }
+
+        if (screen === 'Moderation') {
+            navigation.navigate('Moderation')
+        }
     }
 
     const handleTabChange = tabName => {
@@ -353,6 +357,37 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         </View>
 
                     </View>
+
+                    {/* ⭐ ADD POST MODERATION CARD HERE ⭐ */}
+
+        <Pressable
+            style={styles.moderationCard}
+            onPress={() =>
+                navigation.navigate('Moderation')
+            }>
+
+            <View style={styles.moderationIcon}>
+                <Text style={styles.moderationIconText}>
+                    ✓
+                </Text>
+            </View>
+
+            <View style={styles.moderationCardContent}>
+                <Text style={styles.moderationCardTitle}>
+                    Post Moderation
+                </Text>
+
+                <Text style={styles.moderationCardSubtitle}>
+                    Review and manage community posts
+                </Text>
+            </View>
+
+            <Text style={styles.moderationArrow}>
+                ›
+            </Text>
+
+        </Pressable>
+
 
                     <Text style={styles.sectionTitle}>
                         RECENT ACTIVITIES
@@ -1660,6 +1695,55 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
 
+    moderationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+},
+
+moderationIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#CCFBF1',
+    marginRight: 12,
+},
+
+moderationIconText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F766E',
+},
+
+moderationCardContent: {
+    flex: 1,
+},
+
+moderationCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+},
+
+moderationCardSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 3,
+},
+
+moderationArrow: {
+    fontSize: 28,
+    color: '#64748B',
+    marginLeft: 8,
+},
+
     // ------------------------------------------------------------------------
     // MY CIRCLES
     // ------------------------------------------------------------------------
@@ -2068,6 +2152,8 @@ circleAvatarText: {
         fontSize: 14,
         fontWeight: '700',
     },
+
+
 })
 
 export default OrganizerDashboardScreen
