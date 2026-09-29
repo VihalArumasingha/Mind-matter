@@ -720,14 +720,14 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GREEN,
-    backgroundColor: GREEN_BG,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: TEXT_MUTED,
   },
   seeOptionsText: {
     fontSize: 13,
     fontWeight: '600',
-    color: GREEN,
+    color: TEXT_DARK,
   },
   modalOverlay: {
     flex: 1,
