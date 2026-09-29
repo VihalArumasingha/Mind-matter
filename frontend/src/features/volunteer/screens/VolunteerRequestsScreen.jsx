@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   BackHandler,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -23,6 +25,10 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'accepted' | 'history'
   const [requestsList, setRequestsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [declineModalVisible, setDeclineModalVisible] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [declineMessage, setDeclineMessage] = useState('');
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
 
   // Load requests from backend using the same endpoint as dashboard
   const loadRequests = async () => {
@@ -103,31 +109,28 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   };
 
   const handleDecline = (requestId, name) => {
-    Alert.alert(
-      'Decline Request',
-      `Decline session request from ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (token) {
-                const result = await declineVolunteerRequest(requestId, token);
-                console.log('[Handle Decline] Result:', result);
-                // Reload requests after decline
-                await loadRequests();
-              }
-              Alert.alert('Declined', `Request from ${name} declined. The user will be notified to try another time slot.`);
-            } catch (err) {
-              console.log('Decline request error:', err.message);
-              Alert.alert('Error', `Failed to decline request: ${err.message}. Please try again.`);
-            }
-          },
-        },
-      ]
-    );
+    setSelectedRequest({ id: requestId, name });
+    setDeclineMessage('');
+    setDeclineModalVisible(true);
+  };
+
+  const submitDecline = async () => {
+    try {
+      if (token && selectedRequest) {
+        await declineVolunteerRequest(selectedRequest.id, token, declineMessage);
+        await loadRequests();
+        setDeclineModalVisible(false);
+        Alert.alert('Declined', `Request from ${selectedRequest.name} declined. The user will be notified to try another time slot.`);
+      }
+    } catch (err) {
+      console.log('Decline request error:', err.message);
+      Alert.alert('Error', `Failed to decline request: ${err.message}. Please try again.`);
+    }
+  };
+
+  const handleSeeOptions = (request) => {
+    setSelectedRequest(request);
+    setDetailsModalVisible(true);
   };
 
   const pendingCount = requestsList.filter((r) => r.status === 'pending' || r.tabCategory === 'pending').length;
@@ -272,6 +275,15 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    style={styles.seeOptionsButton}
+                    onPress={() => handleSeeOptions(req)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={18} color={GREEN} />
+                    <Text style={styles.seeOptionsText}>See Options</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
                     style={styles.acceptButton}
                     onPress={() => handleAccept(req.id, req.name)}
                     activeOpacity={0.8}
@@ -328,6 +340,124 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           onPress={() => onTabChange?.('profile')}
         />
       </View>
+
+      {/* Decline Message Modal */}
+      <Modal
+        visible={declineModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDeclineModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Decline Request</Text>
+              <TouchableOpacity onPress={() => setDeclineModalVisible(false)}>
+                <Ionicons name="close" size={24} color={TEXT_DARK} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Add an optional message for {selectedRequest?.name || 'the user'}
+            </Text>
+            
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Enter decline message (optional)"
+              placeholderTextColor={TEXT_MUTED}
+              value={declineMessage}
+              onChangeText={setDeclineMessage}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setDeclineModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={submitDecline}
+              >
+                <Text style={styles.modalConfirmText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* See Options Modal */}
+      <Modal
+        visible={detailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Request Details</Text>
+              <TouchableOpacity onPress={() => setDetailsModalVisible(false)}>
+                <Ionicons name="close" size={24} color={TEXT_DARK} />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedRequest && (
+              <ScrollView style={styles.detailsScroll}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Name:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.name}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Category:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.category}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Date:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.date}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Time:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.time}</Text>
+                </View>
+                {selectedRequest.note && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Note:</Text>
+                    <Text style={styles.detailValue}>{selectedRequest.note}</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelButton, { flex: 1 }]}
+                onPress={() => {
+                  setDetailsModalVisible(false);
+                  handleDecline(selectedRequest.id, selectedRequest.name);
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#C0644A" />
+                <Text style={styles.modalCancelText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, { flex: 1 }]}
+                onPress={() => {
+                  setDetailsModalVisible(false);
+                  handleAccept(selectedRequest.id, selectedRequest.name);
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.modalConfirmText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -581,6 +711,118 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: GREEN,
+  },
+  seeOptionsButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GREEN,
+    backgroundColor: GREEN_BG,
+  },
+  seeOptionsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: TEXT_MUTED,
+    marginBottom: 15,
+  },
+  messageInput: {
+    backgroundColor: '#F7FAF7',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: BORDER,
+    fontSize: 14,
+    color: TEXT_DARK,
+    marginBottom: 20,
+    minHeight: 100,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#EBEFEA',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT_DARK,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#C0644A',
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  detailsScroll: {
+    maxHeight: 200,
+    marginBottom: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT_MUTED,
+    width: 80,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: TEXT_DARK,
+    flex: 1,
   },
   bottomNav: {
     flexDirection: 'row',

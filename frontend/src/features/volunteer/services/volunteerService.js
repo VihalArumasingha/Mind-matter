@@ -155,12 +155,13 @@ export const acceptVolunteerRequest = async (requestId, token) => {
 /**
  * Decline a pending volunteer request
  */
-export const declineVolunteerRequest = async (requestId, token) => {
+export const declineVolunteerRequest = async (requestId, token, declineMessage = '') => {
   try {
     const url = `${API_BASE_URL}/api/volunteer/requests/${requestId}/decline`;
     console.log('[declineVolunteerRequest] Request URL:', url);
     console.log('[declineVolunteerRequest] Request ID:', requestId);
     console.log('[declineVolunteerRequest] Token exists:', !!token);
+    console.log('[declineVolunteerRequest] Decline message:', declineMessage);
     
     const response = await fetch(
       url,
@@ -171,6 +172,7 @@ export const declineVolunteerRequest = async (requestId, token) => {
           'Accept': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ declineMessage }),
       }
     );
 

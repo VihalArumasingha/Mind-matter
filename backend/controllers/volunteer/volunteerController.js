@@ -540,7 +540,9 @@ export const acceptVolunteerRequest = async (req, res) => {
 export const declineVolunteerRequest = async (req, res) => {
   try {
     const { id } = req.params;
+    const { declineMessage } = req.body;
     console.log(`[Decline Volunteer Request] Attempting to decline booking ${id} for user ${req.user._id}`);
+    console.log(`[Decline Volunteer Request] Decline message:`, declineMessage);
     
     // Validate ID format
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -592,6 +594,9 @@ export const declineVolunteerRequest = async (req, res) => {
     }
 
     booking.status = 'cancelled';
+    if (declineMessage) {
+      booking.notes = declineMessage;
+    }
     await booking.save();
     
     console.log(`[Decline Volunteer Request] Booking found and updated:`, booking._id);
@@ -603,11 +608,16 @@ export const declineVolunteerRequest = async (req, res) => {
           ? new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
           : booking.date;
 
+        // Use custom decline message if provided, otherwise use default
+        const notificationMessage = declineMessage 
+          ? `${declineMessage} - Please try another slot for your session with ${booking.professionalName}.`
+          : `Currently unable to book. Please try another slot for your session with ${booking.professionalName}.`;
+
         await Notification.create({
           userId: booking.user,
           type: 'booking_declined',
           title: 'Booking Declined',
-          message: `Currently unable to book. Please try another slot for your session with ${booking.professionalName}.`,
+          message: notificationMessage,
           relatedUserId: req.user._id,
           relatedUserName: booking.professionalName,
           relatedBookingId: booking._id,
