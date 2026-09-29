@@ -10,6 +10,7 @@ import ProfessionalAvailabilityBookingScreen from '../features/professionalSuppo
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
 
 
 
@@ -61,6 +62,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MemberCircleDetail"
                 component={MemberCircleDetailScreen}
+            />
+
+            <Stack.Screen
+                name="MemberCircleActivity"
+                component={MemberCircleActivityScreen}
             />
         </Stack.Navigator>
     )

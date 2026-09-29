@@ -2,6 +2,8 @@ import mongoose from 'mongoose'
 import Post from '../../../models/Post.js'
 import SupportCircle from '../../../models/SupportCircle.js'
 import GroupMembership from '../../../models/GroupMembership.js'
+import cloudinary from '../../../config/cloudinary.js'
+import {Readable} from 'stream'
 
 const isValidId = id => mongoose.isValidObjectId(id)
 
@@ -12,6 +14,15 @@ const postPopulation = [
 ]
 
 const findPost = id => Post.findById(id).populate(postPopulation)
+
+const uploadGroupPostImage = file => new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+        {folder: 'mindmatter_group_posts', resource_type: 'image'},
+        (error, result) => error ? reject(error) : resolve(result),
+    )
+
+    Readable.from(file.buffer).pipe(stream)
+})
 
 const serializeGroupPost = post => {
     if (!post) return post
@@ -91,6 +102,7 @@ export const createGroupPost = async (req, res) => {
             })
         }
 
+        const image = req.file ? await uploadGroupPostImage(req.file) : null
         const isOwner = circle.ownerId.toString() === req.user._id.toString()
         const post = await Post.create({
             author: req.user._id,
@@ -102,6 +114,8 @@ export const createGroupPost = async (req, res) => {
             mood: ['happy', 'calm', 'anxious', 'sad', 'tired', 'grateful'].includes(req.body.mood)
                 ? req.body.mood
                 : null,
+            imageUrl: image?.secure_url || '',
+            imagePublicId: image?.public_id || '',
             status: isOwner ? 'active' : 'pending',
             needsReview: !isOwner
         })

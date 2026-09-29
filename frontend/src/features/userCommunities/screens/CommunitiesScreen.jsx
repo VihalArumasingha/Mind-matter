@@ -4,6 +4,7 @@ import {
     FlatList,
     Image,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -26,6 +27,8 @@ const CommunitiesScreen = () => {
     const [memberships, setMemberships] = useState([])
     const [selectedSection, setSelectedSection] = useState('explore')
     const [searchQuery, setSearchQuery] = useState('')
+    const [categoryFilter, setCategoryFilter] = useState('All')
+    const [meetingFilter, setMeetingFilter] = useState('all')
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
@@ -63,22 +66,23 @@ const CommunitiesScreen = () => {
     const filteredCircles = useMemo(() => {
         const query = searchQuery.trim().toLowerCase()
 
-        if (!query) {
-            return circles
-        }
-
         return circles.filter(circle => {
             const topic = circle.topic?.toLowerCase() || ''
             const description = circle.description?.toLowerCase() || ''
             const category = circle.category?.toLowerCase() || ''
 
             return (
-                topic.includes(query) ||
-                description.includes(query) ||
-                category.includes(query)
+                (!query || topic.includes(query) || description.includes(query) || category.includes(query)) &&
+                (categoryFilter === 'All' || circle.category === categoryFilter) &&
+                (meetingFilter === 'all' || circle.meetingTypes?.includes(meetingFilter))
             )
         })
-    }, [circles, searchQuery])
+    }, [circles, searchQuery, categoryFilter, meetingFilter])
+
+    const categories = useMemo(() => [
+        'All',
+        ...new Set(circles.map(circle => circle.category).filter(Boolean)),
+    ], [circles])
 
     const myCommunities = useMemo(() => {
         const joined = memberships
@@ -106,9 +110,15 @@ const CommunitiesScreen = () => {
         : filteredMyCommunities
 
     const openCommunity = circle => {
-    navigation.getParent()?.navigate('MemberCircleDetail', {
-        circleId: circle._id,
-    })
+        const hasJoined = memberships.some(item =>
+            item.status === 'approved' &&
+            (item.groupId?._id === circle._id || item.groupId === circle._id),
+        )
+
+        navigation.getParent()?.navigate(
+            hasJoined ? 'MemberCircleActivity' : 'MemberCircleDetail',
+            {circleId: circle._id},
+        )
     }
 
     const renderCommunity = ({item}) => {
@@ -238,6 +248,54 @@ const CommunitiesScreen = () => {
                     />
                 </View>
 
+                {selectedSection === 'explore' ? (
+                    <View style={styles.filters}>
+                        <View style={styles.filterHeadingRow}>
+                            <Text style={styles.filterTitle}>Filter communities</Text>
+                            {(categoryFilter !== 'All' || meetingFilter !== 'all') ? (
+                                <Pressable
+                                    accessibilityRole="button"
+                                    onPress={() => {
+                                        setCategoryFilter('All')
+                                        setMeetingFilter('all')
+                                    }}>
+                                    <Text style={styles.clearFilters}>Clear</Text>
+                                </Pressable>
+                            ) : null}
+                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+                            {categories.map(category => (
+                                <Pressable
+                                    key={category}
+                                    onPress={() => setCategoryFilter(category)}
+                                    style={[styles.filterChip, categoryFilter === category && styles.filterChipActive]}>
+                                    <Text style={[styles.filterChipText, categoryFilter === category && styles.filterChipTextActive]}>
+                                        {category}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </ScrollView>
+                        <View style={styles.meetingFilters}>
+                            {[
+                                {value: 'all', label: 'Any format'},
+                                {value: 'online', label: 'Online'},
+                                {value: 'physical', label: 'In person'},
+                            ].map(option => (
+                                <Pressable
+                                    key={option.value}
+                                    accessibilityRole="button"
+                                    accessibilityState={{selected: meetingFilter === option.value}}
+                                    onPress={() => setMeetingFilter(option.value)}
+                                    style={[styles.meetingFilter, meetingFilter === option.value && styles.meetingFilterActive]}>
+                                    <Text style={[styles.meetingFilterText, meetingFilter === option.value && styles.meetingFilterTextActive]}>
+                                        {option.label}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+                ) : null}
+
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>
                         {selectedSection === 'explore' ? 'Explore Communities' : 'My Communities'}
@@ -288,8 +346,8 @@ const CommunitiesScreen = () => {
                                         ? searchQuery
                                             ? 'Try a different search to find one of your communities.'
                                             : 'Communities you join will appear here.'
-                                        : searchQuery
-                                        ? 'Try searching for a different topic or category.'
+                                        : searchQuery || categoryFilter !== 'All' || meetingFilter !== 'all'
+                                        ? 'Try changing your search or filters.'
                                         : 'There are no active communities available right now.'}
                                 </Text>
                             </View>
@@ -322,6 +380,90 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#DCE5D8',
         marginBottom: 18,
+    },
+
+    filters: {
+        marginBottom: 20,
+    },
+
+    filterHeadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 9,
+    },
+
+    filterTitle: {
+        color: '#425142',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    clearFilters: {
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    filterOptions: {
+        gap: 8,
+        paddingRight: 8,
+    },
+
+    filterChip: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+    },
+
+    filterChipActive: {
+        backgroundColor: '#DCEBD8',
+        borderColor: '#397A49',
+    },
+
+    filterChipText: {
+        color: '#667164',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    filterChipTextActive: {
+        color: '#276D3B',
+    },
+
+    meetingFilters: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+
+    meetingFilter: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 11,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+    },
+
+    meetingFilterActive: {
+        backgroundColor: '#E5F1E2',
+        borderColor: '#397A49',
+    },
+
+    meetingFilterText: {
+        color: '#667164',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    meetingFilterTextActive: {
+        color: '#276D3B',
     },
 
     sectionTab: {

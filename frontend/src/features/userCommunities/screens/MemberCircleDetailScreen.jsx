@@ -6,9 +6,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
-    TextInput,
     View,
 } from 'react-native'
 import {
@@ -24,28 +22,11 @@ import {
     getMyMemberships,
     requestToJoinCircle,
 } from '../../organizer/services/supportCircleService'
-import {
-    createGroupPost,
-    getCircleMessages,
-    getGroupPosts,
-    getMyGroupPosts,
-    sendCircleMessage,
-} from '../services/groupPostService'
-
-const MOOD_OPTIONS = [
-    {value: 'happy', label: 'Happy', emoji: '😊'},
-    {value: 'calm', label: 'Calm', emoji: '😌'},
-    {value: 'anxious', label: 'Anxious', emoji: '😟'},
-    {value: 'sad', label: 'Sad', emoji: '😢'},
-    {value: 'tired', label: 'Tired', emoji: '😴'},
-    {value: 'grateful', label: 'Grateful', emoji: '🍃'},
-]
-
 const MemberCircleDetailScreen = () => {
     const navigation = useNavigation()
     const route = useRoute()
 
-    const {token, user} = useAuth()
+    const {token} = useAuth()
     const {circleId} = route.params || {}
 
     const [circle, setCircle] = useState(null)
@@ -54,16 +35,6 @@ const MemberCircleDetailScreen = () => {
 
     // Current user's membership for this community
     const [membership, setMembership] = useState(null)
-    const [posts, setPosts] = useState([])
-    const [messages, setMessages] = useState([])
-    const [activeSection, setActiveSection] = useState('posts')
-    const [postTitle, setPostTitle] = useState('')
-    const [postDescription, setPostDescription] = useState('')
-    const [isAnonymousPost, setIsAnonymousPost] = useState(false)
-    const [postMood, setPostMood] = useState(null)
-    const [messageText, setMessageText] = useState('')
-    const [isPosting, setIsPosting] = useState(false)
-    const [isSendingMessage, setIsSendingMessage] = useState(false)
 
     // Loading state for the join request
     const [isJoining, setIsJoining] = useState(false)
@@ -82,31 +53,13 @@ const MemberCircleDetailScreen = () => {
             setLoading(true)
             setError('')
 
-            const [
-                {circle: circleData},
-                membershipData,
-                groupPostData,
-                myPostData,
-                messageData,
-            ] =
+            const [{circle: circleData}, membershipData] =
                 await Promise.all([
                     getCircleById(token, circleId),
                     getMyMemberships(token),
-                    getGroupPosts(token, circleId),
-                    getMyGroupPosts(token, circleId),
-                    getCircleMessages(token, circleId),
                 ])
 
             setCircle(circleData)
-            const visiblePosts = new Map()
-            ;[...(groupPostData.posts || []), ...(myPostData.posts || [])]
-                .forEach(post => visiblePosts.set(post._id, post))
-            setPosts(
-                [...visiblePosts.values()].sort(
-                    (left, right) => new Date(right.createdAt) - new Date(left.createdAt),
-                ),
-            )
-            setMessages(messageData.messages || [])
 
             const memberships = membershipData.memberships ?? []
 
@@ -131,67 +84,8 @@ const MemberCircleDetailScreen = () => {
     useFocusEffect(
         useCallback(() => {
             loadDetail()
-
-            const refreshMessages = async () => {
-                try {
-                    const data = await getCircleMessages(token, circleId)
-                    setMessages(data.messages || [])
-                } catch (err) {
-                    console.error('Failed to refresh community chat:', err)
-                }
-            }
-
-            const interval = setInterval(refreshMessages, 4000)
-            return () => clearInterval(interval)
-        }, [loadDetail, token, circleId]),
+        }, [loadDetail]),
     )
-
-    const handleCreatePost = async () => {
-        if (!postTitle.trim() || !postDescription.trim() || isPosting) return
-
-        try {
-            setIsPosting(true)
-            const data = await createGroupPost(token, circleId, {
-                title: postTitle.trim(),
-                description: postDescription.trim(),
-                isAnonymous: isAnonymousPost,
-                mood: postMood,
-            })
-
-            setPosts(current => [data.post, ...current.filter(post => post._id !== data.post._id)])
-            setPostTitle('')
-            setPostDescription('')
-            setIsAnonymousPost(false)
-            setPostMood(null)
-            Alert.alert(
-                data.post.status === 'active' ? 'Post published' : 'Post submitted',
-                data.message,
-            )
-        } catch (err) {
-            Alert.alert('Unable to create post', err.message)
-        } finally {
-            setIsPosting(false)
-        }
-    }
-
-    const handleSendMessage = async () => {
-        const content = messageText.trim()
-        if (!content || isSendingMessage) return
-
-        try {
-            setIsSendingMessage(true)
-            const data = await sendCircleMessage(token, circleId, content)
-            setMessages(current => [
-                ...current.filter(item => item._id !== data.message._id),
-                data.message,
-            ])
-            setMessageText('')
-        } catch (err) {
-            Alert.alert('Unable to send message', err.message)
-        } finally {
-            setIsSendingMessage(false)
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────
     // Request to join community
@@ -290,7 +184,8 @@ const MemberCircleDetailScreen = () => {
     // ─────────────────────────────────────────────────────────────
 
     const membershipStatus = membership?.status
-    const canParticipate = membershipStatus === 'approved'
+    const openCommunityActivity = () =>
+        navigation.navigate('MemberCircleActivity', {circleId})
 
     const renderJoinAction = () => {
         // User is already an approved member
@@ -484,211 +379,13 @@ const MemberCircleDetailScreen = () => {
                     </Text>
 
                     {renderJoinAction()}
-
-                </View>
-
-                <View style={styles.activitySection}>
-                    <View style={styles.activityTabs}>
-                        {[
-                            {key: 'posts', label: 'Posts'},
-                            {key: 'chat', label: 'Chat'},
-                        ].map(section => (
-                            <Pressable
-                                key={section.key}
-                                accessibilityRole="tab"
-                                accessibilityState={{selected: activeSection === section.key}}
-                                onPress={() => setActiveSection(section.key)}
-                                style={[
-                                    styles.activityTab,
-                                    activeSection === section.key && styles.activityTabActive,
-                                ]}>
-                                <Text style={[
-                                    styles.activityTabText,
-                                    activeSection === section.key && styles.activityTabTextActive,
-                                ]}>
-                                    {section.label}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </View>
-
-                    {activeSection === 'posts' ? (
-                        <View>
-                            {canParticipate ? (
-                                <View style={styles.postComposer}>
-                                    <Text style={styles.activityHeading}>Share with the community</Text>
-                                    <View style={styles.anonymousOption}>
-                                        <View style={styles.anonymousCopy}>
-                                            <Text style={styles.optionTitle}>Post anonymously</Text>
-                                            <Text style={styles.optionHint}>Your name will be hidden from other members.</Text>
-                                        </View>
-                                        <Switch
-                                            value={isAnonymousPost}
-                                            onValueChange={setIsAnonymousPost}
-                                            trackColor={{false: '#D8E1D4', true: '#4E8C4A'}}
-                                            thumbColor="#FFFFFF"
-                                        />
-                                    </View>
-                                    <TextInput
-                                        value={postTitle}
-                                        onChangeText={setPostTitle}
-                                        maxLength={200}
-                                        placeholder="Post title"
-                                        placeholderTextColor="#879186"
-                                        style={styles.postTitleInput}
-                                    />
-                                    <TextInput
-                                        value={postDescription}
-                                        onChangeText={setPostDescription}
-                                        maxLength={5000}
-                                        multiline
-                                        textAlignVertical="top"
-                                        placeholder="Write a post..."
-                                        placeholderTextColor="#879186"
-                                        style={styles.postBodyInput}
-                                    />
-                                    <Text style={styles.optionTitle}>Add a mood (optional)</Text>
-                                    <View style={styles.moodOptionsRow}>
-                                        {MOOD_OPTIONS.map(option => (
-                                            <Pressable
-                                                key={option.value}
-                                                accessibilityRole="button"
-                                                accessibilityState={{selected: postMood === option.value}}
-                                                onPress={() => setPostMood(current => current === option.value ? null : option.value)}
-                                                style={[
-                                                    styles.moodOption,
-                                                    postMood === option.value && styles.moodOptionSelected,
-                                                ]}>
-                                                <Text style={styles.moodOptionText}>
-                                                    {option.emoji} {option.label}
-                                                </Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                    <Pressable
-                                        disabled={isPosting || !postTitle.trim() || !postDescription.trim()}
-                                        onPress={handleCreatePost}
-                                        style={[
-                                            styles.sendButton,
-                                            (isPosting || !postTitle.trim() || !postDescription.trim()) && styles.disabledButton,
-                                        ]}>
-                                        <Text style={styles.sendButtonText}>
-                                            {isPosting ? 'Submitting...' : 'Publish post'}
-                                        </Text>
-                                    </Pressable>
-                                    <Text style={styles.reviewNote}>
-                                        Community posts may be reviewed by the organizer before appearing publicly.
-                                    </Text>
-                                </View>
-                            ) : (
-                                <Text style={styles.readOnlyNote}>
-                                    Join this community to publish a post or send a chat message.
-                                </Text>
-                            )}
-
-                            {posts.map(post => (
-                                <View key={post._id} style={styles.postCard}>
-                                    <View style={styles.postMetaRow}>
-                                        <Text style={styles.postAuthor}>
-                                            {post.isAnonymous ? 'Anonymous' : post.author?.name || 'Community member'}
-                                        </Text>
-                                        {post.status !== 'active' ? (
-                                            <Text style={styles.pendingLabel}>
-                                                {post.status === 'pending' ? 'Awaiting review' : 'Removed'}
-                                            </Text>
-                                        ) : null}
-                                    </View>
-                                    <Text style={styles.postHeading}>{post.title}</Text>
-                                    {post.mood ? (
-                                        <Text style={styles.postMood}>
-                                            {MOOD_OPTIONS.find(option => option.value === post.mood)?.emoji} Feeling {post.mood}
-                                        </Text>
-                                    ) : null}
-                                    <Text style={styles.postBody}>{post.description || post.content}</Text>
-                                    {post.imageUrl ? (
-                                        <Image source={{uri: post.imageUrl}} style={styles.postImage} />
-                                    ) : null}
-                                    <Text style={styles.postDate}>
-                                        {new Date(post.createdAt).toLocaleDateString()}
-                                    </Text>
-                                </View>
-                            ))}
-                            {posts.length === 0 ? (
-                                <Text style={styles.emptyActivity}>No community posts yet.</Text>
-                            ) : null}
-                        </View>
-                    ) : (
-                        <View>
-                            <View style={styles.chatHistory}>
-                                {messages.map(item => {
-                                    const ownMessage = item.sender?._id === user?._id
-                                    return (
-                                        <View
-                                            key={item._id}
-                                            style={[
-                                                styles.messageRow,
-                                                ownMessage && styles.ownMessageRow,
-                                            ]}>
-                                            <View style={[
-                                                styles.messageBubble,
-                                                ownMessage && styles.ownMessageBubble,
-                                            ]}>
-                                                {!ownMessage ? (
-                                                    <Text style={styles.messageSender}>
-                                                        {item.sender?.name || 'Community member'}
-                                                    </Text>
-                                                ) : null}
-                                                <Text style={[
-                                                    styles.messageContent,
-                                                    ownMessage && styles.ownMessageContent,
-                                                ]}>
-                                                    {item.content}
-                                                </Text>
-                                                <Text style={styles.messageTime}>
-                                                    {new Date(item.createdAt).toLocaleTimeString([], {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    })}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    )
-                                })}
-                                {messages.length === 0 ? (
-                                    <Text style={styles.emptyActivity}>No messages yet. Start the conversation.</Text>
-                                ) : null}
-                            </View>
-
-                            {canParticipate ? (
-                                <View style={styles.chatComposer}>
-                                    <TextInput
-                                        value={messageText}
-                                        onChangeText={setMessageText}
-                                        maxLength={2000}
-                                        multiline
-                                        placeholder="Message the community..."
-                                        placeholderTextColor="#879186"
-                                        style={styles.messageInput}
-                                    />
-                                    <Pressable
-                                        accessibilityRole="button"
-                                        accessibilityLabel="Send message"
-                                        disabled={!messageText.trim() || isSendingMessage}
-                                        onPress={handleSendMessage}
-                                        style={[
-                                            styles.chatSendButton,
-                                            (!messageText.trim() || isSendingMessage) && styles.disabledButton,
-                                        ]}>
-                                        <Text style={styles.chatSendButtonText}>Send</Text>
-                                    </Pressable>
-                                </View>
-                            ) : (
-                                <Text style={styles.readOnlyNote}>
-                                    Join this community to send messages.
-                                </Text>
-                            )}
-                        </View>
-                    )}
+                    {membershipStatus === 'approved' ? (
+                        <Pressable
+                            style={styles.createPostButton}
+                            onPress={openCommunityActivity}>
+                            <Text style={styles.createPostButtonText}>Open community</Text>
+                        </Pressable>
+                    ) : null}
                 </View>
             </ScrollView>
         </SafeAreaView>

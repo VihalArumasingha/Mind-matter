@@ -1,15 +1,16 @@
 import {API_BASE_URL} from '../../../config/api'
 
 export const createGroupPost = async (token, circleId, postData) => {
+    const isMultipart = postData instanceof FormData
     const response = await fetch(
         `${API_BASE_URL}/api/group-posts/circle/${circleId}`,
         {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                ...(!isMultipart && {'Content-Type': 'application/json'}),
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify(postData),
+            body: isMultipart ? postData : JSON.stringify(postData),
         },
     )
 
