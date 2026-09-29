@@ -15,6 +15,7 @@ import attendanceRoutes from './routes/supportCircleOrganizer/attendance/attenda
 import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
 import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPostRoutes.js'
+import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
 
@@ -43,6 +44,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
+app.use('/api/group-chat', groupChatRoutes);
 app.use('/api/moderation', moderationRoutes);
 
 const startServer = async () => {

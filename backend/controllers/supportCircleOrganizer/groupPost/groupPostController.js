@@ -13,8 +13,23 @@ const postPopulation = [
 
 const findPost = id => Post.findById(id).populate(postPopulation)
 
-// Create a post inside a support circle
-// FM-62: Member posts require organizer review before publishing
+const serializeGroupPost = post => {
+    if (!post) return post
+
+    const plain = post.toObject()
+    if (plain.isAnonymous) {
+        plain.author = {
+            _id: plain.author?._id,
+            name: 'Anonymous',
+            profilePicture: null
+        }
+    }
+
+    return plain
+}
+
+// Create a post inside a support circle. The same Post model is used for
+// platform feed posts; supportCircle distinguishes a community post.
 export const createGroupPost = async (req, res) => {
     try {
         const { circleId } = req.params
@@ -64,47 +79,39 @@ export const createGroupPost = async (req, res) => {
             })
         }
 
-        // Only approved members can create posts inside the circle
-        // Check the user's membership in this circle
-const membership = await GroupMembership.findOne({
-    userId: req.user._id,
-    groupId: circleId,
-    status: 'approved'
-})
+        const membership = await GroupMembership.findOne({
+            userId: req.user._id,
+            groupId: circleId,
+            status: 'approved'
+        })
 
-if (!membership) {
-    return res.status(403).json({
-        message: 'Only approved members can post in this support circle'
-    })
-}
+        if (!membership) {
+            return res.status(403).json({
+                message: 'Only approved members can post in this support circle'
+            })
+        }
 
-// Organizer/owner posts are published immediately.
-// Regular member posts require organizer review.
-const isOwner =
-    circle.ownerId.toString() === req.user._id.toString()
+        const isOwner = circle.ownerId.toString() === req.user._id.toString()
+        const post = await Post.create({
+            author: req.user._id,
+            supportCircle: circleId,
+            title: title.trim(),
+            description: description.trim(),
+            content: description.trim(),
+            isAnonymous: req.body.isAnonymous === true || req.body.isAnonymous === 'true',
+            mood: ['happy', 'calm', 'anxious', 'sad', 'tired', 'grateful'].includes(req.body.mood)
+                ? req.body.mood
+                : null,
+            status: isOwner ? 'active' : 'pending',
+            needsReview: !isOwner
+        })
 
-const postStatus = isOwner ? 'active' : 'pending'
-const needsReview = !isOwner
-
-const post = await Post.create({
-    author: req.user._id,
-    supportCircle: circleId,
-    title: title.trim(),
-    description: description.trim(),
-    content: description.trim(),
-
-    status: postStatus,
-    needsReview
-})
-
-const populatedPost = await findPost(post._id)
-
-res.status(201).json({
-    message: isOwner
-        ? 'Group post published successfully'
-        : 'Post submitted for organizer review',
-    post: populatedPost
-})
+        res.status(201).json({
+            message: isOwner
+                ? 'Group post published successfully'
+                : 'Post submitted for organizer review',
+            post: serializeGroupPost(await findPost(post._id))
+        })
     } catch (error) {
         console.error('[Create Group Post Error]', error)
 
@@ -114,8 +121,7 @@ res.status(201).json({
     }
 }
 
-// Get published posts for a support circle
-// Only approved members can see the circle feed.
+// Community posts are visible to all signed-in users. Posting remains member-only.
 export const getGroupPosts = async (req, res) => {
     try {
         const { circleId } = req.params
@@ -134,35 +140,20 @@ export const getGroupPosts = async (req, res) => {
             })
         }
 
-        const membership = await GroupMembership.findOne({
-            userId: req.user._id,
-            groupId: circleId,
-            status: 'approved'
+        const posts = await Post.find({
+            supportCircle: circleId,
+            status: 'active'
+        })
+            .sort({ createdAt: -1 })
+            .populate(postPopulation)
+
+        posts.forEach(post => {
+            post.comments = post.comments.filter(
+                comment => comment.moderationStatus === 'active'
+            )
         })
 
-        if (!membership) {
-            return res.status(403).json({
-                message: 'You must be an approved member to view this circle'
-            })
-        }
-
-        const posts = await Post.find({
-    supportCircle: circleId,
-    status: 'active'
-})
-    .sort({ createdAt: -1 })
-    .populate(postPopulation)
-
-// Hide comments that were removed by the organizer
-posts.forEach(post => {
-    post.comments = post.comments.filter(
-        comment => comment.moderationStatus === 'active'
-    )
-})
-
-res.status(200).json({
-    posts
-})
+        res.status(200).json({posts: posts.map(serializeGroupPost)})
     } catch (error) {
         console.error('[Get Group Posts Error]', error)
 
@@ -192,7 +183,7 @@ export const getMyGroupPosts = async (req, res) => {
             .populate(postPopulation)
 
         res.status(200).json({
-            posts
+            posts: posts.map(serializeGroupPost)
         })
     } catch (error) {
         console.error('[Get My Group Posts Error]', error)

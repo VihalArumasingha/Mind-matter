@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import Post from '../models/Post.js'
+import GroupMembership from '../models/GroupMembership.js'
 import cloudinary from '../config/cloudinary.js'
 import {Readable} from 'stream'
 
@@ -53,7 +54,7 @@ const serializePosts = posts => posts.map(serializePost)
 
 export const getFeedPosts = async (req, res) => {
     try {
-        const posts = await Post.find()
+        const posts = await Post.find({supportCircle: null, status: 'active'})
             .sort({ createdAt: -1 })
             .populate(postPopulation)
 
@@ -221,6 +222,18 @@ export const addComment = async (req, res) => {
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
+        }
+
+        if (post.supportCircle) {
+            const membership = await GroupMembership.findOne({
+                userId: req.user._id,
+                groupId: post.supportCircle,
+                status: 'approved'
+            })
+
+            if (!membership) {
+                return res.status(403).json({message: 'Only approved community members can comment'})
+            }
         }
 
         post.comments.push({ user: req.user._id, content })

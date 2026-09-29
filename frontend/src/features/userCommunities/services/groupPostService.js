@@ -6,9 +6,10 @@ export const createGroupPost = async (token, circleId, postData) => {
         {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
             },
-            body: postData,
+            body: JSON.stringify(postData),
         },
     )
 
@@ -56,6 +57,43 @@ export const getMyGroupPosts = async (token, circleId) => {
 
     if (!response.ok) {
         throw new Error(data.message || 'Failed to load your group posts')
+    }
+
+    return data
+}
+
+export const getCircleMessages = async (token, circleId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-chat/circle/${circleId}`,
+        {headers: {Authorization: `Bearer ${token}`}},
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load community messages')
+    }
+
+    return data
+}
+
+export const sendCircleMessage = async (token, circleId, content) => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-chat/circle/${circleId}`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({content}),
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to send community message')
     }
 
     return data
