@@ -1,5 +1,6 @@
 import React, {useCallback, useMemo, useState} from 'react'
 import {
+    Alert,
     ActivityIndicator,
     FlatList,
     Image,
@@ -17,6 +18,7 @@ import {useAuth} from '../../../context/AuthContext'
 import {
     getAvailableSupportCircles,
     getMyMemberships,
+    requestToJoinCircle,
 } from '../../organizer/services/supportCircleService'
 
 const CommunitiesScreen = () => {
@@ -29,6 +31,7 @@ const CommunitiesScreen = () => {
     const [searchQuery, setSearchQuery] = useState('')
     const [categoryFilter, setCategoryFilter] = useState('All')
     const [meetingFilter, setMeetingFilter] = useState('all')
+    const [joiningCircleId, setJoiningCircleId] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
@@ -110,77 +113,100 @@ const CommunitiesScreen = () => {
         : filteredMyCommunities
 
     const openCommunity = circle => {
-        const hasJoined = memberships.some(item =>
-            item.status === 'approved' &&
-            (item.groupId?._id === circle._id || item.groupId === circle._id),
-        )
+        navigation.getParent()?.navigate('MemberCircleActivity', {circleId: circle._id})
+    }
 
-        navigation.getParent()?.navigate(
-            hasJoined ? 'MemberCircleActivity' : 'MemberCircleDetail',
-            {circleId: circle._id},
-        )
+    const openCommunityDetails = circle => {
+        navigation.getParent()?.navigate('MemberCircleDetail', {circleId: circle._id})
+    }
+
+    const joinCommunity = async circle => {
+        if (joiningCircleId) return
+
+        try {
+            setJoiningCircleId(circle._id)
+            const data = await requestToJoinCircle(token, circle._id)
+            setMemberships(current => [...current, data.membership])
+        } catch (err) {
+            Alert.alert('Unable to request to join', err.message)
+        } finally {
+            setJoiningCircleId(null)
+        }
     }
 
     const renderCommunity = ({item}) => {
         return (
-            <Pressable
-                style={({pressed}) => [
-                    styles.communityCard,
-                    pressed && styles.communityCardPressed,
-                ]}
-                onPress={() => openCommunity(item)}>
-                <View style={styles.cardTopRow}>
-                    <View style={styles.iconContainer}>
-                        {item.profileImage ? (
-                            <Image
-                                source={{uri: item.profileImage}}
-                                style={styles.communityProfileImage}
-                            />
-                        ) : (
-                            <Text style={styles.iconText}>♥</Text>
-                        )}
+            <View style={styles.communityCard}>
+                <Pressable
+                    style={({pressed}) => [styles.cardSummary, pressed && styles.communityCardPressed]}
+                    onPress={() => openCommunityDetails(item)}>
+                    <View style={styles.cardTopRow}>
+                        <View style={styles.iconContainer}>
+                            {item.profileImage ? (
+                                <Image source={{uri: item.profileImage}} style={styles.communityProfileImage} />
+                            ) : (
+                                <Text style={styles.iconText}>♥</Text>
+                            )}
+                        </View>
+
+                        <View style={styles.cardTitleContainer}>
+                            <Text style={styles.communityTitle} numberOfLines={1}>
+                                {item.topic || 'Support Community'}
+                            </Text>
+                            {item.category ? <Text style={styles.categoryText}>{item.category}</Text> : null}
+                        </View>
+                        <Text style={styles.arrow}>›</Text>
                     </View>
 
-                    <View style={styles.cardTitleContainer}>
-                        <Text style={styles.communityTitle} numberOfLines={1}>
-                            {item.topic || 'Support Community'}
-                        </Text>
+                    <Text style={styles.communityDescription} numberOfLines={3}>
+                        {item.description || 'A safe space to connect, share and support one another.'}
+                    </Text>
 
-                        {item.category ? (
-                            <Text style={styles.categoryText}>
-                                {item.category}
-                            </Text>
+                    <View style={styles.cardBottomRow}>
+                        <View style={styles.memberInfo}>
+                            <Text style={styles.memberIcon}>●</Text>
+                            <Text style={styles.memberText}>{item.currentMemberCount || 0} members</Text>
+                        </View>
+                        {item.meetingTypes?.length ? (
+                            <View style={styles.meetingBadge}>
+                                <Text style={styles.meetingBadgeText}>{item.meetingTypes[0]}</Text>
+                            </View>
                         ) : null}
                     </View>
+                </Pressable>
 
-                    <Text style={styles.arrow}>›</Text>
+                <View style={styles.communityActions}>
+                    <Pressable style={styles.viewCommunityButton} onPress={() => openCommunity(item)}>
+                        <Text style={styles.viewCommunityButtonText}>View community</Text>
+                    </Pressable>
+                    {(() => {
+                        const membership = memberships.find(entry =>
+                            entry.groupId?._id === item._id || entry.groupId === item._id,
+                        )
+                        const canRequest = !membership
+                        const statusLabel = membership?.status === 'approved'
+                            ? 'Joined'
+                            : membership?.status === 'pending'
+                                ? 'Request pending'
+                                : membership?.status === 'rejected'
+                                    ? 'Request rejected'
+                                    : membership?.status === 'removed'
+                                        ? 'Removed'
+                                        : 'Request to join'
+
+                        return (
+                            <Pressable
+                                disabled={!canRequest || joiningCircleId === item._id}
+                                style={[styles.joinCommunityButton, !canRequest && styles.joinCommunityButtonDisabled]}
+                                onPress={() => joinCommunity(item)}>
+                                <Text style={[styles.joinCommunityButtonText, !canRequest && styles.joinCommunityButtonTextDisabled]}>
+                                    {joiningCircleId === item._id ? 'Sending...' : statusLabel}
+                                </Text>
+                            </Pressable>
+                        )
+                    })()}
                 </View>
-
-                <Text
-                    style={styles.communityDescription}
-                    numberOfLines={3}>
-                    {item.description ||
-                        'A safe space to connect, share and support one another.'}
-                </Text>
-
-                <View style={styles.cardBottomRow}>
-                    <View style={styles.memberInfo}>
-                        <Text style={styles.memberIcon}>●</Text>
-
-                        <Text style={styles.memberText}>
-                            {item.currentMemberCount || 0} members
-                        </Text>
-                    </View>
-
-                    {item.meetingTypes?.length ? (
-                        <View style={styles.meetingBadge}>
-                            <Text style={styles.meetingBadgeText}>
-                                {item.meetingTypes[0]}
-                            </Text>
-                        </View>
-                    ) : null}
-                </View>
-            </Pressable>
+            </View>
         )
     }
 
@@ -570,6 +596,58 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
+    },
+
+    cardSummary: {
+        padding: 17,
+    },
+
+    communityActions: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingBottom: 14,
+    },
+
+    viewCommunityButton: {
+        flex: 1,
+        minHeight: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    viewCommunityButtonText: {
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    joinCommunityButton: {
+        flex: 1,
+        minHeight: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 6,
+        backgroundColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    joinCommunityButtonDisabled: {
+        backgroundColor: '#EDF2EB',
+    },
+
+    joinCommunityButtonText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+
+    joinCommunityButtonTextDisabled: {
+        color: '#61735D',
     },
 
     communityCardPressed: {
