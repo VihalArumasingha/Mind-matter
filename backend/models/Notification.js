@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['comment', 'like', 'booking', 'system'],
+      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system'],
       required: true,
     },
     title: {
@@ -29,6 +29,10 @@ const notificationSchema = new mongoose.Schema(
       ref: 'User',
     },
     relatedUserName: String,
+    relatedBookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Booking',
+    },
     isRead: {
       type: Boolean,
       default: false,

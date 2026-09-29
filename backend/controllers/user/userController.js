@@ -3,6 +3,7 @@ import ProfessionalApplication from '../../models/ProfessionalApplication.js'
 import Availability from '../../models/Availability.js'
 import AvailabilitySlot from '../../models/AvailabilitySlot.js'
 import Booking from '../../models/Booking.js'
+import Notification from '../../models/Notification.js'
 import {uploadToCloudinary} from '../../middleware/uploadMiddleware.js'
 
 export const getCurrentUser = async (req, res) => {
@@ -133,6 +134,14 @@ export const getApprovedProfessionals = async (req, res) => {
             .select('-documents')
             .sort({ createdAt: -1 })
 
+        // Filter out Community Organizers from results
+        const filteredProfessionals = professionals.filter(prof => prof.profession !== 'Community Organizer')
+
+        res.status(200).json({
+            success: true,
+            professionals: filteredProfessionals
+        })
+
         res.status(200).json({
             success: true,
             professionals
@@ -168,7 +177,7 @@ export const getProfessionCategories = async (req, res) => {
         ]
 
         const categories = uniqueProfessions.length > 0 
-            ? uniqueProfessions.map(p => p._id)
+            ? uniqueProfessions.map(p => p._id).filter(cat => cat !== 'Community Organizer')
             : defaultCategories
 
         res.status(200).json({
@@ -191,21 +200,28 @@ export const getProfessionalAvailability = async (req, res) => {
         console.log(`[Availability] Fetching availability for professional ID: ${id}`);
 
         let targetUserIds = [id];
+        let targetProfessionalId = id;
+        
         const profApp = await ProfessionalApplication.findById(id);
         if (profApp) {
             if (profApp.userId) {
                 targetUserIds.push(profApp.userId);
+                targetProfessionalId = profApp.userId;
             }
             if (profApp.email) {
                 const userByEmail = await User.findOne({ email: profApp.email.toLowerCase() });
                 if (userByEmail) {
                     targetUserIds.push(userByEmail._id);
+                    if (!targetProfessionalId || targetProfessionalId === id) {
+                        targetProfessionalId = userByEmail._id;
+                    }
                 }
             }
         } else {
             const userById = await User.findById(id);
             if (userById && userById.email) {
                 targetUserIds.push(userById._id);
+                targetProfessionalId = userById._id;
                 const appByEmail = await ProfessionalApplication.findOne({ email: userById.email.toLowerCase() });
                 if (appByEmail) {
                     targetUserIds.push(appByEmail._id);
@@ -214,14 +230,16 @@ export const getProfessionalAvailability = async (req, res) => {
         }
 
         console.log(`[Availability] Target user IDs for availability:`, targetUserIds);
+        console.log(`[Availability] Target professional ID for bookings:`, targetProfessionalId);
 
+        // Limit bookings query to prevent performance issues
         const [availability, slots, existingBookings] = await Promise.all([
             Availability.findOne({ user: { $in: targetUserIds } }),
-            AvailabilitySlot.find({ user: { $in: targetUserIds } }).sort({ date: 1, start: 1 }),
+            AvailabilitySlot.find({ user: { $in: targetUserIds } }).sort({ date: 1, start: 1 }).limit(100),
             Booking.find({
-                professional: id,
+                professional: targetProfessionalId,
                 status: { $in: ['pending', 'confirmed', 'approved', 'completed'] }
-            })
+            }).limit(100)
         ]);
 
         console.log(`[Availability] DEBUG: Found ${existingBookings.length} existing bookings for professional ${id}`);
@@ -339,10 +357,71 @@ export const createBooking = async (req, res) => {
             });
         }
 
+        // Validate date and time are not in the past
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        if (date < todayStr) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot book appointments for past dates.',
+            });
+        }
+
+        if (date === todayStr) {
+            const parseTimeToMinutes = (timeStr) => {
+                if (!timeStr || typeof timeStr !== 'string') return null;
+                const str = timeStr.trim().toUpperCase();
+                const match12 = str.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
+                if (match12) {
+                    let hours = parseInt(match12[1], 10);
+                    const minutes = match12[2] ? parseInt(match12[2], 10) : 0;
+                    const period = match12[3];
+                    if (hours === 12) hours = period === 'AM' ? 0 : 12;
+                    else if (period === 'PM') hours += 12;
+                    return hours * 60 + minutes;
+                }
+                const match24 = str.match(/^(\d{1,2}):(\d{2})$/);
+                if (match24) {
+                    return parseInt(match24[1], 10) * 60 + parseInt(match24[2], 10);
+                }
+                return null;
+            };
+
+            const slotMinutes = parseTimeToMinutes(startTime);
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            if (slotMinutes !== null && slotMinutes <= currentMinutes) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot book time slots that have already passed.',
+                });
+            }
+        }
+
         // Check if this slot is already booked
         console.log(`[Create Booking] Checking for existing bookings for professionalId: ${professionalId}, date: ${date}, time: ${startTime}-${endTime}`);
+        
+        // Try to find the actual User ID for the professional
+        let targetProfessionalId = professionalId;
+        const profApp = await ProfessionalApplication.findById(professionalId);
+        if (profApp && profApp.userId) {
+            targetProfessionalId = profApp.userId;
+            console.log(`[Create Booking] Found user ID ${targetProfessionalId} for professional application ${professionalId}`);
+        } else {
+            // If no userId in profApp, check if professionalId is already a User ID
+            const userCheck = await User.findById(professionalId);
+            if (userCheck) {
+                console.log(`[Create Booking] professionalId ${professionalId} is already a User ID`);
+                targetProfessionalId = professionalId;
+            }
+        }
+        
         const existingBooking = await Booking.findOne({
-            professional: professionalId,
+            professional: targetProfessionalId,
             date,
             startTime,
             endTime,
@@ -360,7 +439,7 @@ export const createBooking = async (req, res) => {
 
         const newBooking = await Booking.create({
             user: req.user._id,
-            professional: professionalId,
+            professional: targetProfessionalId, // Use the resolved User ID
             professionalName: professionalName || 'Professional',
             profession: profession || 'Therapist',
             date,
@@ -414,6 +493,61 @@ export const getUserBookings = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Server error fetching bookings',
+        });
+    }
+}
+
+export const getUserNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.find({ userId: req.user._id })
+            .sort({ createdAt: -1 })
+            .limit(50);
+
+        const unreadCount = await Notification.countDocuments({ 
+            userId: req.user._id, 
+            isRead: false 
+        });
+
+        return res.status(200).json({
+            success: true,
+            notifications,
+            unreadCount,
+        });
+    } catch (error) {
+        console.error('[Get User Notifications Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error fetching notifications',
+        });
+    }
+}
+
+export const markNotificationAsRead = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const notification = await Notification.findOneAndUpdate(
+            { _id: id, userId: req.user._id },
+            { isRead: true },
+            { returnDocument: 'after' }
+        );
+
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                message: 'Notification not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            notification
+        });
+    } catch (error) {
+        console.error('[Mark Notification As Read Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error marking notification as read',
         });
     }
 }

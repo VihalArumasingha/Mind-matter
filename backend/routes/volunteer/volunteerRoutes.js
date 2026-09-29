@@ -7,12 +7,18 @@ import {
   deleteAvailabilitySlot,
   updateAvailabilityStatus,
   getVolunteerDashboard,
+  getVolunteerRequests,
+  acceptVolunteerRequest,
+  declineVolunteerRequest,
 } from '../../controllers/volunteer/volunteerController.js';
 import authMiddleware from '../../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.get('/dashboard', authMiddleware, getVolunteerDashboard);
+router.post('/requests/:id/accept', authMiddleware, acceptVolunteerRequest);
+router.post('/requests/:id/decline', authMiddleware, declineVolunteerRequest);
+router.get('/requests', authMiddleware, getVolunteerRequests);
 router.get('/availability/schedule', authMiddleware, getAvailabilitySchedule);
 router.post('/availability/schedule', authMiddleware, saveAvailabilitySchedule);
 router.post('/availability/slots', authMiddleware, createAvailabilitySlot);

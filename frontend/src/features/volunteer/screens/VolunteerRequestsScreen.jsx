@@ -8,75 +8,77 @@ import {
   Alert,
   StatusBar,
   Platform,
+  ActivityIndicator,
   BackHandler,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../styles/volunteerDashboardStyles';
-import { acceptVolunteerRequest, declineVolunteerRequest } from '../services/volunteerService';
+import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
-
-const initialRequests = [
-  {
-    id: 'req_1',
-    name: 'Ravindu K.',
-    initials: 'RK',
-    category: 'Emotional support',
-    date: 'Sat, May 24',
-    time: '3:00 PM - 4:00 PM',
-    note: 'Feeling overwhelmed with upcoming exams. Looking for an empathetic listener to chat for a bit.',
-    avatarBg: '#FCE7D6',
-    avatarColor: '#B45309',
-    status: 'pending',
-  },
-  {
-    id: 'req_2',
-    name: 'Nimasha F.',
-    initials: 'NF',
-    category: 'Peer support',
-    date: 'Sun, May 25',
-    time: '10:30 AM - 11:30 AM',
-    note: 'Would like advice and peer support regarding university stress and balancing study routines.',
-    avatarBg: '#E0F2FE',
-    avatarColor: '#0369A1',
-    status: 'pending',
-  },
-  {
-    id: 'req_3',
-    name: 'Chamodi P.',
-    initials: 'CP',
-    category: 'Student support',
-    date: 'Mon, May 26',
-    time: '4:00 PM - 5:00 PM',
-    note: 'Confirmed support session for exam preparation and stress management guidance.',
-    avatarBg: '#EAF3ED',
-    avatarColor: '#2F6B47',
-    status: 'accepted',
-  },
-  {
-    id: 'req_4',
-    name: 'Isuru M.',
-    initials: 'IM',
-    category: 'Listening session',
-    date: 'Wed, May 28',
-    time: '6:30 PM - 7:30 PM',
-    note: 'General listening session regarding career and life transition anxiety.',
-    avatarBg: '#F3E8FF',
-    avatarColor: '#7C3AED',
-    status: 'accepted',
-  },
-];
 
 export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'accepted' | 'history'
-  const [requestsList, setRequestsList] = useState(initialRequests);
+  const [requestsList, setRequestsList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [declineModalVisible, setDeclineModalVisible] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [declineMessage, setDeclineMessage] = useState('');
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+
+  // Load requests from backend using the same endpoint as dashboard
+  const loadRequests = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load all requests for proper tab filtering
+      const allRequestsData = await getVolunteerRequests(token, 'all');
+      console.log('[Load Requests] All requests data:', allRequestsData);
+      
+      if (allRequestsData.success && allRequestsData.requests) {
+        const allRequests = allRequestsData.requests.map(r => ({ 
+          ...r, 
+          tabCategory: r.status === 'confirmed' ? 'accepted' : r.status 
+        }));
+        console.log('[Load Requests] All requests:', allRequests);
+        console.log('[Load Requests] Pending count:', allRequests.filter(r => r.status === 'pending').length);
+        console.log('[Load Requests] Accepted count:', allRequests.filter(r => r.status === 'confirmed').length);
+        console.log('[Load Requests] History count:', allRequests.filter(r => ['cancelled', 'declined', 'completed'].includes(r.status)).length);
+        
+        setRequestsList(allRequests);
+      } else {
+        // Fallback to dashboard data if all requests fail
+        const data = await getVolunteerDashboardData(token);
+        console.log('[Load Requests] Fallback to dashboard data:', data);
+        
+        const allRequests = [
+          ...(data.pendingRequests || []).map(r => ({ ...r, tabCategory: 'pending' })),
+          ...(data.upcomingSessions || []).map(r => ({ ...r, tabCategory: 'accepted', status: 'confirmed' }))
+        ];
+        
+        setRequestsList(allRequests);
+      }
+    } catch (error) {
+      console.error('Error loading requests:', error);
+      // Use empty array if API fails
+      setRequestsList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+  }, [token, activeTab]);
 
   const filteredRequests = requestsList.filter((r) => {
-    if (activeTab === 'pending') return r.status === 'pending';
-    if (activeTab === 'accepted') return r.status === 'accepted';
-    return r.status === 'completed' || r.status === 'declined';
+    if (activeTab === 'pending') return r.status === 'pending' || r.tabCategory === 'pending';
+    if (activeTab === 'accepted') return r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted';
+    return r.status === 'completed' || r.status === 'declined' || r.status === 'cancelled';
   });
 
   const handleAccept = async (requestId, name) => {
@@ -90,15 +92,16 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           onPress: async () => {
             try {
               if (token) {
-                await acceptVolunteerRequest(requestId, token);
+                const result = await acceptVolunteerRequest(requestId, token);
+                console.log('[Handle Accept] Result:', result);
+                // Reload requests after acceptance
+                await loadRequests();
               }
+              Alert.alert('Accepted', `Session with ${name} confirmed! A notification has been sent to the user.`);
             } catch (err) {
-              console.log('Accept request fallback:', err.message);
+              console.log('Accept request error:', err.message);
+              Alert.alert('Error', `Failed to accept request: ${err.message}. Please try again.`);
             }
-            setRequestsList((prev) =>
-              prev.map((r) => (r.id === requestId ? { ...r, status: 'accepted' } : r))
-            );
-            Alert.alert('Accepted', `Session with ${name} confirmed!`);
           },
         },
       ]
@@ -106,34 +109,32 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   };
 
   const handleDecline = (requestId, name) => {
-    Alert.alert(
-      'Decline Request',
-      `Decline session request from ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (token) {
-                await declineVolunteerRequest(requestId, token);
-              }
-            } catch (err) {
-              console.log('Decline request fallback:', err.message);
-            }
-            setRequestsList((prev) =>
-              prev.map((r) => (r.id === requestId ? { ...r, status: 'declined' } : r))
-            );
-            Alert.alert('Declined', `Request from ${name} declined.`);
-          },
-        },
-      ]
-    );
+    setSelectedRequest({ id: requestId, name });
+    setDeclineMessage('');
+    setDeclineModalVisible(true);
   };
 
-  const pendingCount = requestsList.filter((r) => r.status === 'pending').length;
-  const acceptedCount = requestsList.filter((r) => r.status === 'accepted').length;
+  const submitDecline = async () => {
+    try {
+      if (token && selectedRequest) {
+        await declineVolunteerRequest(selectedRequest.id, token, declineMessage);
+        await loadRequests();
+        setDeclineModalVisible(false);
+        Alert.alert('Declined', `Request from ${selectedRequest.name} declined. The user will be notified to try another time slot.`);
+      }
+    } catch (err) {
+      console.log('Decline request error:', err.message);
+      Alert.alert('Error', `Failed to decline request: ${err.message}. Please try again.`);
+    }
+  };
+
+  const handleSeeOptions = (request) => {
+    setSelectedRequest(request);
+    setDetailsModalVisible(true);
+  };
+
+  const pendingCount = requestsList.filter((r) => r.status === 'pending' || r.tabCategory === 'pending').length;
+  const acceptedCount = requestsList.filter((r) => r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted').length;
 
   const handleGoBack = () => {
     if (onTabChange) {
@@ -206,7 +207,12 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {filteredRequests.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyStateContainer}>
+            <ActivityIndicator size="large" color={GREEN} />
+            <Text style={styles.emptyTitle}>Loading requests...</Text>
+          </View>
+        ) : filteredRequests.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="clipboard-outline" size={48} color={TEXT_MUTED} />
             <Text style={styles.emptyTitle}>No {activeTab} requests</Text>
@@ -232,7 +238,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                     <Text style={styles.categoryText}>{req.category}</Text>
                   </View>
                 </View>
-                {req.status === 'accepted' && (
+                {(req.status === 'accepted' || req.status === 'confirmed') && (
                   <View style={styles.acceptedBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={GREEN} />
                     <Text style={styles.acceptedBadgeText}>Accepted</Text>
@@ -269,6 +275,15 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    style={styles.seeOptionsButton}
+                    onPress={() => handleSeeOptions(req)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={18} color={GREEN} />
+                    <Text style={styles.seeOptionsText}>See Options</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
                     style={styles.acceptButton}
                     onPress={() => handleAccept(req.id, req.name)}
                     activeOpacity={0.8}
@@ -279,7 +294,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                 </View>
               )}
 
-              {req.status === 'accepted' && (
+              {(req.status === 'accepted' || req.status === 'confirmed') && (
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
                     style={styles.messageButton}
@@ -325,6 +340,124 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           onPress={() => onTabChange?.('profile')}
         />
       </View>
+
+      {/* Decline Message Modal */}
+      <Modal
+        visible={declineModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDeclineModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Decline Request</Text>
+              <TouchableOpacity onPress={() => setDeclineModalVisible(false)}>
+                <Ionicons name="close" size={24} color={TEXT_DARK} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Add an optional message for {selectedRequest?.name || 'the user'}
+            </Text>
+            
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Enter decline message (optional)"
+              placeholderTextColor={TEXT_MUTED}
+              value={declineMessage}
+              onChangeText={setDeclineMessage}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setDeclineModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={submitDecline}
+              >
+                <Text style={styles.modalConfirmText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* See Options Modal */}
+      <Modal
+        visible={detailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Request Details</Text>
+              <TouchableOpacity onPress={() => setDetailsModalVisible(false)}>
+                <Ionicons name="close" size={24} color={TEXT_DARK} />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedRequest && (
+              <ScrollView style={styles.detailsScroll}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Name:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.name}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Category:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.category}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Date:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.date}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Time:</Text>
+                  <Text style={styles.detailValue}>{selectedRequest.time}</Text>
+                </View>
+                {selectedRequest.note && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Note:</Text>
+                    <Text style={styles.detailValue}>{selectedRequest.note}</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelButton, { flex: 1 }]}
+                onPress={() => {
+                  setDetailsModalVisible(false);
+                  handleDecline(selectedRequest.id, selectedRequest.name);
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#C0644A" />
+                <Text style={styles.modalCancelText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, { flex: 1 }]}
+                onPress={() => {
+                  setDetailsModalVisible(false);
+                  handleAccept(selectedRequest.id, selectedRequest.name);
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.modalConfirmText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -578,6 +711,118 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: GREEN,
+  },
+  seeOptionsButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GREEN,
+    backgroundColor: GREEN_BG,
+  },
+  seeOptionsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: GREEN,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: TEXT_MUTED,
+    marginBottom: 15,
+  },
+  messageInput: {
+    backgroundColor: '#F7FAF7',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: BORDER,
+    fontSize: 14,
+    color: TEXT_DARK,
+    marginBottom: 20,
+    minHeight: 100,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#EBEFEA',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT_DARK,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#C0644A',
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  detailsScroll: {
+    maxHeight: 200,
+    marginBottom: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT_MUTED,
+    width: 80,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: TEXT_DARK,
+    flex: 1,
   },
   bottomNav: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Switch,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -14,48 +15,7 @@ import { useAuth } from '../../../context/AuthContext';
 import styles, { COLORS } from '../styles/volunteerDashboardStyles';
 import VolunteerRequestCard from '../components/VolunteerRequestCard';
 import VolunteerSessionCard from '../components/VolunteerSessionCard';
-import { updateAvailabilityStatus } from '../services/volunteerService';
-
-// ---- Sample data (fallback when API is connecting) ----
-const initialPendingRequests = [
-  {
-    id: '1',
-    name: 'Ravindu K.',
-    initials: 'RK',
-    category: 'Emotional support',
-    time: 'Sat, 3:00 PM',
-    avatarBg: '#FCE7D6',
-    avatarColor: '#B45309',
-  },
-  {
-    id: '2',
-    name: 'Nimasha F.',
-    initials: 'NF',
-    category: 'Peer support',
-    time: 'Sun, 10:30 AM',
-    avatarBg: '#E0F2FE',
-    avatarColor: '#0369A1',
-  },
-];
-
-const initialUpcomingSessions = [
-  {
-    id: '1',
-    name: 'Chamodi P.',
-    category: 'Student support',
-    time: '4:00 PM',
-    day: '18',
-    month: 'MAY',
-  },
-  {
-    id: '2',
-    name: 'Isuru M.',
-    category: 'Listening session',
-    time: '6:30 PM',
-    day: '21',
-    month: 'MAY',
-  },
-];
+import { updateAvailabilityStatus, getVolunteerDashboardData } from '../services/volunteerService';
 
 function NavItem({ icon, label, active, onPress }) {
   const color = active ? COLORS.green : COLORS.navInactive;
@@ -74,8 +34,9 @@ function NavItem({ icon, label, active, onPress }) {
 export default function VolunteerDashboardScreen({ navigation, route, onTabChange }) {
   const { user, token } = useAuth();
   const [isAvailable, setIsAvailable] = useState(true);
-  const [pendingRequests] = useState(initialPendingRequests);
-  const [upcomingSessions] = useState(initialUpcomingSessions);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Dynamic user name and initials
   const displayName = user?.fullName || user?.name || 'Dewmini Costa';
@@ -86,6 +47,28 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
       .join('')
       .substring(0, 2)
       .toUpperCase() || 'DC';
+
+  // Load dashboard data
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getVolunteerDashboardData(token);
+      setPendingRequests(data.pendingRequests || []);
+      setUpcomingSessions(data.upcomingSessions || []);
+      setIsAvailable(data.isAvailable !== undefined ? data.isAvailable : true);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Use empty arrays if API fails
+      setPendingRequests([]);
+      setUpcomingSessions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [token]);
 
   const handleToggleAvailability = async (value) => {
     setIsAvailable(value);
@@ -156,7 +139,7 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statNumber}>{pendingRequests.length}</Text>
+              <Text style={styles.statNumber}>{isLoading ? '...' : pendingRequests.length}</Text>
               <View style={[styles.statIconBox, { backgroundColor: '#FCE7D6' }]}>
                 <Ionicons name="people-outline" size={16} color="#B45309" />
               </View>
@@ -166,7 +149,7 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
 
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statNumber}>{upcomingSessions.length}</Text>
+              <Text style={styles.statNumber}>{isLoading ? '...' : upcomingSessions.length}</Text>
               <View style={[styles.statIconBox, { backgroundColor: COLORS.greenBg }]}>
                 <Ionicons name="calendar-outline" size={16} color={COLORS.green} />
               </View>
@@ -216,7 +199,7 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Pending requests</Text>
             <View style={styles.sectionCountBadge}>
-              <Text style={styles.sectionCountText}>{pendingRequests.length}</Text>
+              <Text style={styles.sectionCountText}>{isLoading ? '...' : pendingRequests.length}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -228,20 +211,31 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           </TouchableOpacity>
         </View>
 
-        {pendingRequests.map((req) => (
-          <VolunteerRequestCard
-            key={req.id}
-            request={req}
-            onPress={() => onTabChange?.('requests')}
-          />
-        ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.green} />
+            <Text style={styles.loadingText}>Loading requests...</Text>
+          </View>
+        ) : pendingRequests.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No pending requests</Text>
+          </View>
+        ) : (
+          pendingRequests.map((req) => (
+            <VolunteerRequestCard
+              key={req.id}
+              request={req}
+              onPress={() => onTabChange?.('requests')}
+            />
+          ))
+        )}
 
         {/* Upcoming sessions */}
         <View style={[styles.sectionHeader, { marginTop: 12 }]}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Upcoming sessions</Text>
             <View style={styles.sectionCountBadge}>
-              <Text style={styles.sectionCountText}>{upcomingSessions.length}</Text>
+              <Text style={styles.sectionCountText}>{isLoading ? '...' : upcomingSessions.length}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -253,13 +247,24 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           </TouchableOpacity>
         </View>
 
-        {upcomingSessions.map((session) => (
-          <VolunteerSessionCard
-            key={session.id}
-            session={session}
-            onPress={() => onTabChange?.('requests')}
-          />
-        ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.green} />
+            <Text style={styles.loadingText}>Loading sessions...</Text>
+          </View>
+        ) : upcomingSessions.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No upcoming sessions</Text>
+          </View>
+        ) : (
+          upcomingSessions.map((session) => (
+            <VolunteerSessionCard
+              key={session.id}
+              session={session}
+              onPress={() => onTabChange?.('requests')}
+            />
+          ))
+        )}
       </ScrollView>
 
       {/* Bottom nav */}

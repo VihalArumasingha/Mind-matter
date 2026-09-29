@@ -7,7 +7,9 @@ import {
     getProfessionCategories,
     getProfessionalAvailability,
     createBooking,
-    getUserBookings
+    getUserBookings,
+    getUserNotifications,
+    markNotificationAsRead
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 import {uploadSingleProfilePicture} from '../../middleware/uploadMiddleware.js'
@@ -29,5 +31,9 @@ router.get('/professionals/:id/availability', getProfessionalAvailability)
 router.post('/bookings', authMiddleware, createBooking)
 
 router.get('/bookings', authMiddleware, getUserBookings)
+
+router.get('/notifications', authMiddleware, getUserNotifications)
+
+router.put('/notifications/:id/read', authMiddleware, markNotificationAsRead)
 
 export default router
