@@ -2,7 +2,7 @@ import {API_BASE_URL} from '../../../config/api'
 
 export const createGroupPost = async (token, circleId, postData) => {
     const response = await fetch(
-        `${API_BASE_URL}/api/group-posts/${circleId}`,
+        `${API_BASE_URL}/api/group-posts/circle/${circleId}`,
         {
             method: 'POST',
             headers: {
@@ -23,7 +23,7 @@ export const createGroupPost = async (token, circleId, postData) => {
 
 export const getGroupPosts = async (token, circleId) => {
     const response = await fetch(
-        `${API_BASE_URL}/api/group-posts/${circleId}`,
+        `${API_BASE_URL}/api/group-posts/circle/${circleId}`,
         {
             method: 'GET',
             headers: {
@@ -43,7 +43,7 @@ export const getGroupPosts = async (token, circleId) => {
 
 export const getMyGroupPosts = async (token, circleId) => {
     const response = await fetch(
-        `${API_BASE_URL}/api/group-posts/${circleId}/mine`,
+        `${API_BASE_URL}/api/group-posts/circle/${circleId}/mine`,
         {
             method: 'GET',
             headers: {
