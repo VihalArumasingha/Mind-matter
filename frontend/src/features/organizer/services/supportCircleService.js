@@ -17,6 +17,25 @@ export const getMyCircles = async token => {
     return data
 }
 
+export const getAvailableSupportCircles = async token => {
+    const response = await fetch(`${API_BASE_URL}/api/support-circles`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to load available support circles'
+        )
+    }
+
+    return data
+}
+
 export const getCircleById = async (token, circleId) => {
     const response = await fetch(`${API_BASE_URL}/api/support-circles/${circleId}`, {
         method: 'GET',
@@ -188,6 +207,95 @@ export const getDashboardStats = async token => {
 
     if (!response.ok) {
         throw new Error(data.message || 'Failed to load dashboard stats')
+    }
+
+    return data
+}
+
+export const requestToJoinCircle = async (token, circleId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-memberships/${circleId}/join`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to request to join the community',
+        )
+    }
+
+    return data
+}
+
+export const getMyMemberships = async token => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/group-memberships/mine`,
+        {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to load your community memberships',
+        )
+    }
+
+    return data
+}
+
+export const updateCircleImages = async (token, circleId, images) => {
+    const formData = new FormData()
+
+    if (images.coverImage?.uri) {
+        formData.append('coverImage', {
+            uri: images.coverImage.uri,
+            type: images.coverImage.type || 'image/jpeg',
+            name:
+                images.coverImage.fileName ||
+                `cover-${Date.now()}.jpg`,
+        })
+    }
+
+    if (images.profileImage?.uri) {
+        formData.append('profileImage', {
+            uri: images.profileImage.uri,
+            type: images.profileImage.type || 'image/jpeg',
+            name:
+                images.profileImage.fileName ||
+                `profile-${Date.now()}.jpg`,
+        })
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/support-circles/${circleId}/images`,
+        {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || 'Failed to update circle images',
+        )
     }
 
     return data

@@ -16,6 +16,7 @@ import { deleteAccount } from '../services/profileService';
 import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
 import { getMyPosts } from '../../posts/services/postService';
 import { useFocusEffect } from '@react-navigation/native';
+require('../../../assets/images/community-organizer-badge.png')
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, token } = useAuth();
@@ -127,10 +128,23 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>
-              {user?.role === 'communityOrganizer' ? '[badge icon] Community Organizer' : user?.role || 'user'}
-            </Text>
-          </View>
+  {user?.role === 'communityOrganizer' ? (
+    <>
+      <Image
+        source={require('../../../assets/images/community-organizer-badge.png')}
+        style={styles.roleBadgeIcon}
+      />
+
+      <Text style={styles.roleText}>
+        Community Organizer
+      </Text>
+    </>
+  ) : (
+    <Text style={styles.roleText}>
+      {user?.role || 'user'}
+    </Text>
+  )}
+</View>
         </View>
 
         <View style={styles.section}>
@@ -337,12 +351,21 @@ const styles = StyleSheet.create({
     },
 
     roleBadge: {
-        marginTop: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#E2EEDB',
-    },
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: 10,
+  paddingHorizontal: 14,
+  paddingVertical: 6,
+  borderRadius: 20,
+  backgroundColor: '#E2EEDB',
+},
+
+roleBadgeIcon: {
+  width: 16,
+  height: 16,
+  marginRight: 5,
+  resizeMode: 'contain',
+},
 
     roleText: {
         fontSize: 12,
