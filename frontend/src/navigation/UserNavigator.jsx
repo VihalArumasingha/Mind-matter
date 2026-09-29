@@ -11,7 +11,7 @@ import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
 import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
-
+import GroupPostCreateScreen from '../features/userCommunities/screens/GroupPostCreateScreen'
 
 
 const Stack = createNativeStackNavigator()
@@ -67,6 +67,11 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MemberCircleActivity"
                 component={MemberCircleActivityScreen}
+            />
+
+            <Stack.Screen
+                name="GroupPostCreate"
+                component={GroupPostCreateScreen}
             />
         </Stack.Navigator>
     )
