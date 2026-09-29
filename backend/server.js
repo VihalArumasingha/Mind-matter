@@ -14,14 +14,13 @@ import sessionRoutes from './routes/supportCircleOrganizer/session/sessionRoutes
 import attendanceRoutes from './routes/supportCircleOrganizer/attendance/attendanceRoutes.js'
 import userPostRoutes from './routes/userpostroutes.js'
 import postRoutes from './routes/posts/postRoutes.js'
-
-
+import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPostRoutes.js'
+import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
+import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
+import onboardingRoutes from './routes/user/onboardingRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Connect to Database
-connectDB();
 
 // Middleware
 app.use(cors());
@@ -49,6 +48,7 @@ app.get('/api/volunteer/test', (req, res) => {
     });
 });
 
+app.use('/api/users/onboarding', onboardingRoutes)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/users/moods', moodRoutes);
@@ -61,10 +61,23 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/user-posts', userPostRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/group-posts', groupPostRoutes);
+app.use('/api/group-chat', groupChatRoutes);
+app.use('/api/moderation', moderationRoutes);
 
-// Start the server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] Running actively on port ${PORT}`);
-    console.log(`[Server] URL: http://localhost:${PORT}`);
-});
+const startServer = async () => {
+    try {
+        await connectDB();
+
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`[Server] Running actively on port ${PORT}`);
+            console.log(`[Server] URL: http://localhost:${PORT}`);
+        });
+    } catch (error) {
+        console.error(`[Error] Database connection failed: ${error.message}`);
+        process.exitCode = 1;
+    }
+};
+
+startServer();
 

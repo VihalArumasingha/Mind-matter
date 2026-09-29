@@ -1,7 +1,7 @@
 import GroupMembership from '../../../models/GroupMembership.js'
 import SupportCircle from '../../../models/SupportCircle.js'
 
-// Request to join a support circle (creates a pending membership)
+// Request to join a support circle
 export const requestToJoinCircle = async (req, res) => {
     try {
         const { circleId } = req.params
@@ -14,6 +14,13 @@ export const requestToJoinCircle = async (req, res) => {
             })
         }
 
+        // Only active circles can accept new members
+        if (circle.status !== 'active') {
+            return res.status(400).json({
+                message: 'This support circle is not currently accepting members'
+            })
+        }
+
         const existing = await GroupMembership.findOne({
             userId: req.user._id,
             groupId: circleId
@@ -22,6 +29,13 @@ export const requestToJoinCircle = async (req, res) => {
         if (existing) {
             return res.status(400).json({
                 message: `You already have a ${existing.status} membership for this circle`
+            })
+        }
+
+        // Do not allow new join requests when the circle is full
+        if (circle.currentMemberCount >= circle.maxCapacity) {
+            return res.status(400).json({
+                message: 'This support circle is currently full'
             })
         }
 
@@ -44,7 +58,7 @@ export const requestToJoinCircle = async (req, res) => {
     }
 }
 
-// List the logged-in user's own group memberships (for their feed/profile)
+// List the logged-in user's own group memberships
 export const getMyMemberships = async (req, res) => {
     try {
         const memberships = await GroupMembership.find({

@@ -1,48 +1,76 @@
 import express from 'express'
+
 import {
     createSupportCircle,
     updateSupportCircle,
     archiveSupportCircle,
     getMySupportCircles,
+    getAvailableSupportCircles,
     getSupportCircleById,
     getPendingJoinRequests,
     getAllPendingJoinRequests,
     respondToJoinRequest,
     getCircleMembers,
     removeMember,
-    getDashboardStats
+    getDashboardStats,
 } from '../../../controllers/supportCircleOrganizer/supportCircle/supportCircleController.js'
+
+import { updateCircleImages } from '../../../controllers/supportCircleOrganizer/supportCircle/circleImageController.js'
 import authMiddleware from '../../../middleware/authMiddleware.js'
+import { uploadCircleImages } from '../../../middleware/circleImageUploadMiddleware.js'
 
 const router = express.Router()
 
-// FM-46
+// Create a support circle
 router.post('/', authMiddleware, createSupportCircle)
 
-// FM-47
+// Update a support circle
 router.put('/:id', authMiddleware, updateSupportCircle)
 
-// FM-49
+// Update circle images
+router.patch(
+    '/:id/images',
+    authMiddleware,
+    uploadCircleImages,
+    updateCircleImages
+)
+
+// Archive a support circle
 router.patch('/:id/archive', authMiddleware, archiveSupportCircle)
 
-// FM-70 / FM-71 — must come before /:id so Express doesn't treat
-// "dashboard-stats" as a circle id
+// Dashboard statistics
 router.get('/dashboard-stats', authMiddleware, getDashboardStats)
 
-// Requests tab on the dashboard — across all of the organizer's circles
+// Get all pending join requests
 router.get('/requests/all', authMiddleware, getAllPendingJoinRequests)
 
+// Get circles belonging to the logged-in organizer
 router.get('/mine', authMiddleware, getMySupportCircles)
+
+// ⭐ Get available support circles for users
+router.get('/', authMiddleware, getAvailableSupportCircles)
+
+// Get a specific support circle
 router.get('/:id', authMiddleware, getSupportCircleById)
 
-// FM-50 / FM-51 / FM-52
+// Get pending requests for a specific circle
 router.get('/:id/requests', authMiddleware, getPendingJoinRequests)
-router.patch('/requests/:membershipId', authMiddleware, respondToJoinRequest)
 
-// FM-53
+// Respond to a join request
+router.patch(
+    '/requests/:membershipId',
+    authMiddleware,
+    respondToJoinRequest
+)
+
+// Get circle members
 router.get('/:id/members', authMiddleware, getCircleMembers)
 
-// FM-54
-router.patch('/members/:membershipId/remove', authMiddleware, removeMember)
+// Remove a member
+router.patch(
+    '/members/:membershipId/remove',
+    authMiddleware,
+    removeMember
+)
 
 export default router

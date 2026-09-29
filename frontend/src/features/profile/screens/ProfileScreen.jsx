@@ -16,6 +16,7 @@ import { deleteAccount } from '../services/profileService';
 import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
 import { getMyPosts } from '../../posts/services/postService';
 import { useFocusEffect } from '@react-navigation/native';
+require('../../../assets/images/community-organizer-badge.png')
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, token } = useAuth();
@@ -90,6 +91,14 @@ const ProfileScreen = ({ navigation }) => {
     setShowApplicationForm(true);
   };
 
+  const handleBecomeOrganizer = () => {
+    if (user?.role === 'communityOrganizer') {
+      Alert.alert('Already an Organizer', 'Your community organizer access is already active.');
+      return;
+    }
+    navigation.navigate('OrganizerApplication');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -119,10 +128,23 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>
-              {user?.role || 'user'}
-            </Text>
-          </View>
+  {user?.role === 'communityOrganizer' ? (
+    <>
+      <Image
+        source={require('../../../assets/images/community-organizer-badge.png')}
+        style={styles.roleBadgeIcon}
+      />
+
+      <Text style={styles.roleText}>
+        Community Organizer
+      </Text>
+    </>
+  ) : (
+    <Text style={styles.roleText}>
+      {user?.role || 'user'}
+    </Text>
+  )}
+</View>
         </View>
 
         <View style={styles.section}>
@@ -199,7 +221,9 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.menuArrow}>›</Text>
           </Pressable>
 
-          <Pressable style={styles.menuItem}>
+          <Pressable
+            style={styles.menuItem}
+            onPress={handleBecomeOrganizer}>
             <View>
               <Text style={styles.menuTitle}>Become a Community Organizer</Text>
               <Text style={styles.menuDescription}>
@@ -231,8 +255,8 @@ const ProfileScreen = ({ navigation }) => {
         <View style={{ flex: 1, backgroundColor: '#F0FDFA' }}>
           {/* Close button */}
             
-          <TherapistApplicationForm 
-          userId={user?.id||user?.id}  
+          <TherapistApplicationForm
+          userId={user?.id}
             onSubmitted={() => {
               setShowApplicationForm(false);
               Alert.alert(
@@ -327,12 +351,21 @@ const styles = StyleSheet.create({
     },
 
     roleBadge: {
-        marginTop: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#E2EEDB',
-    },
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: 10,
+  paddingHorizontal: 14,
+  paddingVertical: 6,
+  borderRadius: 20,
+  backgroundColor: '#E2EEDB',
+},
+
+roleBadgeIcon: {
+  width: 16,
+  height: 16,
+  marginRight: 5,
+  resizeMode: 'contain',
+},
 
     roleText: {
         fontSize: 12,

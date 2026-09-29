@@ -16,6 +16,7 @@ import {uploadPostImage} from '../middleware/postUploadMiddleware.js'
 const router = express.Router()
 
 router.use(authMiddleware)
+
 router.get('/', getFeedPosts)
 router.get('/mine', getMyPosts)
 router.get('/:id', getPost)
