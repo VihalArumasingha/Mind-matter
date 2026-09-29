@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../styles/volunteerDashboardStyles';
-import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData } from '../services/volunteerService';
+import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
@@ -28,15 +28,34 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const loadRequests = async () => {
     try {
       setIsLoading(true);
-      const data = await getVolunteerDashboardData(token);
       
-      // Combine pending and upcoming sessions into requests list
-      const allRequests = [
-        ...(data.pendingRequests || []).map(r => ({ ...r, tabCategory: 'pending' })),
-        ...(data.upcomingSessions || []).map(r => ({ ...r, tabCategory: 'accepted' }))
-      ];
+      // Load all requests for proper tab filtering
+      const allRequestsData = await getVolunteerRequests(token, 'all');
+      console.log('[Load Requests] All requests data:', allRequestsData);
       
-      setRequestsList(allRequests);
+      if (allRequestsData.success && allRequestsData.requests) {
+        const allRequests = allRequestsData.requests.map(r => ({ 
+          ...r, 
+          tabCategory: r.status === 'confirmed' ? 'accepted' : r.status 
+        }));
+        console.log('[Load Requests] All requests:', allRequests);
+        console.log('[Load Requests] Pending count:', allRequests.filter(r => r.status === 'pending').length);
+        console.log('[Load Requests] Accepted count:', allRequests.filter(r => r.status === 'confirmed').length);
+        console.log('[Load Requests] History count:', allRequests.filter(r => ['cancelled', 'declined', 'completed'].includes(r.status)).length);
+        
+        setRequestsList(allRequests);
+      } else {
+        // Fallback to dashboard data if all requests fail
+        const data = await getVolunteerDashboardData(token);
+        console.log('[Load Requests] Fallback to dashboard data:', data);
+        
+        const allRequests = [
+          ...(data.pendingRequests || []).map(r => ({ ...r, tabCategory: 'pending' })),
+          ...(data.upcomingSessions || []).map(r => ({ ...r, tabCategory: 'accepted', status: 'confirmed' }))
+        ];
+        
+        setRequestsList(allRequests);
+      }
     } catch (error) {
       console.error('Error loading requests:', error);
       // Use empty array if API fails
@@ -48,7 +67,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
 
   useEffect(() => {
     loadRequests();
-  }, [token]);
+  }, [token, activeTab]);
 
   const filteredRequests = requestsList.filter((r) => {
     if (activeTab === 'pending') return r.status === 'pending' || r.tabCategory === 'pending';
@@ -67,11 +86,12 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           onPress: async () => {
             try {
               if (token) {
-                await acceptVolunteerRequest(requestId, token);
+                const result = await acceptVolunteerRequest(requestId, token);
+                console.log('[Handle Accept] Result:', result);
                 // Reload requests after acceptance
                 await loadRequests();
               }
-              Alert.alert('Accepted', `Session with ${name} confirmed!`);
+              Alert.alert('Accepted', `Session with ${name} confirmed! A notification has been sent to the user.`);
             } catch (err) {
               console.log('Accept request error:', err.message);
               Alert.alert('Error', `Failed to accept request: ${err.message}. Please try again.`);
@@ -94,11 +114,12 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           onPress: async () => {
             try {
               if (token) {
-                await declineVolunteerRequest(requestId, token);
+                const result = await declineVolunteerRequest(requestId, token);
+                console.log('[Handle Decline] Result:', result);
                 // Reload requests after decline
                 await loadRequests();
               }
-              Alert.alert('Declined', `Request from ${name} declined.`);
+              Alert.alert('Declined', `Request from ${name} declined. The user will be notified to try another time slot.`);
             } catch (err) {
               console.log('Decline request error:', err.message);
               Alert.alert('Error', `Failed to decline request: ${err.message}. Please try again.`);
@@ -109,8 +130,8 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
     );
   };
 
-  const pendingCount = requestsList.filter((r) => r.status === 'pending').length;
-  const acceptedCount = requestsList.filter((r) => r.status === 'accepted').length;
+  const pendingCount = requestsList.filter((r) => r.status === 'pending' || r.tabCategory === 'pending').length;
+  const acceptedCount = requestsList.filter((r) => r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted').length;
 
   const handleGoBack = () => {
     if (onTabChange) {

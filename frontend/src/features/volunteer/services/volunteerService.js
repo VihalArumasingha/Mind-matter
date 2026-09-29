@@ -157,32 +157,47 @@ export const acceptVolunteerRequest = async (requestId, token) => {
  */
 export const declineVolunteerRequest = async (requestId, token) => {
   try {
+    const url = `${API_BASE_URL}/api/volunteer/requests/${requestId}/decline`;
+    console.log('[declineVolunteerRequest] Request URL:', url);
+    console.log('[declineVolunteerRequest] Request ID:', requestId);
+    console.log('[declineVolunteerRequest] Token exists:', !!token);
+    
     const response = await fetch(
-      `${API_BASE_URL}/api/volunteer/requests/${requestId}/decline`,
+      url,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           Authorization: `Bearer ${token}`,
         },
       }
     );
 
+    console.log('[declineVolunteerRequest] Response status:', response.status);
+    console.log('[declineVolunteerRequest] Response statusText:', response.statusText);
+    
     const contentType = response.headers.get('content-type');
+    console.log('[declineVolunteerRequest] Content-Type:', contentType);
+    
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
-      console.error('[declineVolunteerRequest] Received non-JSON response:', text.substring(0, 200));
-      console.error('[declineVolunteerRequest] Response status:', response.status);
+      console.error('[declineVolunteerRequest] Received non-JSON response:', text.substring(0, 500));
+      console.error('[declineVolunteerRequest] Full response text length:', text.length);
       throw new Error('Server returned non-JSON response. Please try again.');
     }
 
     const data = await response.json();
+    console.log('[declineVolunteerRequest] Parsed JSON data:', data);
+    
     if (!response.ok) {
       throw new Error(data.message || 'Failed to decline request');
     }
     return data;
   } catch (error) {
-    console.error('Error declining request:', error);
+    console.error('[declineVolunteerRequest] Error:', error);
+    console.error('[declineVolunteerRequest] Error name:', error.name);
+    console.error('[declineVolunteerRequest] Error message:', error.message);
     throw error;
   }
 };

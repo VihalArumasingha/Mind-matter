@@ -15,20 +15,7 @@ import authMiddleware from '../../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Test route to verify volunteer routes are working
-router.get('/test', (req, res) => {
-  console.log('[Volunteer Routes] Test route called');
-  res.json({
-    success: true,
-    message: 'Volunteer routes are working',
-    timestamp: new Date().toISOString()
-  });
-});
-
 router.get('/dashboard', authMiddleware, getVolunteerDashboard);
-// Test accept route without auth for debugging
-router.post('/requests/:id/accept-test', acceptVolunteerRequest);
-
 router.post('/requests/:id/accept', authMiddleware, acceptVolunteerRequest);
 router.post('/requests/:id/decline', authMiddleware, declineVolunteerRequest);
 router.get('/requests', authMiddleware, getVolunteerRequests);

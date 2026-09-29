@@ -607,7 +607,7 @@ export const declineVolunteerRequest = async (req, res) => {
           userId: booking.user,
           type: 'booking_declined',
           title: 'Booking Declined',
-          message: `Your session request with ${booking.professionalName} on ${formattedDate} at ${booking.startTime} has been declined.`,
+          message: `Currently unable to book. Please try another slot for your session with ${booking.professionalName}.`,
           relatedUserId: req.user._id,
           relatedUserName: booking.professionalName,
           relatedBookingId: booking._id,
