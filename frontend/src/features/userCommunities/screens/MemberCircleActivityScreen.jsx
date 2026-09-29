@@ -205,31 +205,83 @@ const MemberCircleActivityScreen = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.header}>
+            <View style={styles.communityHeader}>
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Back to communities"
                     onPress={() => navigation.goBack()}
-                    style={styles.backButton}>
+                    style={styles.activityBackButton}>
                     <Text style={styles.backButtonText}>‹</Text>
                 </Pressable>
+
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${circle.topic}. Open community details`}
-                    onPress={() => navigation.navigate('MemberCircleDetail', {circleId})}
-                    style={styles.circleIdentity}>
-                    <View style={styles.circleAvatar}>
-                        {circle.profileImage ? (
-                            <Image source={{uri: circle.profileImage}} style={styles.circleAvatarImage} />
+                    onPress={() =>
+                        navigation.navigate('MemberCircleDetail', {circleId})
+                    }
+                    style={styles.activityCommunityCard}>
+
+                    <View style={styles.activityCover}>
+                        {circle.coverImage ? (
+                            <Image
+                                source={{uri: circle.coverImage}}
+                                style={styles.activityCoverImage}
+                            />
                         ) : (
-                            <Text style={styles.circleAvatarFallback}>♥</Text>
+                            <View style={styles.activityCoverFallback}>
+                                <Text style={styles.activityCoverFallbackText}>
+                                    {circle.topic?.charAt(0)?.toUpperCase() || 'C'}
+                                </Text>
+                            </View>
                         )}
                     </View>
-                    <View style={styles.circleIdentityText}>
-                        <Text numberOfLines={1} style={styles.circleName}>{circle.topic}</Text>
-                        <Text style={styles.circleLink}>Community details</Text>
+
+                    <View style={styles.activityProfileWrapper}>
+                        {circle.profileImage ? (
+                            <Image
+                                source={{uri: circle.profileImage}}
+                                style={styles.activityProfileImage}
+                            />
+                        ) : (
+                            <View style={styles.activityProfileFallback}>
+                                <Text style={styles.activityProfileFallbackText}>
+                                    ♥
+                                </Text>
+                            </View>
+                        )}
                     </View>
-                    <Text style={styles.identityArrow}>›</Text>
+
+                    <View style={styles.activityCommunityInfo}>
+                        <Text
+                            numberOfLines={1}
+                            style={styles.activityCommunityName}>
+                            {circle.topic}
+                        </Text>
+
+                        <View style={styles.activityCategoryBadge}>
+                            <Text style={styles.activityCategoryText}>
+                                {circle.category || 'Support community'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.activityMetaRow}>
+                            {circle.status === 'active' ? (
+                                <View style={styles.activityActiveBadge}>
+                                    <View style={styles.activityActiveDot} />
+                                    <Text style={styles.activityActiveText}>
+                                        Active
+                                    </Text>
+                                </View>
+                            ) : null}
+
+                            <Text style={styles.activityDetailsText}>
+                                Community details
+                            </Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.activityArrow}>›</Text>
                 </Pressable>
             </View>
 
@@ -404,49 +456,207 @@ const MemberCircleActivityScreen = () => {
 
 const styles = StyleSheet.create({
     safeArea: {flex: 1, backgroundColor: '#F8FAF5'},
-    header: {
-        minHeight: 76,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
+    communityHeader: {
+        backgroundColor: '#F8FAF5',
         borderBottomWidth: 1,
         borderBottomColor: '#E2E9DF',
+        paddingBottom: 10,
     },
-    backButton: {width: 36, height: 44, justifyContent: 'center'},
-    backButtonText: {color: '#354335', fontSize: 34, lineHeight: 38},
-    circleIdentity: {flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0, paddingVertical: 8},
-    circleAvatar: {
-        width: 46,
-        height: 46,
+
+    activityBackButton: {
+        position: 'absolute',
+        left: 10,
+        top: 16,
+        zIndex: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.88)',
+    },
+
+    backButtonText: {
+        color: '#354335',
+        fontSize: 32,
+        lineHeight: 36,
+    },
+
+    activityCommunityCard: {
+        marginHorizontal: 12,
+        marginTop: 8,
+        position: 'relative',
+        paddingBottom: 2,
+    },
+
+    activityCover: {
+        width: '100%',
+        height: 158,
         overflow: 'hidden',
         borderRadius: 14,
-        backgroundColor: '#E5F2E2',
+        backgroundColor: '#DDEBDD',
     },
-    circleAvatarImage: {width: '100%', height: '100%'},
-    circleAvatarFallback: {color: '#397A49', fontSize: 23},
-    circleIdentityText: {flex: 1, minWidth: 0, marginLeft: 11},
-    circleName: {color: '#263526', fontSize: 16, fontWeight: '700'},
-    circleLink: {marginTop: 3, color: '#397A49', fontSize: 12, fontWeight: '600'},
-    identityArrow: {marginLeft: 8, color: '#748171', fontSize: 25},
-    sectionTabs: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: '#DCE5D8',
-        paddingHorizontal: 18,
+
+    activityCoverImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
     },
-    sectionTab: {
+
+    activityCoverFallback: {
         flex: 1,
-        minHeight: 48,
+        backgroundColor: '#DDEBDD',
         alignItems: 'center',
         justifyContent: 'center',
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
     },
-    sectionTabActive: {borderBottomColor: '#397A49'},
-    sectionTabText: {color: '#758174', fontSize: 14, fontWeight: '600'},
-    sectionTabTextActive: {color: '#276D3B'},
+
+    activityCoverFallbackText: {
+        fontSize: 48,
+        fontWeight: '700',
+        color: '#4E8C4A',
+    },
+
+    activityProfileWrapper: {
+        width: 86,
+        height: 86,
+        borderRadius: 43,
+        padding: 4,
+        position: 'absolute',
+        left: 18,
+        top: 116,
+        zIndex: 5,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.16,
+        shadowRadius: 5,
+        elevation: 5,
+    },
+
+    activityProfileImage: {
+        width: 78,
+        height: 78,
+        borderRadius: 39,
+        resizeMode: 'cover',
+    },
+
+    activityProfileFallback: {
+        width: 78,
+        height: 78,
+        borderRadius: 39,
+        backgroundColor: '#E5F2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    activityProfileFallbackText: {
+        fontSize: 30,
+        color: '#4E8C4A',
+    },
+
+    activityCommunityInfo: {
+        marginTop: 48,
+        paddingHorizontal: 6,
+        paddingLeft: 8,
+    },
+
+    activityCommunityName: {
+        color: '#263526',
+        fontSize: 21,
+        lineHeight: 27,
+        fontWeight: '700',
+    },
+
+    activityCategoryBadge: {
+        alignSelf: 'flex-start',
+        marginTop: 7,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+        backgroundColor: '#E7F3E4',
+    },
+
+    activityCategoryText: {
+        color: '#4E8C4A',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    activityMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 9,
+    },
+
+    activityActiveBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 11,
+        backgroundColor: '#E7F3E4',
+    },
+
+    activityActiveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#4E8C4A',
+        marginRight: 5,
+    },
+
+    activityActiveText: {
+        color: '#4E8C4A',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+
+    activityDetailsText: {
+        marginLeft: 9,
+        color: '#397A49',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    activityArrow: {
+        position: 'absolute',
+        right: 6,
+        bottom: 24,
+        color: '#748171',
+        fontSize: 28,
+    },
+
+    sectionTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAF5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCE5D8',
+    paddingHorizontal: 18,
+},
+
+    sectionTab: {
+    flex: 1,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+},
+
+sectionTabActive: {
+    borderBottomColor: '#397A49',
+},
+
+sectionTabText: {
+    color: '#758174',
+    fontSize: 13,
+    fontWeight: '600',
+},
+
+sectionTabTextActive: {
+    color: '#276D3B',
+},
+
     content: {padding: 16, paddingBottom: 36},
     composer: {
         padding: 15,

@@ -261,17 +261,48 @@ const MemberCircleDetailScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}>
-                {/* Hero / Group Profile Image */}
-                    <View style={styles.heroIcon}>
-                        {circle.profileImage ? (
-                            <Image
-                                source={{uri: circle.profileImage}}
-                                style={styles.heroProfileImage}
-                            />
-                        ) : (
-                            <Text style={styles.heroIconText}>♥</Text>
-                        )}
-                    </View>
+
+                {/* Community cover + profile image */}
+<View style={styles.communityHero}>
+    {/* Cover image */}
+    <View style={styles.coverContainer}>
+        {circle.coverImage ? (
+            <Image
+                source={{uri: circle.coverImage}}
+                style={styles.coverImage}
+            />
+        ) : (
+            <View style={styles.coverPlaceholder}>
+                <Text style={styles.coverPlaceholderText}>
+                    Community
+                </Text>
+            </View>
+        )}
+    </View>
+
+    {/* Overlapping profile image */}
+    <View style={styles.profileImageWrapper}>
+        {circle.profileImage ? (
+            <Image
+                source={{uri: circle.profileImage}}
+                style={styles.heroProfileImage}
+            />
+        ) : (
+            <View style={styles.profileImageFallback}>
+                <Text style={styles.heroIconText}>♥</Text>
+            </View>
+        )}
+    </View>
+</View>
+                
+
+                {/* Community status */}
+                <View style={styles.statusBadge}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusText}>
+                        {circle.status === 'active' ? 'Active' : circle.status}
+                    </Text>
+                </View>
 
                 {/* Community title */}
                 <Text style={styles.title}>
@@ -280,11 +311,9 @@ const MemberCircleDetailScreen = () => {
 
                 {/* Category */}
                 {circle.category ? (
-                    <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryText}>
-                            {circle.category}
-                        </Text>
-                    </View>
+                    <Text style={styles.categoryText}>
+                        {circle.category}
+                    </Text>
                 ) : null}
 
                 {/* Description */}
@@ -293,8 +322,9 @@ const MemberCircleDetailScreen = () => {
                         'A safe space where members can connect and support one another.'}
                 </Text>
 
-                {/* Stats */}
+                {/* Community stats */}
                 <View style={styles.statsCard}>
+
                     <View style={styles.stat}>
                         <Text style={styles.statNumber}>
                             {circle.currentMemberCount || 0}
@@ -309,6 +339,18 @@ const MemberCircleDetailScreen = () => {
 
                     <View style={styles.stat}>
                         <Text style={styles.statNumber}>
+                            {circle.maxCapacity || 0}
+                        </Text>
+
+                        <Text style={styles.statLabel}>
+                            Capacity
+                        </Text>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.stat}>
+                        <Text style={styles.statNumber}>
                             {circle.meetingTypes?.length || 0}
                         </Text>
 
@@ -316,6 +358,7 @@ const MemberCircleDetailScreen = () => {
                             Meeting types
                         </Text>
                     </View>
+
                 </View>
 
                 {/* About */}
@@ -325,12 +368,23 @@ const MemberCircleDetailScreen = () => {
                     </Text>
 
                     <Text style={styles.sectionText}>
-                        This community provides a supportive
-                        environment where people can connect,
-                        share experiences and take part in
-                        group activities.
+                        {circle.description ||
+                            'This community provides a supportive environment where people can connect, share experiences and take part in group activities.'}
                     </Text>
                 </View>
+
+                {/* Community rules */}
+                {circle.rules ? (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            Community guidelines
+                        </Text>
+
+                        <Text style={styles.sectionText}>
+                            {circle.rules}
+                        </Text>
+                    </View>
+                ) : null}
 
                 {/* Meeting options */}
                 {circle.meetingTypes?.length ? (
@@ -344,11 +398,8 @@ const MemberCircleDetailScreen = () => {
                                 <View
                                     key={type}
                                     style={styles.meetingBadge}>
-                                    <Text
-                                        style={
-                                            styles.meetingBadgeText
-                                        }>
-                                        {type}
+                                    <Text style={styles.meetingBadgeText}>
+                                        {type === 'online' ? 'Online' : 'Physical'}
                                     </Text>
                                 </View>
                             ))}
@@ -364,8 +415,8 @@ const MemberCircleDetailScreen = () => {
                             : membershipStatus === 'pending'
                             ? 'Request under review'
                             : membershipStatus === 'rejected'
-                                ? 'Join request rejected'
-                                : 'Interested in joining?'}
+                            ? 'Join request rejected'
+                            : 'Interested in joining?'}
                     </Text>
 
                     <Text style={styles.joinText}>
@@ -374,19 +425,23 @@ const MemberCircleDetailScreen = () => {
                             : membershipStatus === 'pending'
                             ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
                             : membershipStatus === 'rejected'
-                                ? 'Your previous request to join this community was rejected by the organizer.'
-                                : 'Request to join this community and connect with other members.'}
+                            ? 'Your previous request to join this community was rejected by the organizer.'
+                            : 'Request to join this community and connect with other members.'}
                     </Text>
 
                     {renderJoinAction()}
+
                     {membershipStatus === 'approved' ? (
                         <Pressable
                             style={styles.createPostButton}
                             onPress={openCommunityActivity}>
-                            <Text style={styles.createPostButtonText}>Open community</Text>
+                            <Text style={styles.createPostButtonText}>
+                                Open community
+                            </Text>
                         </Pressable>
                     ) : null}
                 </View>
+
             </ScrollView>
         </SafeAreaView>
     )
@@ -440,29 +495,106 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
 
-    heroIcon: {
-        width: 72,
-        height: 72,
-        borderRadius: 24,
-        backgroundColor: '#E5F2E2',
-        alignItems: 'center',
-        justifyContent: 'center',
-        alignSelf: 'center',
+    statusBadge: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 62,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#E7F3E4',
     },
 
-    heroProfileImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 24,
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: '#4E8C4A',
+        marginRight: 6,
     },
 
-    heroIconText: {
-        fontSize: 34,
+    statusText: {
+        fontSize: 12,
+        fontWeight: '700',
         color: '#4E8C4A',
     },
 
+    communityHero: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+},
+
+coverContainer: {
+    width: '100%',
+    height: 150,
+    overflow: 'hidden',
+    backgroundColor: '#DDEBDD',
+},
+
+coverImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+},
+
+coverPlaceholder: {
+    flex: 1,
+    backgroundColor: '#DDEBDD',
+    alignItems: 'center',
+    justifyContent: 'center',
+},
+
+coverPlaceholderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6D806D',
+},
+
+profileImageWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFFFFF',
+    padding: 4,
+    marginTop: -44,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: '#000000',
+    shadowOffset: {
+        width: 0,
+        height: 2,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 4,
+},
+
+heroProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    resizeMode: 'cover',
+},
+
+profileImageFallback: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E5F2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+},
+
+heroIconText: {
+    fontSize: 32,
+    color: '#4E8C4A',
+},
+
     title: {
-        marginTop: 18,
+        marginTop: 10,
         fontSize: 26,
         lineHeight: 32,
         fontWeight: '700',
@@ -480,9 +612,11 @@ const styles = StyleSheet.create({
     },
 
     categoryText: {
-        fontSize: 12,
+        marginTop: 6,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#557452',
+        color: '#6B7868',
+        textAlign: 'center',
     },
 
     description: {
@@ -517,7 +651,7 @@ const styles = StyleSheet.create({
 
     statLabel: {
         marginTop: 4,
-        fontSize: 12,
+        fontSize: 11,
         color: '#778076',
     },
 
