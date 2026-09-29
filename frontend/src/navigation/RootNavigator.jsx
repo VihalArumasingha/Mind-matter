@@ -1,6 +1,6 @@
 import React from 'react'
 import { ActivityIndicator, StyleSheet, View, Text } from 'react-native'
-import { NavigationContainer } from '@react-navigation/native'
+import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useAuth } from '../context/AuthContext'
 
@@ -15,6 +15,7 @@ import AdminNavigator from './AdminNavigator'
 import OnboardingGate from '../features/onboarding/OnboardingGate'
 
 const Stack = createNativeStackNavigator()
+const navigationRef = createNavigationContainerRef()
 
 const AuthenticationNavigator = () => {
     return (
@@ -76,7 +77,13 @@ const RootNavigator = () => {
         switch (user.role) {
             case 'user':
                 return (
-                    <OnboardingGate token={token}>
+                    <OnboardingGate
+                        token={token}
+                        onOpenCommunity={circleId => {
+                            if (navigationRef.isReady()) {
+                                navigationRef.navigate('MemberCircleActivity', {circleId})
+                            }
+                        }}>
                         <UserNavigator />
                     </OnboardingGate>
                 )
@@ -99,7 +106,7 @@ const RootNavigator = () => {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             {renderRoleNavigator()}
         </NavigationContainer>
     )

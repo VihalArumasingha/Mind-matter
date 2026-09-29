@@ -1,9 +1,11 @@
 import React, {useCallback, useMemo, useState} from 'react'
 import {
+    Alert,
     ActivityIndicator,
     FlatList,
     Image,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -13,14 +15,23 @@ import {SafeAreaView} from 'react-native-safe-area-context'
 import {useFocusEffect, useNavigation} from '@react-navigation/native'
 
 import {useAuth} from '../../../context/AuthContext'
-import {getAvailableSupportCircles} from '../../organizer/services/supportCircleService'
+import {
+    getAvailableSupportCircles,
+    getMyMemberships,
+    requestToJoinCircle,
+} from '../../organizer/services/supportCircleService'
 
 const CommunitiesScreen = () => {
     const navigation = useNavigation()
     const {token} = useAuth()
 
     const [circles, setCircles] = useState([])
+    const [memberships, setMemberships] = useState([])
+    const [selectedSection, setSelectedSection] = useState('explore')
     const [searchQuery, setSearchQuery] = useState('')
+    const [categoryFilter, setCategoryFilter] = useState('All')
+    const [meetingFilter, setMeetingFilter] = useState('all')
+    const [joiningCircleId, setJoiningCircleId] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
@@ -34,9 +45,13 @@ const CommunitiesScreen = () => {
             setLoading(true)
             setError('')
 
-            const data = await getAvailableSupportCircles(token)
+            const [data, membershipData] = await Promise.all([
+                getAvailableSupportCircles(token),
+                getMyMemberships(token),
+            ])
 
             setCircles(data.circles || [])
+            setMemberships(membershipData.memberships || [])
         } catch (err) {
             console.error('Failed to load communities:', err)
             setError(err.message || 'Failed to load communities')
@@ -54,89 +69,144 @@ const CommunitiesScreen = () => {
     const filteredCircles = useMemo(() => {
         const query = searchQuery.trim().toLowerCase()
 
-        if (!query) {
-            return circles
-        }
-
         return circles.filter(circle => {
             const topic = circle.topic?.toLowerCase() || ''
             const description = circle.description?.toLowerCase() || ''
             const category = circle.category?.toLowerCase() || ''
 
             return (
-                topic.includes(query) ||
-                description.includes(query) ||
-                category.includes(query)
+                (!query || topic.includes(query) || description.includes(query) || category.includes(query)) &&
+                (categoryFilter === 'All' || circle.category === categoryFilter) &&
+                (meetingFilter === 'all' || circle.meetingTypes?.includes(meetingFilter))
             )
         })
-    }, [circles, searchQuery])
+    }, [circles, searchQuery, categoryFilter, meetingFilter])
+
+    const categories = useMemo(() => [
+        'All',
+        ...new Set(circles.map(circle => circle.category).filter(Boolean)),
+    ], [circles])
+
+    const myCommunities = useMemo(() => {
+        const joined = memberships
+            .filter(item => item.status === 'approved')
+            .map(item => item.groupId)
+            .filter(circle => circle && typeof circle === 'object')
+
+        const uniqueCircles = new Map(joined.map(circle => [circle._id, circle]))
+        return [...uniqueCircles.values()]
+    }, [memberships])
+
+    const filteredMyCommunities = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase()
+
+        if (!query) return myCommunities
+
+        return myCommunities.filter(circle =>
+            [circle.topic, circle.description, circle.category]
+                .some(value => value?.toLowerCase().includes(query)),
+        )
+    }, [myCommunities, searchQuery])
+
+    const displayedCircles = selectedSection === 'explore'
+        ? filteredCircles
+        : filteredMyCommunities
 
     const openCommunity = circle => {
-    navigation.getParent()?.navigate('MemberCircleDetail', {
-        circleId: circle._id,
-    })
+        navigation.getParent()?.navigate('MemberCircleActivity', {circleId: circle._id})
+    }
+
+    const openCommunityDetails = circle => {
+        navigation.getParent()?.navigate('MemberCircleDetail', {circleId: circle._id})
+    }
+
+    const joinCommunity = async circle => {
+        if (joiningCircleId) return
+
+        try {
+            setJoiningCircleId(circle._id)
+            const data = await requestToJoinCircle(token, circle._id)
+            setMemberships(current => [...current, data.membership])
+        } catch (err) {
+            Alert.alert('Unable to request to join', err.message)
+        } finally {
+            setJoiningCircleId(null)
+        }
     }
 
     const renderCommunity = ({item}) => {
         return (
-            <Pressable
-                style={({pressed}) => [
-                    styles.communityCard,
-                    pressed && styles.communityCardPressed,
-                ]}
-                onPress={() => openCommunity(item)}>
-                <View style={styles.cardTopRow}>
-                    <View style={styles.iconContainer}>
-                        {item.profileImage ? (
-                            <Image
-                                source={{uri: item.profileImage}}
-                                style={styles.communityProfileImage}
-                            />
-                        ) : (
-                            <Text style={styles.iconText}>♥</Text>
-                        )}
+            <View style={styles.communityCard}>
+                <Pressable
+                    style={({pressed}) => [styles.cardSummary, pressed && styles.communityCardPressed]}
+                    onPress={() => openCommunityDetails(item)}>
+                    <View style={styles.cardTopRow}>
+                        <View style={styles.iconContainer}>
+                            {item.profileImage ? (
+                                <Image source={{uri: item.profileImage}} style={styles.communityProfileImage} />
+                            ) : (
+                                <Text style={styles.iconText}>♥</Text>
+                            )}
+                        </View>
+
+                        <View style={styles.cardTitleContainer}>
+                            <Text style={styles.communityTitle} numberOfLines={1}>
+                                {item.topic || 'Support Community'}
+                            </Text>
+                            {item.category ? <Text style={styles.categoryText}>{item.category}</Text> : null}
+                        </View>
+                        <Text style={styles.arrow}>›</Text>
                     </View>
 
-                    <View style={styles.cardTitleContainer}>
-                        <Text style={styles.communityTitle} numberOfLines={1}>
-                            {item.topic || 'Support Community'}
-                        </Text>
+                    <Text style={styles.communityDescription} numberOfLines={3}>
+                        {item.description || 'A safe space to connect, share and support one another.'}
+                    </Text>
 
-                        {item.category ? (
-                            <Text style={styles.categoryText}>
-                                {item.category}
-                            </Text>
+                    <View style={styles.cardBottomRow}>
+                        <View style={styles.memberInfo}>
+                            <Text style={styles.memberIcon}>●</Text>
+                            <Text style={styles.memberText}>{item.currentMemberCount || 0} members</Text>
+                        </View>
+                        {item.meetingTypes?.length ? (
+                            <View style={styles.meetingBadge}>
+                                <Text style={styles.meetingBadgeText}>{item.meetingTypes[0]}</Text>
+                            </View>
                         ) : null}
                     </View>
+                </Pressable>
 
-                    <Text style={styles.arrow}>›</Text>
+                <View style={styles.communityActions}>
+                    <Pressable style={styles.viewCommunityButton} onPress={() => openCommunity(item)}>
+                        <Text style={styles.viewCommunityButtonText}>View community</Text>
+                    </Pressable>
+                    {(() => {
+                        const membership = memberships.find(entry =>
+                            entry.groupId?._id === item._id || entry.groupId === item._id,
+                        )
+                        const canRequest = !membership
+                        const statusLabel = membership?.status === 'approved'
+                            ? 'Joined'
+                            : membership?.status === 'pending'
+                                ? 'Request pending'
+                                : membership?.status === 'rejected'
+                                    ? 'Request rejected'
+                                    : membership?.status === 'removed'
+                                        ? 'Removed'
+                                        : 'Request to join'
+
+                        return (
+                            <Pressable
+                                disabled={!canRequest || joiningCircleId === item._id}
+                                style={[styles.joinCommunityButton, !canRequest && styles.joinCommunityButtonDisabled]}
+                                onPress={() => joinCommunity(item)}>
+                                <Text style={[styles.joinCommunityButtonText, !canRequest && styles.joinCommunityButtonTextDisabled]}>
+                                    {joiningCircleId === item._id ? 'Sending...' : statusLabel}
+                                </Text>
+                            </Pressable>
+                        )
+                    })()}
                 </View>
-
-                <Text
-                    style={styles.communityDescription}
-                    numberOfLines={3}>
-                    {item.description ||
-                        'A safe space to connect, share and support one another.'}
-                </Text>
-
-                <View style={styles.cardBottomRow}>
-                    <View style={styles.memberInfo}>
-                        <Text style={styles.memberIcon}>●</Text>
-
-                        <Text style={styles.memberText}>
-                            {item.currentMemberCount || 0} members
-                        </Text>
-                    </View>
-
-                    {item.meetingTypes?.length ? (
-                        <View style={styles.meetingBadge}>
-                            <Text style={styles.meetingBadgeText}>
-                                {item.meetingTypes[0]}
-                            </Text>
-                        </View>
-                    ) : null}
-                </View>
-            </Pressable>
+            </View>
         )
     }
 
@@ -167,6 +237,30 @@ const CommunitiesScreen = () => {
                     </View>
                 </View>
 
+                <View style={styles.sectionTabs}>
+                    {[
+                        {key: 'explore', label: 'Explore'},
+                        {key: 'mine', label: 'My communities'},
+                    ].map(section => (
+                        <Pressable
+                            key={section.key}
+                            accessibilityRole="tab"
+                            accessibilityState={{selected: selectedSection === section.key}}
+                            onPress={() => setSelectedSection(section.key)}
+                            style={[
+                                styles.sectionTab,
+                                selectedSection === section.key && styles.sectionTabActive,
+                            ]}>
+                            <Text style={[
+                                styles.sectionTabText,
+                                selectedSection === section.key && styles.sectionTabTextActive,
+                            ]}>
+                                {section.label}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+
                 <View style={styles.searchContainer}>
                     <Text style={styles.searchIcon}>⌕</Text>
 
@@ -180,13 +274,61 @@ const CommunitiesScreen = () => {
                     />
                 </View>
 
+                {selectedSection === 'explore' ? (
+                    <View style={styles.filters}>
+                        <View style={styles.filterHeadingRow}>
+                            <Text style={styles.filterTitle}>Filter communities</Text>
+                            {(categoryFilter !== 'All' || meetingFilter !== 'all') ? (
+                                <Pressable
+                                    accessibilityRole="button"
+                                    onPress={() => {
+                                        setCategoryFilter('All')
+                                        setMeetingFilter('all')
+                                    }}>
+                                    <Text style={styles.clearFilters}>Clear</Text>
+                                </Pressable>
+                            ) : null}
+                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+                            {categories.map(category => (
+                                <Pressable
+                                    key={category}
+                                    onPress={() => setCategoryFilter(category)}
+                                    style={[styles.filterChip, categoryFilter === category && styles.filterChipActive]}>
+                                    <Text style={[styles.filterChipText, categoryFilter === category && styles.filterChipTextActive]}>
+                                        {category}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </ScrollView>
+                        <View style={styles.meetingFilters}>
+                            {[
+                                {value: 'all', label: 'Any format'},
+                                {value: 'online', label: 'Online'},
+                                {value: 'physical', label: 'In person'},
+                            ].map(option => (
+                                <Pressable
+                                    key={option.value}
+                                    accessibilityRole="button"
+                                    accessibilityState={{selected: meetingFilter === option.value}}
+                                    onPress={() => setMeetingFilter(option.value)}
+                                    style={[styles.meetingFilter, meetingFilter === option.value && styles.meetingFilterActive]}>
+                                    <Text style={[styles.meetingFilterText, meetingFilter === option.value && styles.meetingFilterTextActive]}>
+                                        {option.label}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+                ) : null}
+
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>
-                        Explore Communities
+                        {selectedSection === 'explore' ? 'Explore Communities' : 'My Communities'}
                     </Text>
 
                     <Text style={styles.communityCount}>
-                        {filteredCircles.length}
+                        {displayedCircles.length}
                     </Text>
                 </View>
 
@@ -208,12 +350,12 @@ const CommunitiesScreen = () => {
                     </View>
                 ) : (
                     <FlatList
-                        data={filteredCircles}
+                        data={displayedCircles}
                         keyExtractor={item => item._id}
                         renderItem={renderCommunity}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={
-                            filteredCircles.length === 0
+                            displayedCircles.length === 0
                                 ? styles.emptyList
                                 : styles.listContent
                         }
@@ -226,8 +368,12 @@ const CommunitiesScreen = () => {
                                 </Text>
 
                                 <Text style={styles.emptyText}>
-                                    {searchQuery
-                                        ? 'Try searching for a different topic or category.'
+                                    {selectedSection === 'mine'
+                                        ? searchQuery
+                                            ? 'Try a different search to find one of your communities.'
+                                            : 'Communities you join will appear here.'
+                                        : searchQuery || categoryFilter !== 'All' || meetingFilter !== 'all'
+                                        ? 'Try changing your search or filters.'
                                         : 'There are no active communities available right now.'}
                                 </Text>
                             </View>
@@ -253,6 +399,120 @@ const styles = StyleSheet.create({
     header: {
         paddingTop: 12,
         paddingBottom: 20,
+    },
+
+    sectionTabs: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#DCE5D8',
+        marginBottom: 18,
+    },
+
+    filters: {
+        marginBottom: 20,
+    },
+
+    filterHeadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 9,
+    },
+
+    filterTitle: {
+        color: '#425142',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    clearFilters: {
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    filterOptions: {
+        gap: 8,
+        paddingRight: 8,
+    },
+
+    filterChip: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+    },
+
+    filterChipActive: {
+        backgroundColor: '#DCEBD8',
+        borderColor: '#397A49',
+    },
+
+    filterChipText: {
+        color: '#667164',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    filterChipTextActive: {
+        color: '#276D3B',
+    },
+
+    meetingFilters: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+
+    meetingFilter: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 11,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+    },
+
+    meetingFilterActive: {
+        backgroundColor: '#E5F1E2',
+        borderColor: '#397A49',
+    },
+
+    meetingFilterText: {
+        color: '#667164',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    meetingFilterTextActive: {
+        color: '#276D3B',
+    },
+
+    sectionTab: {
+        flex: 1,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+
+    sectionTabActive: {
+        borderBottomColor: '#397A49',
+    },
+
+    sectionTabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#758174',
+    },
+
+    sectionTabTextActive: {
+        color: '#276D3B',
     },
 
     title: {
@@ -336,6 +596,58 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
+    },
+
+    cardSummary: {
+        padding: 17,
+    },
+
+    communityActions: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingBottom: 14,
+    },
+
+    viewCommunityButton: {
+        flex: 1,
+        minHeight: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    viewCommunityButtonText: {
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    joinCommunityButton: {
+        flex: 1,
+        minHeight: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 6,
+        backgroundColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    joinCommunityButtonDisabled: {
+        backgroundColor: '#EDF2EB',
+    },
+
+    joinCommunityButtonText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+
+    joinCommunityButtonTextDisabled: {
+        color: '#61735D',
     },
 
     communityCardPressed: {

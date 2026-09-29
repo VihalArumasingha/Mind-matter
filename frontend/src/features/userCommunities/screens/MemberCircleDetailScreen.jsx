@@ -22,7 +22,6 @@ import {
     getMyMemberships,
     requestToJoinCircle,
 } from '../../organizer/services/supportCircleService'
-
 const MemberCircleDetailScreen = () => {
     const navigation = useNavigation()
     const route = useRoute()
@@ -185,6 +184,8 @@ const MemberCircleDetailScreen = () => {
     // ─────────────────────────────────────────────────────────────
 
     const membershipStatus = membership?.status
+    const openCommunityActivity = () =>
+        navigation.navigate('MemberCircleActivity', {circleId})
 
     const renderJoinAction = () => {
         // User is already an approved member
@@ -378,21 +379,11 @@ const MemberCircleDetailScreen = () => {
                     </Text>
 
                     {renderJoinAction()}
-
-                    {/* CREATE GROUP POST */}
                     {membershipStatus === 'approved' ? (
                         <Pressable
                             style={styles.createPostButton}
-                            onPress={() =>
-                                navigation.navigate('CreatePost', {
-                                    circleId,
-                                    circleTitle: circle.topic,
-                                    isGroupPost: true,
-                                })
-                            }>
-                            <Text style={styles.createPostButtonText}>
-                                Create a Post
-                            </Text>
+                            onPress={openCommunityActivity}>
+                            <Text style={styles.createPostButtonText}>Open community</Text>
                         </Pressable>
                     ) : null}
                 </View>
@@ -691,6 +682,320 @@ const styles = StyleSheet.create({
         color: '#8A5C56',
         fontSize: 15,
         fontWeight: '700',
+    },
+
+    activitySection: {
+        marginTop: 28,
+    },
+
+    activityTabs: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#DCE5D8',
+        marginBottom: 18,
+    },
+
+    activityTab: {
+        flex: 1,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+
+    activityTabActive: {
+        borderBottomColor: '#397A49',
+    },
+
+    activityTabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#758174',
+    },
+
+    activityTabTextActive: {
+        color: '#276D3B',
+    },
+
+    postComposer: {
+        padding: 16,
+        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E8DC',
+        borderRadius: 14,
+    },
+
+    activityHeading: {
+        color: '#263526',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+
+    anonymousOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+
+    anonymousCopy: {
+        flex: 1,
+        paddingRight: 8,
+    },
+
+    optionTitle: {
+        marginTop: 10,
+        color: '#263526',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    optionHint: {
+        marginTop: 3,
+        color: '#758174',
+        fontSize: 11,
+        lineHeight: 15,
+    },
+
+    moodOptionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 7,
+        marginTop: 8,
+    },
+
+    moodOption: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 9,
+        backgroundColor: '#F1F5EC',
+        borderRadius: 8,
+    },
+
+    moodOptionSelected: {
+        backgroundColor: '#DCEBD8',
+        borderWidth: 1,
+        borderColor: '#397A49',
+    },
+
+    moodOptionText: {
+        color: '#536057',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    postTitleInput: {
+        marginTop: 12,
+        paddingHorizontal: 12,
+        height: 44,
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    postBodyInput: {
+        marginTop: 10,
+        minHeight: 100,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    sendButton: {
+        minHeight: 44,
+        marginTop: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    sendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    disabledButton: {
+        opacity: 0.55,
+    },
+
+    reviewNote: {
+        marginTop: 9,
+        color: '#758174',
+        fontSize: 12,
+        lineHeight: 17,
+    },
+
+    readOnlyNote: {
+        marginBottom: 14,
+        padding: 12,
+        color: '#536057',
+        backgroundColor: '#EEF3EE',
+        borderRadius: 8,
+        fontSize: 13,
+        lineHeight: 19,
+    },
+
+    postCard: {
+        marginBottom: 12,
+        padding: 15,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E8DC',
+        borderRadius: 12,
+    },
+
+    postMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+
+    postAuthor: {
+        color: '#536057',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    pendingLabel: {
+        color: '#8A5C36',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    postHeading: {
+        marginTop: 8,
+        color: '#263526',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+
+    postMood: {
+        marginTop: 7,
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    postBody: {
+        marginTop: 7,
+        color: '#536057',
+        fontSize: 14,
+        lineHeight: 21,
+    },
+
+    postImage: {
+        width: '100%',
+        height: 210,
+        marginTop: 10,
+        borderRadius: 8,
+    },
+
+    postDate: {
+        marginTop: 10,
+        color: '#879186',
+        fontSize: 11,
+    },
+
+    chatHistory: {
+        minHeight: 180,
+        padding: 12,
+        backgroundColor: '#F0F4EE',
+        borderRadius: 12,
+    },
+
+    messageRow: {
+        alignItems: 'flex-start',
+        marginBottom: 10,
+    },
+
+    ownMessageRow: {
+        alignItems: 'flex-end',
+    },
+
+    messageBubble: {
+        maxWidth: '86%',
+        minWidth: 92,
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+    },
+
+    ownMessageBubble: {
+        backgroundColor: '#397A49',
+    },
+
+    messageSender: {
+        marginBottom: 4,
+        color: '#397A49',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    messageContent: {
+        color: '#263526',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+
+    ownMessageContent: {
+        color: '#FFFFFF',
+    },
+
+    messageTime: {
+        alignSelf: 'flex-end',
+        marginTop: 4,
+        color: '#879186',
+        fontSize: 10,
+    },
+
+    chatComposer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        marginTop: 10,
+        gap: 8,
+    },
+
+    messageInput: {
+        flex: 1,
+        minHeight: 44,
+        maxHeight: 120,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 10,
+        color: '#243024',
+    },
+
+    chatSendButton: {
+        minWidth: 58,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#397A49',
+        borderRadius: 10,
+    },
+
+    chatSendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    emptyActivity: {
+        paddingVertical: 26,
+        color: '#758174',
+        textAlign: 'center',
+        fontSize: 13,
     },
 
     // ─────────────────────────────────────────────

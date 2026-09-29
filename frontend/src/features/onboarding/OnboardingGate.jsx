@@ -14,11 +14,20 @@ import OnboardingFlow from './OnboardingFlow'
 
 const OnboardingGate = ({
     token,
+    onOpenCommunity,
     children
 }) => {
     const [loading, setLoading] = useState(true)
     const [completed, setCompleted] = useState(false)
     const [error, setError] = useState('')
+    const [pendingCommunityId, setPendingCommunityId] = useState(null)
+
+    useEffect(() => {
+        if (!completed || !pendingCommunityId || !onOpenCommunity) return
+
+        onOpenCommunity(pendingCommunityId)
+        setPendingCommunityId(null)
+    }, [completed, pendingCommunityId, onOpenCommunity])
 
     useEffect(() => {
         const checkOnboarding = async () => {
@@ -26,13 +35,13 @@ const OnboardingGate = ({
                 const data = await getOnboardingStatus(token)
 
                 setCompleted(data.completed)
-            } catch (error) {
+            } catch (requestError) {
                 console.error(
                     '[Onboarding Status Error]',
-                    error
+                    requestError
                 )
 
-                setError(error.message)
+                setError(requestError.message)
             } finally {
                 setLoading(false)
             }
@@ -74,7 +83,10 @@ const OnboardingGate = ({
         return (
             <OnboardingFlow
                 token={token}
-                onFinished={() => setCompleted(true)}
+                onFinished={circleId => {
+                    if (circleId) setPendingCommunityId(circleId)
+                    setCompleted(true)
+                }}
             />
         )
     }

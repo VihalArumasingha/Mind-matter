@@ -5,6 +5,7 @@ import {
     getMyGroupPosts
 } from '../../../controllers/supportCircleOrganizer/groupPost/groupPostController.js'
 import authMiddleware from '../../../middleware/authMiddleware.js'
+import {uploadPostImage} from '../../../middleware/postUploadMiddleware.js'
 
 const router = express.Router()
 
@@ -12,7 +13,7 @@ router.use(authMiddleware)
 
 // Member creates a post inside a support circle.
 // The post is stored as pending until organizer review.
-router.post('/circle/:circleId', createGroupPost)
+router.post('/circle/:circleId', uploadPostImage, createGroupPost)
 
 // Member views published posts in a circle.
 router.get('/circle/:circleId', getGroupPosts)

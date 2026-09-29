@@ -1,5 +1,8 @@
 import OnboardingResponse from '../../models/OnboardingResponse.js'
+import SupportCircle from '../../models/SupportCircle.js'
+import GroupMembership from '../../models/GroupMembership.js'
 import { generateRecommendations } from '../../utils/onboardingRecommendations.js'
+import { scoreCommunityForRecommendations } from '../../utils/onboardingRecommendations.js'
 
 export const getOnboardingStatus = async (req, res) => {
     try {
@@ -102,5 +105,45 @@ export const getOnboarding = async (req, res) => {
         res.status(500).json({
             message: 'Server error while fetching onboarding'
         })
+    }
+}
+
+export const getRecommendedCommunities = async (req, res) => {
+    try {
+        const onboarding = await OnboardingResponse.findOne({userId: req.user._id})
+
+        if (!onboarding?.completedAt) {
+            return res.status(404).json({message: 'Complete onboarding to get community recommendations'})
+        }
+
+        const [circles, memberships] = await Promise.all([
+            SupportCircle.find({status: 'active'}).lean(),
+            GroupMembership.find({userId: req.user._id}).select('groupId status').lean(),
+        ])
+
+        const membershipByCircle = new Map(
+            memberships.map(membership => [membership.groupId.toString(), membership.status]),
+        )
+        const categories = onboarding.recommendationCategories || []
+        const communities = circles
+            .map(circle => ({
+                ...circle,
+                membershipStatus: membershipByCircle.get(circle._id.toString()) || null,
+                recommendationScore: scoreCommunityForRecommendations(circle, categories),
+            }))
+            .sort((left, right) => {
+                if (right.recommendationScore !== left.recommendationScore) {
+                    return right.recommendationScore - left.recommendationScore
+                }
+
+                return new Date(right.createdAt) - new Date(left.createdAt)
+            })
+            .slice(0, 3)
+            .map(({recommendationScore, ...circle}) => circle)
+
+        res.status(200).json({communities, recommendationCategories: categories})
+    } catch (error) {
+        console.error('[Get Recommended Communities Error]', error)
+        res.status(500).json({message: 'Server error while recommending communities'})
     }
 }

@@ -67,3 +67,21 @@ export const getOnboarding = async token => {
 
     return data
 }
+
+export const getRecommendedCommunities = async token => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/users/onboarding/recommendations`,
+        {
+            method: 'GET',
+            headers: {Authorization: `Bearer ${token}`},
+        },
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to load community recommendations')
+    }
+
+    return data
+}
