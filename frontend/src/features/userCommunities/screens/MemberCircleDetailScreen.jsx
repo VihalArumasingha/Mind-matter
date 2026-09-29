@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -259,10 +260,17 @@ const MemberCircleDetailScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}>
-                {/* Hero */}
-                <View style={styles.heroIcon}>
-                    <Text style={styles.heroIconText}>♥</Text>
-                </View>
+                {/* Hero / Group Profile Image */}
+                    <View style={styles.heroIcon}>
+                        {circle.profileImage ? (
+                            <Image
+                                source={{uri: circle.profileImage}}
+                                style={styles.heroProfileImage}
+                            />
+                        ) : (
+                            <Text style={styles.heroIconText}>♥</Text>
+                        )}
+                    </View>
 
                 {/* Community title */}
                 <Text style={styles.title}>
@@ -432,6 +440,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
+    },
+
+    heroProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
     },
 
     heroIconText: {
