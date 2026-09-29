@@ -23,6 +23,14 @@ export default function ViewProfessionalPostsScreen({ navigation }) {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
 
+  const handleGoBack = () => {
+    if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('VolunteerDashboard');
+    }
+  };
+
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
@@ -209,7 +217,7 @@ export default function ViewProfessionalPostsScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={24} color="#2D5A27" />

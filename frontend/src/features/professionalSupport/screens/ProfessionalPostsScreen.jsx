@@ -265,11 +265,19 @@ export default function ProfessionalPostsScreen({ navigation }) {
     );
   };
 
+  const handleGoBack = () => {
+    if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('ProfessionalHelp');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           style={styles.backButton}
         >
           <Icon name="arrow-back" size={24} color="#4E8C4A" />

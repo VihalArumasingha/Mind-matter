@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
+import { BackHandler } from 'react-native';
 import VolunteerDashboardScreen from './VolunteerDashboardScreen';
 import VolunteerAvailabilityScreen from './VolunteerAvailabilityScreen';
 import VolunteerRequestsScreen from './VolunteerRequestsScreen';
@@ -30,6 +31,19 @@ export default function VolunteerMainScreen({ navigation, route }) {
       setActiveTab(tab);
     }
   }, [route?.name]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [activeTab]);
 
   const setTab = (tabName) => {
     const tab = parseTabFromRoute(tabName);

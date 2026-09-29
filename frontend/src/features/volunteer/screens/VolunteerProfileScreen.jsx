@@ -10,6 +10,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -127,6 +128,25 @@ export default function VolunteerProfileScreen({ navigation, onTabChange }) {
     );
   };
 
+  const handleGoBack = () => {
+    if (onTabChange) {
+      onTabChange('dashboard');
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('VolunteerDashboard');
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleGoBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [onTabChange, navigation]);
+
   return (
     <SafeAreaView style={profileStyles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
@@ -144,7 +164,7 @@ export default function VolunteerProfileScreen({ navigation, onTabChange }) {
           <View style={profileStyles.navBar}>
             <TouchableOpacity
               style={profileStyles.backButton}
-              onPress={() => navigation.goBack()}
+              onPress={handleGoBack}
               activeOpacity={0.7}
             >
               <Ionicons name="arrow-back" size={20} color={COLORS.textDark} />

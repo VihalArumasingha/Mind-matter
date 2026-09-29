@@ -43,6 +43,14 @@ export default function ProfessionalPostFormScreen({ navigation }) {
     );
   };
 
+  const handleGoBack = () => {
+    if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('VolunteerDashboard');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
       Alert.alert('Missing Fields', 'Please fill in both title and content.');
@@ -97,7 +105,7 @@ export default function ProfessionalPostFormScreen({ navigation }) {
       Alert.alert('Success', 'Your professional post has been published!', [
         {
           text: 'OK',
-          onPress: () => navigation.goBack(),
+          onPress: handleGoBack,
         },
       ]);
     } catch (error) {
@@ -115,7 +123,7 @@ export default function ProfessionalPostFormScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={24} color="#2D5A27" />

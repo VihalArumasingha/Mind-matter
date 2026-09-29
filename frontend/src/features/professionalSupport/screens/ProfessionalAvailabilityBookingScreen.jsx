@@ -229,6 +229,14 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
         setShowBookingForm(true)
     }
 
+    const handleGoBack = () => {
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+            navigation.goBack()
+        } else if (navigation?.navigate) {
+            navigation.navigate('ProfessionalHelp')
+        }
+    }
+
     // Submit booking to backend
     const handleSubmitBooking = async () => {
         if (!formFullName.trim()) {
@@ -266,7 +274,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             setSelectedSlot(null)
             showToast('🎉 Booking submitted! You will be notified once approved.')
             // Navigate back to the previous screen
-            navigation.goBack()
+            handleGoBack()
         } catch (err) {
             console.error('[Submit Booking Error]', err)
             Alert.alert('Booking Failed', err.message || 'Something went wrong. Please try again.')
@@ -392,7 +400,7 @@ const ProfessionalAvailabilityBookingScreen = ({ route, navigation }) => {
             )}
 
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
                     <Icon name="arrow-back" size={24} color="#4E8C4A" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Book Appointment</Text>

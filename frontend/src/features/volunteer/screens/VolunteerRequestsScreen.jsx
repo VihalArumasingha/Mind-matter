@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   StatusBar,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -134,13 +135,32 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const pendingCount = requestsList.filter((r) => r.status === 'pending').length;
   const acceptedCount = requestsList.filter((r) => r.status === 'accepted').length;
 
+  const handleGoBack = () => {
+    if (onTabChange) {
+      onTabChange('dashboard');
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('VolunteerDashboard');
+    }
+  };
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleGoBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [onTabChange, navigation]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS?.bg || '#F6F9F6'} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation?.goBack()} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleGoBack} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color={TEXT_DARK} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Session Requests</Text>
