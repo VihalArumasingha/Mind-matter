@@ -18,18 +18,46 @@ export const getMyCircles = async token => {
 }
 
 export const getAvailableSupportCircles = async token => {
-    const response = await fetch(`${API_BASE_URL}/api/support-circles`, {
+    const url = `${API_BASE_URL}/api/support-circles`
+
+    console.log('========================================')
+    console.log('API_BASE_URL:', API_BASE_URL)
+    console.log('COMMUNITIES REQUEST URL:', url)
+    console.log('========================================')
+
+    const response = await fetch(url, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
         },
     })
 
-    const data = await response.json()
+    console.log('COMMUNITIES STATUS:', response.status)
+    console.log(
+        'COMMUNITIES CONTENT TYPE:',
+        response.headers.get('content-type'),
+    )
+
+    const rawText = await response.text()
+
+    console.log('COMMUNITIES RAW RESPONSE:')
+    console.log(rawText.substring(0, 500))
+
+    let data
+
+    try {
+        data = JSON.parse(rawText)
+    } catch (error) {
+        throw new Error(
+            `Server returned non-JSON response. Status: ${
+                response.status
+            }. Response starts with: ${rawText.substring(0, 100)}`,
+        )
+    }
 
     if (!response.ok) {
         throw new Error(
-            data.message || 'Failed to load available support circles'
+            data.message || 'Failed to load available support circles',
         )
     }
 

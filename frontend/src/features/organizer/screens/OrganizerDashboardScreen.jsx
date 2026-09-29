@@ -47,6 +47,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
     const [activeTab, setActiveTab] = useState('Overview')
     const [activeBottomTab, setActiveBottomTab] =
         useState('dashboard')
+    const [drawerVisible, setDrawerVisible] = useState(false)
 
     const [stats, setStats] = useState(null)
     const [circles, setCircles] = useState([])
@@ -154,6 +155,21 @@ const OrganizerDashboardScreen = ({navigation}) => {
     // BOTTOM NAVIGATION
     // -------------------------------------------------------------------------
 
+    const closeDrawer = () => setDrawerVisible(false)
+
+    const handleDrawerNavigation = screen => {
+        closeDrawer()
+
+        if (screen === 'Home' || screen === 'Communities' || screen === 'Create') {
+            navigation.navigate(screen)
+            return
+        }
+
+        if (screen === 'Profile') {
+            navigation.navigate('OrganizerProfile')
+        }
+    }
+
     const handleTabChange = tabName => {
         if (tabName === 'profile') {
             setActiveBottomTab('profile')
@@ -200,17 +216,12 @@ const OrganizerDashboardScreen = ({navigation}) => {
             <View style={styles.header}>
                 <Pressable
                     style={styles.menuButton}
-                    accessibilityLabel="Open profile and navigation"
+                    accessibilityLabel="Open navigation menu"
                     accessibilityRole="button"
                     hitSlop={12}
-                    onPress={() =>
-                        navigation.navigate(
-                            'OrganizerProfile',
-                        )
-                    }>
-                    <Text style={styles.menuIcon}>
-                        ☰
-                    </Text>
+                    onPress={() => setDrawerVisible(true)}
+                >
+                    <Text style={styles.menuIcon}>☰</Text>
                 </Pressable>
 
                 <Text style={styles.brand}>
@@ -1071,6 +1082,148 @@ const OrganizerDashboardScreen = ({navigation}) => {
             </Modal>
 
             {/* ================================================================
+                SIDE NAVIGATION DRAWER
+            ================================================================= */}
+
+            <Modal
+                visible={drawerVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={closeDrawer}>
+                <View style={styles.drawerOverlay}>
+                    <Pressable
+                        style={styles.drawerBackdrop}
+                        onPress={closeDrawer}
+                    />
+
+                    <View style={styles.drawer}>
+                        <View style={styles.drawerHeader}>
+                            <View style={styles.drawerProfileRow}>
+                                {user?.profilePicture ? (
+                                    <Image
+                                        source={{uri: user.profilePicture}}
+                                        style={styles.drawerAvatar}
+                                    />
+                                ) : (
+                                    <View style={styles.drawerAvatarFallback}>
+                                        <Text style={styles.drawerAvatarText}>
+                                            {(user?.name || 'U').charAt(0).toUpperCase()}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={styles.drawerUserInfo}>
+                                    <Text style={styles.drawerUserName} numberOfLines={1}>
+                                        {user?.name || 'MindMatter User'}
+                                    </Text>
+                                    <View style={styles.drawerRoleRow}>
+                                            <Image
+                                                    source={require('../../../assets/images/community-organizer-badge.png')}
+                                                    style={styles.drawerBadgeIcon}
+                                            />
+                                        <Text style={styles.drawerRole}>
+                                            Community Organizer
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <Pressable
+                                style={styles.drawerCloseButton}
+                                onPress={closeDrawer}
+                                hitSlop={8}>
+                                <MaterialCommunityIcons
+                                    name="close"
+                                    size={24}
+                                    color="#252A25"
+                                />
+                            </Pressable>
+                        </View>
+
+                        <View style={styles.drawerDivider} />
+
+                        <View style={styles.drawerMenu}>
+                            <Pressable
+                                style={styles.drawerItem}
+                                onPress={() => handleDrawerNavigation('Home')}>
+                                <MaterialCommunityIcons
+                                    name="home-outline"
+                                    size={23}
+                                    color="#4E8C4A"
+                                />
+                                <Text style={styles.drawerItemText}>Home</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={styles.drawerItem}
+                                onPress={() => handleDrawerNavigation('Communities')}>
+                                <MaterialCommunityIcons
+                                    name="account-group-outline"
+                                    size={23}
+                                    color="#4E8C4A"
+                                />
+                                <Text style={styles.drawerItemText}>Communities</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={[
+                                    styles.drawerItem,
+                                    activeTab === 'My Circles' && styles.drawerItemActive,
+                                ]}
+                                onPress={() => {
+                                    closeDrawer()
+                                    setActiveBottomTab('dashboard')
+                                    setActiveTab('My Circles')
+                                }}>
+                                <MaterialCommunityIcons
+                                    name="account-multiple-outline"
+                                    size={23}
+                                    color="#4E8C4A"
+                                />
+                                <Text style={styles.drawerItemText}>My Circles</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={[
+                                    styles.drawerItem,
+                                    activeTab === 'Request' && styles.drawerItemActive,
+                                ]}
+                                onPress={() => {
+                                    closeDrawer()
+                                    setActiveBottomTab('requests')
+                                    setActiveTab('Request')
+                                }}>
+                                <MaterialCommunityIcons
+                                    name="clipboard-list-outline"
+                                    size={23}
+                                    color="#4E8C4A"
+                                />
+                                <Text style={styles.drawerItemText}>Requests</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={styles.drawerItem}
+                                onPress={() => handleDrawerNavigation('Profile')}>
+                                <MaterialCommunityIcons
+                                    name="account-outline"
+                                    size={23}
+                                    color="#4E8C4A"
+                                />
+                                <Text style={styles.drawerItemText}>Profile</Text>
+                            </Pressable>
+                        </View>
+
+                        <View style={styles.drawerBottom}>
+                            <View style={styles.drawerBottomLine} />
+                            <Text style={styles.drawerHint}>
+                                Manage your circles and stay connected with MindMatter.
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ================================================================
                 BOTTOM NAVIGATION
             ================================================================= */}
 
@@ -1224,6 +1377,159 @@ const styles = StyleSheet.create({
     content: {
         padding: 16,
         paddingBottom: 110,
+    },
+
+    // ------------------------------------------------------------------------
+    // SIDE DRAWER
+    // ------------------------------------------------------------------------
+
+    drawerOverlay: {
+        flex: 1,
+        flexDirection: 'row',
+    },
+
+    drawerBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    },
+
+    drawer: {
+        width: '78%',
+        maxWidth: 330,
+        backgroundColor: '#F7F9F4',
+        paddingTop: 22,
+        paddingHorizontal: 18,
+        paddingBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {width: 4, height: 0},
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 12,
+    },
+
+    drawerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 76,
+    },
+
+    drawerProfileRow: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+
+    drawerAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#DDEBD8',
+    },
+
+    drawerAvatarFallback: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#DDEBD8',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    drawerAvatarText: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#397A49',
+    },
+
+    drawerUserInfo: {
+        flex: 1,
+        marginLeft: 12,
+    },
+
+    drawerUserName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#252A25',
+    },
+
+    drawerRoleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 5,
+    },
+
+    drawerRole: {
+        marginLeft: 5,
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#4E8C4A',
+    },
+
+    drawerCloseButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E6DC',
+    },
+
+    drawerDivider: {
+        height: 1,
+        backgroundColor: '#E0E6DC',
+        marginTop: 18,
+        marginBottom: 14,
+    },
+
+    drawerMenu: {
+        gap: 5,
+    },
+
+    drawerItem: {
+        minHeight: 52,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        borderRadius: 13,
+    },
+
+    drawerItemActive: {
+        backgroundColor: '#E2EEDB',
+    },
+
+    drawerItemText: {
+        marginLeft: 14,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2D362E',
+    },
+
+    drawerBottom: {
+        marginTop: 'auto',
+    },
+
+    drawerBottomLine: {
+        height: 1,
+        backgroundColor: '#E0E6DC',
+        marginBottom: 12,
+    },
+
+    drawerHint: {
+        fontSize: 11,
+        lineHeight: 17,
+        color: '#7A827A',
+        paddingHorizontal: 5,
+    },
+
+    drawerBadgeIcon: {
+    width: 16,
+    height: 16,
+    marginRight: 5,
+    resizeMode: 'contain',
     },
 
     // ------------------------------------------------------------------------

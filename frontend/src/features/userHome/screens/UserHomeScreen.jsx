@@ -5,6 +5,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
+import organizerBadge from '../../../assets/images/community-organizer-badge.png'
+
 
 const MOODS = [
     {value: 'happy', label: 'Happy', emoji: '😊'},
@@ -94,8 +96,21 @@ const UserHomeScreen = ({navigation}) => {
                             )}
                         </View>
                         <View>
-                            <Text style={styles.author}>{authorName}</Text>
-                            <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString()}</Text>
+                            <View style={styles.authorNameRow}>
+                                <Text style={styles.author}>{authorName}</Text>
+
+                                {!isAnonymous && post.author?.role === 'communityOrganizer' && (
+                                    <Image
+                                        source={organizerBadge}
+                                        style={styles.organizerBadge}
+                                        resizeMode="contain"
+                                    />
+                                )}
+                            </View>
+
+                            <Text style={styles.date}>
+                                {new Date(post.createdAt).toLocaleDateString()}
+                            </Text>
                         </View>
                     </View>
                     <Icon name="more-horiz" size={23} color="#243024" />
@@ -248,6 +263,18 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#8A918A',
     },
+
+    authorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    },
+
+    organizerBadge: {
+        width: 18,
+        height: 18,
+        marginLeft: 5,
+    },
+
 
     actions: {
         flexDirection: 'row',
