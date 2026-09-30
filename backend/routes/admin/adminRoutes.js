@@ -15,6 +15,8 @@ import {
   dismissReport,
   getAuditLogs,
   getAnalytics,
+  createBroadcast,
+  getBroadcasts,
   getPosts,
   keepPost,
   restrictPost,
@@ -22,8 +24,13 @@ import {
   deletePostPermanently
 } from '../../controllers/admin/adminController.js';
 import {uploadMultiple} from '../../middleware/uploadMiddleware.js';
+import authMiddleware from '../../middleware/authMiddleware.js';
+import requireRole from '../../middleware/roleMiddleware.js';
 
 const router = express.Router();
+router.post('/broadcasts', authMiddleware, requireRole('admin'), createBroadcast);
+router.get('/broadcasts', authMiddleware, requireRole('admin'), getBroadcasts);
+
 router.get('/overview', getDashboardOverview);
 
 router.get('/users', getUsers);
@@ -48,6 +55,6 @@ router.put('/posts/:id/remove', removePost);
 router.delete('/posts/:id', deletePostPermanently);
 router.get('/audit-logs', getAuditLogs);
 
-router.get('/analytics', getAnalytics);
+router.get('/analytics', authMiddleware, requireRole('admin'), getAnalytics);
 
 export default router;

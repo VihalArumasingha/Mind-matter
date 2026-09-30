@@ -12,6 +12,7 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
 import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
 import UserHomeScreen from '../features/userHome/screens/UserHomeScreen'
 import CommunitiesScreen from '../features/userCommunities/screens/CommunitiesScreen'
@@ -96,9 +97,14 @@ const OrganizerNavigator = () => {
             />
 
             <Stack.Screen
-                name="MemberCircleActivity"
-                component={MemberCircleActivityScreen}
+                name="Notifications"
+                component={ProfessionalNotificationsScreen}
+                
             />  
+            <Stack.Screen  
+            name="MemberCircleActivity"
+                component={MemberCircleActivityScreen}
+                />
 
             <Stack.Screen
                 name="GroupPostCreate"

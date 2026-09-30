@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { API_BASE_URL } from '../../../config/api';
 
 const apiRequest = async (endpoint, method = 'GET', body = null, token = null) => {
@@ -29,17 +28,20 @@ const apiRequest = async (endpoint, method = 'GET', body = null, token = null) =
       console.error('❌ Received HTML instead of JSON. Backend might be down or route not found.');
       throw new Error('Backend server returned HTML. Please check if server is running.');
     }
+    let data;
     try {
-      const data = JSON.parse(text);
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-      return data;
+      data = JSON.parse(text);
     } catch (parseError) {
       console.error('❌ JSON Parse error:', parseError);
       console.error('📄 Raw response:', text);
       throw new Error('Invalid JSON response from server');
     }
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
     
   } catch (error) {
     console.error(`❌ API Error (${endpoint}):`, error.message);

@@ -4,7 +4,7 @@ import Availability from '../../models/Availability.js'
 import AvailabilitySlot from '../../models/AvailabilitySlot.js'
 import Booking from '../../models/Booking.js'
 import {uploadToCloudinary} from '../../middleware/uploadMiddleware.js'
-
+import Broadcast from '../../models/Broadcast.js'
 export const getCurrentUser = async (req, res) => {
     try {
         res.status(200).json({
@@ -418,4 +418,45 @@ export const getUserBookings = async (req, res) => {
     }
 }
 
+export const getUserBroadcasts = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
 
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Determine which broadcasts this user should see
+    let audienceFilter = ['both'];
+
+    if (userRole === 'user') {
+      audienceFilter.push('all_users');
+    } else if (['therapist', 'communityOrganizer', 'volunteer'].includes(userRole)) {
+      audienceFilter.push('all_professionals');
+    }
+
+    const broadcasts = await Broadcast.find({
+      targetAudience: { $in: audienceFilter }
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      broadcasts,
+      count: broadcasts.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching user broadcasts:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   primaryBtn: {
     backgroundColor: COLORS.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8,
-    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 },
+    shadowColor: COLORS.primary, shadowOffset: { width:0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   primaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
