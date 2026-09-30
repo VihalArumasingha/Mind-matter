@@ -10,6 +10,7 @@ import UsersManagementView from './views/UsersManagementView';
 import ProfessionalsManagementView from './views/ProfessionalsManagementView';
 import CommunitiesManagementView from './views/CommunitiesManagementView';
 import PostsManagementView from './views/PostsManagementView';
+import PlatformAnalyticsView from './views/PlatformAnalyticsView';
 
 
 import {
@@ -46,7 +47,7 @@ const TITLES = {
   communities: 'Communities & Groups',
   posts: 'Peer Posts Moderation',
   reports: 'User Reports Queue',
-  analytics: 'Platform Analytics',
+  analytics: 'Platform Health & Analytics',
   broadcasts: 'System Announcements',
   settings: 'Admin System Settings',
   'audit-logs': 'System Audit Logs'
@@ -66,7 +67,6 @@ const AdminDashboard = () => {
   const [broadcasts, setBroadcasts] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
 
-  // Load All Admin Data
   const loadAdminData = async () => {
     setLoading(true);
     try {
@@ -109,10 +109,9 @@ const AdminDashboard = () => {
 
   const handleSelectTab = (tabId) => {
     setActiveTab(tabId);
-    setSidebarOpen(false); // Auto close sidebar on selection
+    setSidebarOpen(false); 
   };
 
-  // Action Handlers
   const handleWarnUser = async (id, reason) => {
     await warnUserApi(id, reason);
     loadAdminData();
@@ -249,8 +248,15 @@ const AdminDashboard = () => {
             onRemovePost={handleRemovePost}
           />
         );
-      
-      
+      case 'analytics':
+        return (
+          <PlatformAnalyticsView
+            stats={dashboardData.stats}
+            recentActivities={dashboardData.recentActivities}
+            onNavigate={handleSelectTab}
+          />
+        );
+
       default:
         return <DashboardOverviewView stats={dashboardData.stats} recentActivities={dashboardData.recentActivities} onNavigate={handleSelectTab} />;
     }
@@ -258,7 +264,6 @@ const AdminDashboard = () => {
 
   return (
     <View style={adminStyles.container}>
-      {/* Overlay Drawer Backdrop */}
       {sidebarOpen && (
       <TouchableOpacity
         style={adminStyles.drawerBackdrop}
@@ -267,7 +272,6 @@ const AdminDashboard = () => {
       />
     )}
 
-    {/* Slide-out Sidebar Drawer - MENU EKA MEKE */}
     {sidebarOpen && (
       <SidebarMenu
         activeTab={activeTab}
@@ -277,7 +281,6 @@ const AdminDashboard = () => {
       />
     )}
 
-    {/* Main Full-Width Content Area */}
     <View style={adminStyles.mainContent}>
       <HeaderBar
         title={TITLES[activeTab] || 'Admin Dashboard'}
@@ -290,7 +293,6 @@ const AdminDashboard = () => {
       {renderActiveView()}
     </View>
 
-      {/* Modal for User-Facing Therapist Registration Form */}
       <Modal
         visible={showApplyFormModal}
         animationType="slide"

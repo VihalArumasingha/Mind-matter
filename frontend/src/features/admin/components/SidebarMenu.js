@@ -9,7 +9,7 @@ const MENU_ITEMS = [
   { id: 'communities', label: 'Communities / Groups', icon: '•' },
   { id: 'posts', label: 'Posts', icon: '•' },
   { id: 'reports', label: 'Reports', icon: '•', badgeKey: 'openReports' },
-  { id: 'analytics', label: 'Analytics', icon: '•' },
+  { id: 'analytics', label: 'Platform Health', icon: '•' },
   { id: 'broadcasts', label: 'Broadcasts', icon: '•' },
   { id: 'settings', label: 'Settings', icon: '•' },
   { id: 'audit-logs', label: 'Audit Logs', icon: '•' }

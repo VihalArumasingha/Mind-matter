@@ -24,6 +24,10 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ProfessionalPost',
     },
+    broadcastId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Broadcast',
+    },
     relatedUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

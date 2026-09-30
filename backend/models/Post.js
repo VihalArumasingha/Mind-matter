@@ -139,13 +139,56 @@ const postSchema = new mongoose.Schema(
         likes: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
-        }]
+        }],
+
+        // ============================================
+        // BROADCAST / ANNOUNCEMENT FIELDS
+        // ============================================
+
+        isBroadcast: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+
+        isPinned: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+
+        broadcastId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Broadcast',
+            default: null
+        },
+
+        targetAudience: {
+            type: String,
+            enum: ['both', 'all_users', 'all_professionals', null],
+            default: null
+        },
+
+        authorName: {
+            type: String,
+            default: null,
+            trim: true
+        },
+
+        authorRole: {
+            type: String,
+            default: null,
+            trim: true
+        }
     },
     { timestamps: true }
 )
 
 postSchema.index({ createdAt: -1 })
 postSchema.index({ supportCircle: 1, status: 1, createdAt: -1 })
+
+// Broadcast-specific index
+postSchema.index({ isBroadcast: 1, isPinned: -1, createdAt: -1 })
 
 const Post = mongoose.model('Post', postSchema)
 

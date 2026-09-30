@@ -7,7 +7,8 @@ import {
     getProfessionCategories,
     getProfessionalAvailability,
     createBooking,
-    getUserBookings
+    getUserBookings,
+    getUserBroadcasts
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 import {uploadSingleProfilePicture} from '../../middleware/uploadMiddleware.js'
@@ -29,5 +30,7 @@ router.get('/professionals/:id/availability', getProfessionalAvailability)
 router.post('/bookings', authMiddleware, createBooking)
 
 router.get('/bookings', authMiddleware, getUserBookings)
+
+router.get('/my-broadcasts', authMiddleware, getUserBroadcasts)
 
 export default router

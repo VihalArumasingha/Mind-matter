@@ -167,7 +167,7 @@ const UserHomeScreen = ({navigation}) => {
                 onRefresh={loadPosts}
                 contentContainerStyle={styles.list}
                 ListHeaderComponent={<>
-                    <View style={styles.brandHeader}><View style={styles.brandMark}><Icon name="spa" size={28} color="#4E8C4A" /></View><View><Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text><Text style={styles.brandTagline}>You matter. Your mind matters.</Text></View><Icon name="notifications-none" size={25} color="#17231A" /></View>
+                    <View style={styles.brandHeader}><View style={styles.brandMark}><Icon name="spa" size={28} color="#4E8C4A" /></View><View><Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text><Text style={styles.brandTagline}>You matter. Your mind matters.</Text></View><TouchableOpacity accessibilityRole="button" accessibilityLabel="Open notifications" onPress={() => navigation.navigate('Notifications')}><Icon name="notifications-none" size={25} color="#17231A" /></TouchableOpacity></View>
                     <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><Text style={styles.composerText}>What's on your mind?</Text><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
                     <View style={styles.feedTabs}><Text style={styles.activeTab}>For You</Text><Text style={styles.tab}>Following</Text><Text style={styles.tab}>Latest</Text></View>
                 </>}

@@ -11,6 +11,7 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
 
 
 const Stack = createNativeStackNavigator()
@@ -71,6 +72,11 @@ const OrganizerNavigator = () => {
             <Stack.Screen
                 name="MemberCircleDetail"
                 component={MemberCircleDetailScreen}
+            />
+
+            <Stack.Screen
+                name="Notifications"
+                component={ProfessionalNotificationsScreen}
             />
 
         </Stack.Navigator>

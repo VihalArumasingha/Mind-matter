@@ -217,14 +217,14 @@ const OrganizerDashboardScreen = ({navigation}) => {
                     MindMatter
                 </Text>
 
-                <Text style={styles.bellIcon}>
-                    🔔
-                </Text>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Open notifications"
+                    onPress={() => navigation.navigate('Notifications')}
+                >
+                    <Text style={styles.bellIcon}>🔔</Text>
+                </Pressable>
             </View>
-
-            {/* ================================================================
-                TOP TABS
-            ================================================================= */}
 
             <View style={styles.tabRow}>
                 {TABS.map(tab => (
@@ -250,9 +250,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 ))}
             </View>
 
-            {/* ================================================================
-                ERROR
-            ================================================================= */}
 
             {error ? (
                 <Text style={styles.errorText}>
@@ -260,9 +257,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 </Text>
             ) : null}
 
-            {/* ================================================================
-                OVERVIEW TAB
-            ================================================================= */}
 
             {activeTab === 'Overview' && (
                 <ScrollView
@@ -380,9 +374,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 </ScrollView>
             )}
 
-            {/* ================================================================
-                MY CIRCLES TAB
-            ================================================================= */}
 
             {activeTab === 'My Circles' && (
                 <ScrollView
@@ -524,10 +515,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
 
                 </ScrollView>
             )}
-
-            {/* ================================================================
-                REQUEST TAB
-            ================================================================= */}
 
             {activeTab === 'Request' && (
                 <ScrollView
@@ -681,7 +668,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
 
                                     </View>
 
-                                    {/* BIO PREVIEW */}
 
                                     {bio ? (
                                         <Text
@@ -702,7 +688,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                         </Text>
                                     )}
 
-                                    {/* REVIEW HINT */}
+                                 
 
                                     <Text
                                         style={
@@ -711,7 +697,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                         Tap to review member
                                     </Text>
 
-                                    {/* ACTION BUTTONS */}
 
                                     <View
                                         style={
@@ -798,9 +783,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 </ScrollView>
             )}
 
-            {/* ================================================================
-                MEMBER PREVIEW MODAL
-            ================================================================= */}
 
             <Modal
                 visible={!!selectedRequest}
@@ -815,7 +797,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         styles.modalOverlay
                     }>
 
-                    {/* DARK BACKDROP */}
 
                     <Pressable
                         style={
@@ -828,11 +809,9 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         }
                     />
 
-                    {/* MODAL CARD */}
 
                     <View style={styles.modalCard}>
 
-                        {/* CLOSE BUTTON */}
 
                         <Pressable
                             style={
@@ -852,7 +831,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </Pressable>
 
-                        {/* PROFILE IMAGE */}
 
                         {selectedRequest?.userId
                             ?.profilePicture ? (
@@ -887,7 +865,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </View>
                         )}
 
-                        {/* NAME */}
+                   
 
                         <Text
                             style={
@@ -898,7 +876,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 'Unknown member'}
                         </Text>
 
-                        {/* EMAIL */}
 
                         {selectedRequest?.userId
                             ?.email ? (
@@ -913,7 +890,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         ) : null}
 
-                        {/* STATUS */}
+                    
 
                         <View
                             style={
@@ -933,7 +910,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </View>
 
-                        {/* DIVIDER */}
+                   
 
                         <View
                             style={
@@ -941,7 +918,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             }
                         />
 
-                        {/* ABOUT */}
+                    
 
                         <Text
                             style={
@@ -964,7 +941,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </View>
 
-                        {/* COMMUNITY */}
+                 
 
                         <Text
                             style={
@@ -981,7 +958,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </Text>
 
-                        {/* MODAL ACTIONS */}
+                       
 
                         <View
                             style={
@@ -1122,9 +1099,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
     )
 }
 
-// ============================================================================
-// STYLES
-// ============================================================================
 
 const styles = StyleSheet.create({
     container: {
@@ -1139,10 +1113,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F4F7EF',
     },
 
-    // ------------------------------------------------------------------------
-    // HEADER
-    // ------------------------------------------------------------------------
-
+  
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1176,9 +1147,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
     },
 
-    // ------------------------------------------------------------------------
-    // TOP TABS
-    // ------------------------------------------------------------------------
 
     tabRow: {
         flexDirection: 'row',
@@ -1217,19 +1185,13 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
 
-    // ------------------------------------------------------------------------
-    // CONTENT
-    // ------------------------------------------------------------------------
-
+  
     content: {
         padding: 16,
         paddingBottom: 110,
     },
 
-    // ------------------------------------------------------------------------
-    // BOTTOM NAVIGATION
-    // ------------------------------------------------------------------------
-
+   
     bottomNav: {
         position: 'absolute',
         left: 12,
@@ -1276,10 +1238,6 @@ const styles = StyleSheet.create({
     bottomNavLabelActive: {
         color: '#4E8C4A',
     },
-
-    // ------------------------------------------------------------------------
-    // OVERVIEW
-    // ------------------------------------------------------------------------
 
     statRow: {
         flexDirection: 'row',
@@ -1431,10 +1389,7 @@ circleAvatarText: {
         fontWeight: '500',
     },
 
-    // ------------------------------------------------------------------------
-    // REQUEST CARDS
-    // ------------------------------------------------------------------------
-
+   
     requestCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
@@ -1565,10 +1520,7 @@ circleAvatarText: {
         opacity: 0.55,
     },
 
-    // ------------------------------------------------------------------------
-    // MEMBER PREVIEW MODAL
-    // ------------------------------------------------------------------------
-
+   
     modalOverlay: {
         flex: 1,
         alignItems: 'center',
