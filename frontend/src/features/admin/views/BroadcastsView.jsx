@@ -715,6 +715,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderRadius: 10, backgroundColor: COLORS.primary,
   },
   editSaveText: { color: '#FFF', fontSize: 13, fontWeight: '700', marginLeft: 6 },
-});
+}); 
 
 export default BroadcastsView;
