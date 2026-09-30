@@ -19,6 +19,14 @@ export default function ProfessionalNotificationsScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
 
+  const handleGoBack = () => {
+    if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (navigation?.navigate) {
+      navigation.navigate('VolunteerDashboard');
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
@@ -160,7 +168,7 @@ export default function ProfessionalNotificationsScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color="#2D5A27" />

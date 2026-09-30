@@ -111,3 +111,39 @@ export const generateRecommendations = answers => {
 
     return [...recommendations]
 }
+
+const recommendationKeywords = {
+    'Stress Management': ['stress', 'overwhelm', 'burnout', 'pressure', 'relaxation'],
+    'Anxiety Support': ['anxiety', 'anxious', 'worry', 'panic'],
+    'Relationships and Communication': ['relationship', 'communication', 'family', 'conflict'],
+    'Social Connection': ['social', 'connection', 'loneliness', 'lonely', 'isolation', 'friendship'],
+    'Grief and Loss Support': ['grief', 'loss', 'bereavement', 'mourning'],
+    'Self-Confidence': ['confidence', 'self-esteem', 'self esteem'],
+    'General Wellbeing': ['wellbeing', 'wellness', 'self-care', 'self care'],
+    'Emotional Wellbeing': ['emotional', 'feelings', 'wellbeing'],
+    'Peer Support': ['peer', 'support group', 'sharing experiences'],
+    'Support Communities': ['community', 'communities', 'group support'],
+    'Professional Support': ['professional', 'therapy', 'therapist', 'counseling'],
+    'Coping Strategies': ['coping', 'resilience', 'strategies'],
+    'Wellness Resources': ['resources', 'wellness', 'wellbeing'],
+}
+
+export const scoreCommunityForRecommendations = (circle, categories) => {
+    const searchableText = [
+        circle.topic,
+        circle.category,
+        circle.description,
+        circle.rules,
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    return categories.reduce((score, category) => {
+        const normalizedCategory = category.toLowerCase()
+        const keywords = recommendationKeywords[category] || [normalizedCategory]
+        const exactMatch = searchableText.includes(normalizedCategory) ? 5 : 0
+        const keywordMatches = keywords.filter(keyword =>
+            searchableText.includes(keyword.toLowerCase()),
+        ).length
+
+        return score + exactMatch + keywordMatches * 2
+    }, 0)
+}

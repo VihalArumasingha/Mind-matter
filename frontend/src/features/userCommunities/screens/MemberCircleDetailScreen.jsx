@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react'
 import {
     ActivityIndicator,
     Alert,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -21,7 +22,6 @@ import {
     getMyMemberships,
     requestToJoinCircle,
 } from '../../organizer/services/supportCircleService'
-
 const MemberCircleDetailScreen = () => {
     const navigation = useNavigation()
     const route = useRoute()
@@ -184,6 +184,8 @@ const MemberCircleDetailScreen = () => {
     // ─────────────────────────────────────────────────────────────
 
     const membershipStatus = membership?.status
+    const openCommunityActivity = () =>
+        navigation.navigate('MemberCircleActivity', {circleId})
 
     const renderJoinAction = () => {
         // User is already an approved member
@@ -259,9 +261,47 @@ const MemberCircleDetailScreen = () => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}>
-                {/* Hero */}
-                <View style={styles.heroIcon}>
-                    <Text style={styles.heroIconText}>♥</Text>
+
+                {/* Community cover + profile image */}
+<View style={styles.communityHero}>
+    {/* Cover image */}
+    <View style={styles.coverContainer}>
+        {circle.coverImage ? (
+            <Image
+                source={{uri: circle.coverImage}}
+                style={styles.coverImage}
+            />
+        ) : (
+            <View style={styles.coverPlaceholder}>
+                <Text style={styles.coverPlaceholderText}>
+                    Community
+                </Text>
+            </View>
+        )}
+    </View>
+
+    {/* Overlapping profile image */}
+    <View style={styles.profileImageWrapper}>
+        {circle.profileImage ? (
+            <Image
+                source={{uri: circle.profileImage}}
+                style={styles.heroProfileImage}
+            />
+        ) : (
+            <View style={styles.profileImageFallback}>
+                <Text style={styles.heroIconText}>♥</Text>
+            </View>
+        )}
+    </View>
+</View>
+                
+
+                {/* Community status */}
+                <View style={styles.statusBadge}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusText}>
+                        {circle.status === 'active' ? 'Active' : circle.status}
+                    </Text>
                 </View>
 
                 {/* Community title */}
@@ -271,11 +311,9 @@ const MemberCircleDetailScreen = () => {
 
                 {/* Category */}
                 {circle.category ? (
-                    <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryText}>
-                            {circle.category}
-                        </Text>
-                    </View>
+                    <Text style={styles.categoryText}>
+                        {circle.category}
+                    </Text>
                 ) : null}
 
                 {/* Description */}
@@ -284,8 +322,9 @@ const MemberCircleDetailScreen = () => {
                         'A safe space where members can connect and support one another.'}
                 </Text>
 
-                {/* Stats */}
+                {/* Community stats */}
                 <View style={styles.statsCard}>
+
                     <View style={styles.stat}>
                         <Text style={styles.statNumber}>
                             {circle.currentMemberCount || 0}
@@ -300,6 +339,18 @@ const MemberCircleDetailScreen = () => {
 
                     <View style={styles.stat}>
                         <Text style={styles.statNumber}>
+                            {circle.maxCapacity || 0}
+                        </Text>
+
+                        <Text style={styles.statLabel}>
+                            Capacity
+                        </Text>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.stat}>
+                        <Text style={styles.statNumber}>
                             {circle.meetingTypes?.length || 0}
                         </Text>
 
@@ -307,6 +358,7 @@ const MemberCircleDetailScreen = () => {
                             Meeting types
                         </Text>
                     </View>
+
                 </View>
 
                 {/* About */}
@@ -316,12 +368,23 @@ const MemberCircleDetailScreen = () => {
                     </Text>
 
                     <Text style={styles.sectionText}>
-                        This community provides a supportive
-                        environment where people can connect,
-                        share experiences and take part in
-                        group activities.
+                        {circle.description ||
+                            'This community provides a supportive environment where people can connect, share experiences and take part in group activities.'}
                     </Text>
                 </View>
+
+                {/* Community rules */}
+                {circle.rules ? (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            Community guidelines
+                        </Text>
+
+                        <Text style={styles.sectionText}>
+                            {circle.rules}
+                        </Text>
+                    </View>
+                ) : null}
 
                 {/* Meeting options */}
                 {circle.meetingTypes?.length ? (
@@ -335,11 +398,8 @@ const MemberCircleDetailScreen = () => {
                                 <View
                                     key={type}
                                     style={styles.meetingBadge}>
-                                    <Text
-                                        style={
-                                            styles.meetingBadgeText
-                                        }>
-                                        {type}
+                                    <Text style={styles.meetingBadgeText}>
+                                        {type === 'online' ? 'Online' : 'Physical'}
                                     </Text>
                                 </View>
                             ))}
@@ -353,24 +413,35 @@ const MemberCircleDetailScreen = () => {
                         {membershipStatus === 'approved'
                             ? 'You are a member'
                             : membershipStatus === 'pending'
-                              ? 'Request under review'
-                              : membershipStatus === 'rejected'
-                                ? 'Join request rejected'
-                                : 'Interested in joining?'}
+                            ? 'Request under review'
+                            : membershipStatus === 'rejected'
+                            ? 'Join request rejected'
+                            : 'Interested in joining?'}
                     </Text>
 
                     <Text style={styles.joinText}>
                         {membershipStatus === 'approved'
                             ? 'You have joined this community and can participate in its activities.'
                             : membershipStatus === 'pending'
-                              ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
-                              : membershipStatus === 'rejected'
-                                ? 'Your previous request to join this community was rejected by the organizer.'
-                                : 'Request to join this community and connect with other members.'}
+                            ? 'Your request has been sent to the organizer. You will be able to join once it is approved.'
+                            : membershipStatus === 'rejected'
+                            ? 'Your previous request to join this community was rejected by the organizer.'
+                            : 'Request to join this community and connect with other members.'}
                     </Text>
 
                     {renderJoinAction()}
+
+                    {membershipStatus === 'approved' ? (
+                        <Pressable
+                            style={styles.createPostButton}
+                            onPress={openCommunityActivity}>
+                            <Text style={styles.createPostButtonText}>
+                                Open community
+                            </Text>
+                        </Pressable>
+                    ) : null}
                 </View>
+
             </ScrollView>
         </SafeAreaView>
     )
@@ -424,23 +495,106 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
 
-    heroIcon: {
-        width: 72,
-        height: 72,
-        borderRadius: 24,
-        backgroundColor: '#E5F2E2',
-        alignItems: 'center',
-        justifyContent: 'center',
-        alignSelf: 'center',
+    statusBadge: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 62,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#E7F3E4',
     },
 
-    heroIconText: {
-        fontSize: 34,
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: '#4E8C4A',
+        marginRight: 6,
+    },
+
+    statusText: {
+        fontSize: 12,
+        fontWeight: '700',
         color: '#4E8C4A',
     },
 
+    communityHero: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+},
+
+coverContainer: {
+    width: '100%',
+    height: 150,
+    overflow: 'hidden',
+    backgroundColor: '#DDEBDD',
+},
+
+coverImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+},
+
+coverPlaceholder: {
+    flex: 1,
+    backgroundColor: '#DDEBDD',
+    alignItems: 'center',
+    justifyContent: 'center',
+},
+
+coverPlaceholderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6D806D',
+},
+
+profileImageWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFFFFF',
+    padding: 4,
+    marginTop: -44,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: '#000000',
+    shadowOffset: {
+        width: 0,
+        height: 2,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 4,
+},
+
+heroProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    resizeMode: 'cover',
+},
+
+profileImageFallback: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E5F2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+},
+
+heroIconText: {
+    fontSize: 32,
+    color: '#4E8C4A',
+},
+
     title: {
-        marginTop: 18,
+        marginTop: 10,
         fontSize: 26,
         lineHeight: 32,
         fontWeight: '700',
@@ -458,9 +612,11 @@ const styles = StyleSheet.create({
     },
 
     categoryText: {
-        fontSize: 12,
+        marginTop: 6,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#557452',
+        color: '#6B7868',
+        textAlign: 'center',
     },
 
     description: {
@@ -495,7 +651,7 @@ const styles = StyleSheet.create({
 
     statLabel: {
         marginTop: 4,
-        fontSize: 12,
+        fontSize: 11,
         color: '#778076',
     },
 
@@ -626,6 +782,21 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
 
+    createPostButton: {
+    marginTop: 12,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#4E8C4A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    },
+
+    createPostButtonText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
     // ─────────────────────────────────────────────
     // Rejected state
     // ─────────────────────────────────────────────
@@ -645,6 +816,320 @@ const styles = StyleSheet.create({
         color: '#8A5C56',
         fontSize: 15,
         fontWeight: '700',
+    },
+
+    activitySection: {
+        marginTop: 28,
+    },
+
+    activityTabs: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#DCE5D8',
+        marginBottom: 18,
+    },
+
+    activityTab: {
+        flex: 1,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+
+    activityTabActive: {
+        borderBottomColor: '#397A49',
+    },
+
+    activityTabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#758174',
+    },
+
+    activityTabTextActive: {
+        color: '#276D3B',
+    },
+
+    postComposer: {
+        padding: 16,
+        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E8DC',
+        borderRadius: 14,
+    },
+
+    activityHeading: {
+        color: '#263526',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+
+    anonymousOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+
+    anonymousCopy: {
+        flex: 1,
+        paddingRight: 8,
+    },
+
+    optionTitle: {
+        marginTop: 10,
+        color: '#263526',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    optionHint: {
+        marginTop: 3,
+        color: '#758174',
+        fontSize: 11,
+        lineHeight: 15,
+    },
+
+    moodOptionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 7,
+        marginTop: 8,
+    },
+
+    moodOption: {
+        minHeight: 34,
+        justifyContent: 'center',
+        paddingHorizontal: 9,
+        backgroundColor: '#F1F5EC',
+        borderRadius: 8,
+    },
+
+    moodOptionSelected: {
+        backgroundColor: '#DCEBD8',
+        borderWidth: 1,
+        borderColor: '#397A49',
+    },
+
+    moodOptionText: {
+        color: '#536057',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    postTitleInput: {
+        marginTop: 12,
+        paddingHorizontal: 12,
+        height: 44,
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    postBodyInput: {
+        marginTop: 10,
+        minHeight: 100,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 8,
+        color: '#243024',
+    },
+
+    sendButton: {
+        minHeight: 44,
+        marginTop: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#397A49',
+        borderRadius: 8,
+    },
+
+    sendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    disabledButton: {
+        opacity: 0.55,
+    },
+
+    reviewNote: {
+        marginTop: 9,
+        color: '#758174',
+        fontSize: 12,
+        lineHeight: 17,
+    },
+
+    readOnlyNote: {
+        marginBottom: 14,
+        padding: 12,
+        color: '#536057',
+        backgroundColor: '#EEF3EE',
+        borderRadius: 8,
+        fontSize: 13,
+        lineHeight: 19,
+    },
+
+    postCard: {
+        marginBottom: 12,
+        padding: 15,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E8DC',
+        borderRadius: 12,
+    },
+
+    postMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+
+    postAuthor: {
+        color: '#536057',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    pendingLabel: {
+        color: '#8A5C36',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    postHeading: {
+        marginTop: 8,
+        color: '#263526',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+
+    postMood: {
+        marginTop: 7,
+        color: '#397A49',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    postBody: {
+        marginTop: 7,
+        color: '#536057',
+        fontSize: 14,
+        lineHeight: 21,
+    },
+
+    postImage: {
+        width: '100%',
+        height: 210,
+        marginTop: 10,
+        borderRadius: 8,
+    },
+
+    postDate: {
+        marginTop: 10,
+        color: '#879186',
+        fontSize: 11,
+    },
+
+    chatHistory: {
+        minHeight: 180,
+        padding: 12,
+        backgroundColor: '#F0F4EE',
+        borderRadius: 12,
+    },
+
+    messageRow: {
+        alignItems: 'flex-start',
+        marginBottom: 10,
+    },
+
+    ownMessageRow: {
+        alignItems: 'flex-end',
+    },
+
+    messageBubble: {
+        maxWidth: '86%',
+        minWidth: 92,
+        paddingHorizontal: 12,
+        paddingVertical: 9,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+    },
+
+    ownMessageBubble: {
+        backgroundColor: '#397A49',
+    },
+
+    messageSender: {
+        marginBottom: 4,
+        color: '#397A49',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    messageContent: {
+        color: '#263526',
+        fontSize: 14,
+        lineHeight: 20,
+    },
+
+    ownMessageContent: {
+        color: '#FFFFFF',
+    },
+
+    messageTime: {
+        alignSelf: 'flex-end',
+        marginTop: 4,
+        color: '#879186',
+        fontSize: 10,
+    },
+
+    chatComposer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        marginTop: 10,
+        gap: 8,
+    },
+
+    messageInput: {
+        flex: 1,
+        minHeight: 44,
+        maxHeight: 120,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE5D8',
+        borderRadius: 10,
+        color: '#243024',
+    },
+
+    chatSendButton: {
+        minWidth: 58,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#397A49',
+        borderRadius: 10,
+    },
+
+    chatSendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    emptyActivity: {
+        paddingVertical: 26,
+        color: '#758174',
+        textAlign: 'center',
+        fontSize: 13,
     },
 
     // ─────────────────────────────────────────────
