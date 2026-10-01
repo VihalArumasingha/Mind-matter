@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -17,6 +18,11 @@ import {pick, types} from '@react-native-documents/picker'
 
 import {useAuth} from '../../../context/AuthContext'
 import {getCircleById, getMyMemberships} from '../../organizer/services/supportCircleService'
+import {getSessionsForCircle} from '../../organizer/services/sessionService'
+import {
+    getAttendanceForSession,
+    registerAttendance,
+} from '../../organizer/services/attendanceService'
 import {
     createGroupPost,
     getCircleMessages,
@@ -44,6 +50,8 @@ const MemberCircleActivityScreen = () => {
     const [membership, setMembership] = useState(null)
     const [posts, setPosts] = useState([])
     const [messages, setMessages] = useState([])
+    const [sessions, setSessions] = useState([])
+    const [attendanceBySession, setAttendanceBySession] = useState({})
     const [activeSection, setActiveSection] = useState('posts')
     const [postTitle, setPostTitle] = useState('')
     const [postDescription, setPostDescription] = useState('')
@@ -55,6 +63,7 @@ const MemberCircleActivityScreen = () => {
     const [error, setError] = useState('')
     const [isPosting, setIsPosting] = useState(false)
     const [isSendingMessage, setIsSendingMessage] = useState(false)
+    const [registeringSessionId, setRegisteringSessionId] = useState(null)
 
     const loadActivity = useCallback(async () => {
         try {
@@ -65,12 +74,14 @@ const MemberCircleActivityScreen = () => {
                 groupPostData,
                 myPostData,
                 messageData,
+                sessionData,
             ] = await Promise.all([
                 getCircleById(token, circleId),
                 getMyMemberships(token),
                 getGroupPosts(token, circleId),
                 getMyGroupPosts(token, circleId),
                 getCircleMessages(token, circleId),
+                getSessionsForCircle(token, circleId),
             ])
 
             setCircle(circleData)
@@ -82,6 +93,20 @@ const MemberCircleActivityScreen = () => {
                 ),
             )
             setMessages(messageData.messages || [])
+            const upcomingSessions = sessionData.sessions || []
+            setSessions(upcomingSessions)
+
+            const attendanceMap = {}
+            const attendanceResults = await Promise.all(
+                upcomingSessions.map(async session => {
+                    const attendanceData = await getAttendanceForSession(token, session._id)
+                    attendanceMap[session._id] = attendanceData.attendance || []
+                }),
+            )
+
+            if (attendanceResults.length) {
+                setAttendanceBySession(attendanceMap)
+            }
 
             const currentMembership = (membershipData.memberships || []).find(item =>
                 item.groupId?._id === circleId || item.groupId === circleId,
@@ -175,6 +200,26 @@ const MemberCircleActivityScreen = () => {
             Alert.alert('Unable to send message', messageError.message)
         } finally {
             setIsSendingMessage(false)
+        }
+    }
+
+    const handleSessionRegister = async sessionId => {
+        if (!sessionId || !canParticipate) return
+
+        try {
+            setRegisteringSessionId(sessionId)
+            const result = await registerAttendance(token, sessionId)
+
+            const attendanceRecord = result.attendance || {}
+            setAttendanceBySession(current => ({
+                ...current,
+                [sessionId]: [...(current[sessionId] || []), attendanceRecord],
+            }))
+            Alert.alert('You are registered', 'Your session registration has been saved.')
+        } catch (registerError) {
+            Alert.alert('Unable to register', registerError.message || 'Please try again.')
+        } finally {
+            setRegisteringSessionId(null)
         }
     }
 
@@ -289,6 +334,7 @@ const MemberCircleActivityScreen = () => {
                 {[
                     {key: 'posts', label: 'Posts'},
                     {key: 'chat', label: 'Chat'},
+                    {key: 'announcements', label: 'Announcements'},
                 ].map(section => (
                     <Pressable
                         key={section.key}
@@ -405,7 +451,7 @@ const MemberCircleActivityScreen = () => {
                         ))}
                         {posts.length === 0 ? <Text style={styles.emptyText}>No community posts yet.</Text> : null}
                     </>
-                ) : (
+                ) : activeSection === 'chat' ? (
                     <>
                         <View style={styles.chatHistory}>
                             {messages.map(item => {
@@ -447,6 +493,152 @@ const MemberCircleActivityScreen = () => {
                         ) : (
                             <Text style={styles.readOnlyNote}>Join this community to send messages.</Text>
                         )}
+                    </>
+                ) : (
+                    <>
+                        <View style={styles.announcementIntro}>
+                            <Text style={styles.announcementIntroTitle}>Community Announcements</Text>
+                            <Text style={styles.announcementIntroText}>
+                                Session updates and upcoming community meetings will appear here.
+                            </Text>
+                        </View>
+
+                        {sessions.map(session => {
+                            const scheduledAt = new Date(session.scheduledAt)
+                            const sessionMeetingType =
+                                session.meetingType ||
+                                (session.meetingLink ? 'online' : session.location ? 'physical' : 'online')
+                            const isCancelled = session.status === 'cancelled'
+                            const isCompleted = session.status === 'completed' || scheduledAt < new Date()
+                            const statusLabel = isCancelled
+                                ? 'CANCELLED'
+                                : isCompleted
+                                  ? 'COMPLETED'
+                                  : 'UPCOMING'
+                            const attendanceRecords = attendanceBySession[session._id] || []
+                            const registeredCount = attendanceRecords.filter(item => item.status === 'registered').length
+                            const userRegistration = attendanceRecords.find(
+                                item => (item.userId?._id || item.userId) === user?._id && item.status === 'registered',
+                            )
+                            const isPhysicalSession = sessionMeetingType === 'physical'
+                            const capacityReached = isPhysicalSession && Number(session.capacity) > 0 && registeredCount >= Number(session.capacity)
+                            const registrationDisabled =
+                                !canParticipate ||
+                                isCancelled ||
+                                isCompleted ||
+                                !!userRegistration ||
+                                (registeringSessionId === session._id) ||
+                                (isPhysicalSession && capacityReached)
+
+                            return (
+                                <View key={session._id} style={styles.announcementCard}>
+                                    <View style={styles.announcementTopRow}>
+                                        <View style={styles.announcementBadge}>
+                                            <Text style={styles.announcementBadgeText}>SESSION</Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.announcementStatus,
+                                                isCancelled && styles.announcementStatusCancelled,
+                                                isCompleted && styles.announcementStatusCompleted,
+                                            ]}>
+                                            {statusLabel}
+                                        </Text>
+                                    </View>
+
+                                    <Text style={styles.announcementTitle}>{session.title}</Text>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>📅</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {scheduledAt.toLocaleDateString([], {
+                                                weekday: 'short',
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric',
+                                            })}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>🕐</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {scheduledAt.toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })} · {session.durationMinutes} min
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>🏷️</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {sessionMeetingType === 'online' ? 'Online session' : 'Physical session'}
+                                        </Text>
+                                    </View>
+
+                                    {sessionMeetingType === 'online' ? (
+                                        <Pressable
+                                            onPress={() => session.meetingLink && Linking.openURL(session.meetingLink)}
+                                            style={styles.meetingLinkRow}>
+                                            <Text style={styles.announcementInfoIcon}>🔗</Text>
+                                            <Text style={styles.linkText} numberOfLines={2}>
+                                                {session.meetingLink || 'Meeting link unavailable'}
+                                            </Text>
+                                        </Pressable>
+                                    ) : (
+                                        <View style={styles.announcementInfoRow}>
+                                            <Text style={styles.announcementInfoIcon}>📍</Text>
+                                            <Text style={styles.announcementInfoText} numberOfLines={2}>
+                                                {session.location || 'Location unavailable'}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {isPhysicalSession ? (
+                                        <View style={styles.capacityRow}>
+                                            <Text style={styles.capacityText}>
+                                                {registeredCount} / {session.capacity || 0} registered
+                                            </Text>
+                                            {capacityReached ? (
+                                                <Text style={styles.capacityFull}>FULL</Text>
+                                            ) : null}
+                                        </View>
+                                    ) : null}
+
+                                    {session.description ? (
+                                        <Text style={styles.announcementDescription}>
+                                            {session.description}
+                                        </Text>
+                                    ) : null}
+
+                                    <View style={styles.registerRow}>
+                                        <Pressable
+                                            disabled={registrationDisabled}
+                                            onPress={() => handleSessionRegister(session._id)}
+                                            style={[
+                                                styles.registerButton,
+                                                registrationDisabled && styles.registerButtonDisabled,
+                                                capacityReached && styles.registerButtonFull,
+                                            ]}>
+                                            <Text style={styles.registerButtonText}>
+                                                {userRegistration ? '✓ REGISTERED' : capacityReached ? 'FULL' : 'REGISTER'}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
+                            )
+                        })}
+
+                        {sessions.length === 0 ? (
+                            <View style={styles.emptyAnnouncementState}>
+                                <Text style={styles.emptyAnnouncementIcon}>📢</Text>
+                                <Text style={styles.emptyAnnouncementTitle}>No announcements yet</Text>
+                                <Text style={styles.emptyText}>
+                                    Session announcements from the community organizer will appear here.
+                                </Text>
+                            </View>
+                        ) : null}
                     </>
                 )}
             </ScrollView>
@@ -716,6 +908,86 @@ sectionTabTextActive: {
     postImage: {width: '100%', height: 210, marginTop: 10, borderRadius: 8},
     postDate: {marginTop: 10, color: '#879186', fontSize: 11},
     emptyText: {paddingVertical: 28, color: '#758174', textAlign: 'center', fontSize: 13},
+    announcementIntro: {
+        padding: 15,
+        marginBottom: 12,
+        backgroundColor: '#EEF5EB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#DCE9D8',
+    },
+    announcementIntroTitle: {color: '#263526', fontSize: 16, fontWeight: '700'},
+    announcementIntroText: {marginTop: 5, color: '#687467', fontSize: 12, lineHeight: 18},
+    announcementCard: {
+        padding: 15,
+        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE7D8',
+        borderRadius: 12,
+    },
+    announcementTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+    announcementBadge: {
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 8,
+        backgroundColor: '#E7F3E4',
+    },
+    announcementBadgeText: {color: '#397A49', fontSize: 10, fontWeight: '800', letterSpacing: 0.6},
+    announcementStatus: {color: '#397A49', fontSize: 10, fontWeight: '800'},
+    announcementStatusCancelled: {color: '#A3443E'},
+    announcementStatusCompleted: {color: '#758174'},
+    announcementTitle: {marginTop: 12, color: '#263526', fontSize: 18, lineHeight: 24, fontWeight: '700'},
+    announcementInfoRow: {flexDirection: 'row', alignItems: 'flex-start', marginTop: 9},
+    announcementInfoIcon: {width: 24, fontSize: 14},
+    announcementInfoText: {flex: 1, color: '#536057', fontSize: 13, lineHeight: 19},
+    meetingLinkRow: {flexDirection: 'row', alignItems: 'center', marginTop: 9},
+    linkText: {flex: 1, color: '#397A49', fontSize: 13, lineHeight: 19, fontWeight: '600'},
+    capacityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#EDF1EB',
+    },
+    capacityText: {color: '#536057', fontSize: 12, fontWeight: '600'},
+    capacityFull: {color: '#B94A48', fontSize: 11, fontWeight: '800', letterSpacing: 0.5},
+    announcementDescription: {
+        marginTop: 12,
+        color: '#536057',
+        fontSize: 13,
+        lineHeight: 20,
+    },
+    registerRow: {marginTop: 14},
+    registerButton: {
+        backgroundColor: '#397A49',
+        borderRadius: 10,
+        paddingVertical: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    registerButtonDisabled: {
+        backgroundColor: '#D7DED5',
+        opacity: 0.9,
+    },
+    registerButtonFull: {
+        backgroundColor: '#B94A48',
+    },
+    registerButtonText: {color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.4},
+    emptyAnnouncementState: {
+        alignItems: 'center',
+        paddingVertical: 42,
+        paddingHorizontal: 20,
+    },
+    emptyAnnouncementIcon: {fontSize: 30, marginBottom: 10},
+    emptyAnnouncementTitle: {color: '#354335', fontSize: 16, fontWeight: '700'},
     chatHistory: {minHeight: 180, padding: 12, backgroundColor: '#F0F4EE', borderRadius: 12},
     messageRow: {alignItems: 'flex-start', marginBottom: 10},
     ownMessageRow: {alignItems: 'flex-end'},
