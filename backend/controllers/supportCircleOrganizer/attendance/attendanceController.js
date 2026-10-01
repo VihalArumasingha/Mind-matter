@@ -1,6 +1,8 @@
 import Attendance from '../../../models/Attendance.js'
 import GroupMembership from '../../../models/GroupMembership.js'
 import Session from '../../../models/Session.js'
+import SupportCircle from '../../../models/SupportCircle.js'
+import { createOrganizerNotification } from '../../../utils/organizerNotifications.js'
 
 const getEffectiveMeetingType = session => {
     if (session.meetingType) {
@@ -83,6 +85,23 @@ export const registerAttendance = async (req, res) => {
             status: 'registered'
         })
 
+        try {
+            const circle = await SupportCircle.findById(session.circleId).select('ownerId topic')
+            if (circle && req.user._id.toString() !== circle.ownerId.toString()) {
+                await createOrganizerNotification({
+                    recipient: circle.ownerId,
+                    actorId: req.user._id,
+                    type: 'SESSION_REGISTRATION',
+                    title: 'New Session Registration',
+                    message: `A member registered for ${session.title}.`,
+                    circleId: circle._id,
+                    sessionId: session._id,
+                })
+            }
+        } catch (notificationError) {
+            console.error('[Session Registration Notification Error]', notificationError)
+        }
+
         res.status(201).json({
             attendance
         })
@@ -145,7 +164,7 @@ export const getAttendanceForSession = async (req, res) => {
     try {
         const { sessionId } = req.params
 
-        const attendance = await Attendance.find({ sessionId }).populate('userId', 'name email profilePicture')
+        const attendance = await Attendance.find({ sessionId }).populate('userId', 'name email profilePicture role')
 
         res.status(200).json({
             attendance

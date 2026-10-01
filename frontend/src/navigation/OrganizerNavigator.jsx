@@ -19,6 +19,7 @@ import CommunitiesScreen from '../features/userCommunities/screens/CommunitiesSc
 import CreatePostScreen from '../features/posts/screens/CreatePostScreen'
 import GroupPostCreateScreen from '../features/userCommunities/screens/GroupPostCreateScreen'
 import ModerationScreen from '../features/organizer/screens/ModerationScreen'
+import OrganizerNotificationsScreen from '../features/organizer/screens/OrganizerNotificationsScreen'
 
 
 const Stack = createNativeStackNavigator()
@@ -30,6 +31,10 @@ const OrganizerNavigator = () => {
             <Stack.Screen
                 name="OrganizerDashboard"
                 component={OrganizerDashboardScreen}
+            />
+            <Stack.Screen
+                name="OrganizerNotificationsScreen"
+                component={OrganizerNotificationsScreen}
             />
 
             {/* ── Normal MindMatter user experience ── */}

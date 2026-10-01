@@ -9,7 +9,15 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['comment', 'like', 'booking', 'system'],
+      enum: [
+        'comment',
+        'like',
+        'booking',
+        'system',
+        'MEMBER_REQUEST',
+        'POST_MODERATION',
+        'SESSION_REGISTRATION',
+      ],
       required: true,
     },
     title: {
@@ -33,6 +41,22 @@ const notificationSchema = new mongoose.Schema(
       ref: 'User',
     },
     relatedUserName: String,
+    circleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SupportCircle',
+    },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Session',
+    },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+    },
+    membershipId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'GroupMembership',
+    },
     isRead: {
       type: Boolean,
       default: false,

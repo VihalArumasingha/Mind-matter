@@ -5,7 +5,7 @@ import SupportCircle from '../../../models/SupportCircle.js'
 
 const isValidId = id => mongoose.isValidObjectId(id)
 
-const messagePopulation = {path: 'sender', select: 'name profilePicture'}
+const messagePopulation = {path: 'sender', select: 'name profilePicture role'}
 
 export const getCircleMessages = async (req, res) => {
     try {

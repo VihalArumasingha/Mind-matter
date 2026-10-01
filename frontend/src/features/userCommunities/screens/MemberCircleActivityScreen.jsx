@@ -17,6 +17,7 @@ import {SafeAreaView} from 'react-native-safe-area-context'
 import {pick, types} from '@react-native-documents/picker'
 
 import {useAuth} from '../../../context/AuthContext'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 import {getCircleById, getMyMemberships} from '../../organizer/services/supportCircleService'
 import {getSessionsForCircle} from '../../organizer/services/sessionService'
 import {
@@ -119,22 +120,39 @@ const MemberCircleActivityScreen = () => {
         }
     }, [token, circleId])
 
+    const refreshMessages = useCallback(async () => {
+        if (!token || !circleId) return
+
+        try {
+            const data = await getCircleMessages(token, circleId)
+            setMessages(data.messages || [])
+        } catch (refreshError) {
+            console.error('Failed to refresh community chat:', refreshError)
+        }
+    }, [token, circleId])
+
     useFocusEffect(
         useCallback(() => {
             loadActivity()
 
-            const refreshMessages = async () => {
-                try {
-                    const data = await getCircleMessages(token, circleId)
-                    setMessages(data.messages || [])
-                } catch (refreshError) {
-                    console.error('Failed to refresh community chat:', refreshError)
-                }
+            const isFocused = typeof navigation?.isFocused === 'function'
+                ? navigation.isFocused()
+                : false
+
+            if (!isFocused) {
+                return undefined
             }
 
-            const interval = setInterval(refreshMessages, 4000)
+            const interval = setInterval(() => {
+                if (typeof navigation?.isFocused === 'function' && !navigation.isFocused()) {
+                    return
+                }
+
+                refreshMessages()
+            }, 4000)
+
             return () => clearInterval(interval)
-        }, [loadActivity, token, circleId]),
+        }, [loadActivity, navigation, refreshMessages]),
     )
 
     const canParticipate = membership?.status === 'approved'
@@ -429,9 +447,18 @@ const MemberCircleActivityScreen = () => {
                         {posts.map(post => (
                             <View key={post._id} style={styles.postCard}>
                                 <View style={styles.postMetaRow}>
-                                    <Text style={styles.postAuthor}>
-                                        {post.isAnonymous ? 'Anonymous' : post.author?.name || 'Community member'}
-                                    </Text>
+                                    <View style={styles.postAuthorRow}>
+                                        <Text style={styles.postAuthor}>
+                                            {post.isAnonymous ? 'Anonymous' : post.author?.name || 'Community member'}
+                                        </Text>
+                                        {!post.isAnonymous ? (
+                                            <CommunityOrganizerBadge
+                                                role={post.author?.role}
+                                                size="small"
+                                                style={styles.postAuthorBadge}
+                                            />
+                                        ) : null}
+                                    </View>
                                     {post.status !== 'active' ? (
                                         <Text style={styles.pendingLabel}>
                                             {post.status === 'pending' ? 'Awaiting review' : 'Removed'}
@@ -459,7 +486,16 @@ const MemberCircleActivityScreen = () => {
                                 return (
                                     <View key={item._id} style={[styles.messageRow, isOwnMessage && styles.ownMessageRow]}>
                                         <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-                                            {!isOwnMessage ? <Text style={styles.messageSender}>{item.sender?.name || 'Community member'}</Text> : null}
+                                            {!isOwnMessage ? (
+                                                <View style={styles.messageSenderRow}>
+                                                    <Text style={styles.messageSender}>{item.sender?.name || 'Community member'}</Text>
+                                                    <CommunityOrganizerBadge
+                                                        role={item.sender?.role}
+                                                        size="small"
+                                                        style={styles.messageSenderBadge}
+                                                    />
+                                                </View>
+                                            ) : null}
                                             <Text style={[styles.messageContent, isOwnMessage && styles.ownMessageContent]}>{item.content}</Text>
                                             <Text style={styles.messageTime}>
                                                 {new Date(item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
@@ -900,7 +936,9 @@ sectionTabTextActive: {
     readOnlyNote: {marginBottom: 14, padding: 12, color: '#536057', backgroundColor: '#EEF3EE', borderRadius: 8, fontSize: 13, lineHeight: 19},
     postCard: {padding: 15, marginBottom: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8DC', borderRadius: 12},
     postMetaRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+    postAuthorRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6},
     postAuthor: {color: '#536057', fontSize: 12, fontWeight: '600'},
+    postAuthorBadge: {width: 14, height: 14},
     pendingLabel: {color: '#8A5C36', fontSize: 11, fontWeight: '700'},
     postTitle: {marginTop: 8, color: '#263526', fontSize: 16, fontWeight: '700'},
     postMood: {marginTop: 7, color: '#397A49', fontSize: 12, fontWeight: '600'},
@@ -993,7 +1031,9 @@ sectionTabTextActive: {
     ownMessageRow: {alignItems: 'flex-end'},
     messageBubble: {maxWidth: '86%', minWidth: 92, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#FFFFFF', borderRadius: 12},
     ownMessageBubble: {backgroundColor: '#397A49'},
-    messageSender: {marginBottom: 4, color: '#397A49', fontSize: 11, fontWeight: '700'},
+    messageSenderRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4},
+    messageSender: {color: '#397A49', fontSize: 11, fontWeight: '700'},
+    messageSenderBadge: {width: 14, height: 14},
     messageContent: {color: '#263526', fontSize: 14, lineHeight: 20},
     ownMessageContent: {color: '#FFFFFF'},
     messageTime: {alignSelf: 'flex-end', marginTop: 4, color: '#879186', fontSize: 10},
