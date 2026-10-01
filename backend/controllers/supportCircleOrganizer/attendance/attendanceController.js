@@ -1,11 +1,23 @@
 import Attendance from '../../../models/Attendance.js'
+import GroupMembership from '../../../models/GroupMembership.js'
 import Session from '../../../models/Session.js'
+
+const getEffectiveMeetingType = session => {
+    if (session.meetingType) {
+        return session.meetingType
+    }
+
+    if (session.meetingLink) {
+        return 'online'
+    }
+
+    return 'physical'
+}
 
 // Register a member as attending a session (auto-created when they RSVP, or added by organizer)
 export const registerAttendance = async (req, res) => {
     try {
         const { sessionId } = req.params
-        const { userId } = req.body
 
         const session = await Session.findById(sessionId)
 
@@ -15,22 +27,59 @@ export const registerAttendance = async (req, res) => {
             })
         }
 
-        const targetUserId = userId || req.user._id
+        const membership = await GroupMembership.findOne({
+            userId: req.user._id,
+            groupId: session.circleId,
+            status: 'approved'
+        })
+
+        if (!membership) {
+            return res.status(403).json({
+                message: 'Only approved members can register for sessions in this circle.'
+            })
+        }
+
+        if (session.status === 'cancelled') {
+            return res.status(400).json({
+                message: 'This session has been cancelled.'
+            })
+        }
+
+        if (session.status === 'completed' || new Date(session.scheduledAt) <= new Date()) {
+            return res.status(400).json({
+                message: 'Registration is closed for this session.'
+            })
+        }
 
         const existing = await Attendance.findOne({
             sessionId,
-            userId: targetUserId
+            userId: req.user._id
         })
 
         if (existing) {
             return res.status(400).json({
-                message: 'Attendance record already exists for this user and session'
+                message: 'You are already registered for this session.'
             })
+        }
+
+        const effectiveMeetingType = getEffectiveMeetingType(session)
+
+        if (effectiveMeetingType === 'physical') {
+            const registeredCount = await Attendance.countDocuments({
+                sessionId,
+                status: 'registered'
+            })
+
+            if (session.capacity && registeredCount >= session.capacity) {
+                return res.status(400).json({
+                    message: 'This session is full.'
+                })
+            }
         }
 
         const attendance = await Attendance.create({
             sessionId,
-            userId: targetUserId,
+            userId: req.user._id,
             status: 'registered'
         })
 

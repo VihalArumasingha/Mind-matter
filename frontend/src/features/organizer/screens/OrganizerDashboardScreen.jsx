@@ -56,6 +56,9 @@ const OrganizerDashboardScreen = ({navigation}) => {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
 
+    const hasPendingRequests = requests.length > 0
+    const hasPendingModeration = (stats?.pendingPostApprovals ?? 0) > 0
+
     // Currently selected join request for the preview modal
     const [selectedRequest, setSelectedRequest] =
         useState(null)
@@ -253,14 +256,19 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         onPress={() =>
                             setActiveTab(tab)
                         }>
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === tab &&
-                                    styles.tabTextActive,
-                            ]}>
-                            {tab}
-                        </Text>
+                        <View style={styles.tabContent}>
+                            <Text
+                                style={[
+                                    styles.tabText,
+                                    activeTab === tab &&
+                                        styles.tabTextActive,
+                                ]}>
+                                {tab}
+                            </Text>
+                            {tab === 'Request' && hasPendingRequests ? (
+                                <View style={styles.notificationDot} />
+                            ) : null}
+                        </View>
                     </Pressable>
                 ))}
             </View>
@@ -359,6 +367,8 @@ const OrganizerDashboardScreen = ({navigation}) => {
             onPress={() =>
                 navigation.navigate('Moderation')
             }>
+
+            {hasPendingModeration ? <View style={styles.notificationDotCard} /> : null}
 
             <View style={styles.moderationIcon}>
                 <Text style={styles.moderationIconText}>
@@ -1259,15 +1269,20 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 )
                             }>
 
-                            <MaterialCommunityIcons
-                                name={item.icon}
-                                size={22}
-                                color={
-                                    isActive
-                                        ? '#4E8C4A'
-                                        : '#707770'
-                                }
-                            />
+                            <View style={styles.bottomNavIconWrap}>
+                                <MaterialCommunityIcons
+                                    name={item.icon}
+                                    size={22}
+                                    color={
+                                        isActive
+                                            ? '#4E8C4A'
+                                            : '#707770'
+                                    }
+                                />
+                                {item.key === 'requests' && hasPendingRequests ? (
+                                    <View style={styles.notificationDotBottom} />
+                                ) : null}
+                            </View>
 
                             <Text
                                 style={[
@@ -1352,6 +1367,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
+    tabContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
     tabActive: {
         backgroundColor: '#4E8C4A',
     },
@@ -1371,6 +1392,42 @@ const styles = StyleSheet.create({
         color: '#B94A48',
         marginHorizontal: 16,
         marginBottom: 8,
+    },
+
+    notificationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#D92D20',
+        position: 'absolute',
+        right: -8,
+        top: -2,
+    },
+
+    notificationDotCard: {
+        position: 'absolute',
+        right: 14,
+        top: 14,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#D92D20',
+    },
+
+    notificationDotBottom: {
+        position: 'absolute',
+        right: -3,
+        top: -2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#D92D20',
+    },
+
+    bottomNavIconWrap: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
   
