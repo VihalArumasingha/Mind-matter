@@ -87,10 +87,10 @@ export const registerAttendance = async (req, res) => {
 
         try {
             const circle = await SupportCircle.findById(session.circleId).select('ownerId topic')
-            if (circle && targetUserId.toString() !== circle.ownerId.toString()) {
+            if (circle && req.user._id.toString() !== circle.ownerId.toString()) {
                 await createOrganizerNotification({
                     recipient: circle.ownerId,
-                    actorId: targetUserId,
+                    actorId: req.user._id,
                     type: 'SESSION_REGISTRATION',
                     title: 'New Session Registration',
                     message: `A member registered for ${session.title}.`,

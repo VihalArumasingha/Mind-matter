@@ -1,7 +1,8 @@
 import {API_BASE_URL} from '../../../config/api'
 
 const request = async (token, path, method = 'GET') => {
-    const response = await fetch(`${API_BASE_URL}/api/organizer/notifications${path}`, {
+    const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`
+    const response = await fetch(url, {
         method,
         headers: {
             Authorization: `Bearer ${token}`,
@@ -16,10 +17,25 @@ const request = async (token, path, method = 'GET') => {
     return data
 }
 
-export const getOrganizerNotifications = token => request(token, '')
+export const countPendingOrganizerNotifications = notifications => {
+    if (!Array.isArray(notifications)) {
+        return 0
+    }
+
+    return notifications.filter(item => {
+        if (typeof item?.isRead === 'boolean') {
+            return !item.isRead
+        }
+
+        return true
+    }).length
+}
+
+export const getOrganizerNotifications = token =>
+    request(token, '/api/support-circles/organizer/notifications')
 
 export const markOrganizerNotificationRead = (token, notificationId) =>
-    request(token, `/${notificationId}/read`, 'PATCH')
+    request(token, `/api/organizer/notifications/${notificationId}/read`, 'PATCH')
 
 export const markAllOrganizerNotificationsRead = token =>
-    request(token, '/read-all', 'PATCH')
+    request(token, '/api/organizer/notifications/read-all', 'PATCH')

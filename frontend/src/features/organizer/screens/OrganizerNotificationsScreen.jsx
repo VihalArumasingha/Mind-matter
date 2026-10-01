@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react'
 import {
     ActivityIndicator,
     Pressable,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -101,17 +102,19 @@ const OrganizerNotificationsScreen = ({navigation}) => {
         }
 
         const circleId = notification.circleId?._id ?? notification.circleId
-        if (notification.type === 'MEMBER_REQUEST') {
+        const circleTitle = notification.circleName || notification.circleId?.topic
+
+        if (notification.type === 'MEMBER_REQUEST' || notification.action === 'join_request') {
             navigation.navigate('JoinRequests', {
                 circleId,
-                circleTitle: notification.circleId?.topic,
+                circleTitle,
             })
-        } else if (notification.type === 'POST_MODERATION') {
+        } else if (notification.type === 'POST_MODERATION' || notification.action === 'moderation') {
             navigation.navigate('Moderation', {postId: notification.postId})
-        } else if (notification.type === 'SESSION_REGISTRATION') {
+        } else if (notification.type === 'SESSION_REGISTRATION' || notification.action === 'attendance') {
             navigation.navigate('Attendance', {
                 sessionId: notification.sessionId?._id ?? notification.sessionId,
-                sessionTitle: notification.sessionId?.title,
+                sessionTitle: notification.sessionTitle || notification.sessionId?.title,
                 circleId,
             })
         }
@@ -160,7 +163,18 @@ const OrganizerNotificationsScreen = ({navigation}) => {
                     <Text style={styles.emptyBody}>New community activity will appear here.</Text>
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isLoading}
+                            onRefresh={load}
+                            colors={['#4E8C4A']}
+                            tintColor="#4E8C4A"
+                        />
+                    }
+                >
                     {visibleNotifications.map(notification => {
                         const config = TYPE_CONFIG[notification.type] ?? TYPE_CONFIG.MEMBER_REQUEST
                         const session = notification.sessionId
@@ -185,8 +199,8 @@ const OrganizerNotificationsScreen = ({navigation}) => {
                                             {session.title}{session.scheduledAt ? ` · ${new Date(session.scheduledAt).toLocaleString()}` : ''}
                                         </Text>
                                     ) : null}
-                                    {notification.circleId?.topic ? (
-                                        <Text style={styles.circleName} numberOfLines={1}>{notification.circleId.topic}</Text>
+                                    {notification.circleName || notification.circleId?.topic ? (
+                                        <Text style={styles.circleName} numberOfLines={1}>{notification.circleName || notification.circleId?.topic}</Text>
                                     ) : null}
                                     <Text style={styles.timestamp}>{relativeTime(notification.createdAt)}</Text>
                                 </View>

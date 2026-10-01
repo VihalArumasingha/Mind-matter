@@ -13,6 +13,7 @@ import {
     getCircleMembers,
     removeMember,
     getDashboardStats,
+    getOrganizerNotifications,
 } from '../../../controllers/supportCircleOrganizer/supportCircle/supportCircleController.js'
 
 import { updateCircleImages } from '../../../controllers/supportCircleOrganizer/supportCircle/circleImageController.js'
@@ -40,6 +41,9 @@ router.patch('/:id/archive', authMiddleware, archiveSupportCircle)
 
 // Dashboard statistics
 router.get('/dashboard-stats', authMiddleware, getDashboardStats)
+
+// Derived attention items for the organizer dashboard and notification screen
+router.get('/organizer/notifications', authMiddleware, getOrganizerNotifications)
 
 // Get all pending join requests
 router.get('/requests/all', authMiddleware, getAllPendingJoinRequests)

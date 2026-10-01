@@ -19,7 +19,10 @@ import {
     getDashboardStats,
     respondToRequest,
 } from '../services/supportCircleService'
-import {getOrganizerNotifications} from '../services/organizerNotificationService'
+import {
+    countPendingOrganizerNotifications,
+    getOrganizerNotifications,
+} from '../services/organizerNotificationService'
 import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 
 
@@ -66,7 +69,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
     const [circles, setCircles] = useState([])
     const [requests, setRequests] = useState([])
     const [notifications, setNotifications] = useState([])
-    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
+    const pendingNotificationCount = countPendingOrganizerNotifications(notifications)
 
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
@@ -105,7 +108,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
             setCircles(circlesData.circles ?? [])
             setRequests(requestsData.requests ?? [])
             setNotifications(notificationsData.notifications ?? [])
-            setUnreadNotificationCount(notificationsData.unreadCount ?? 0)
         } catch (err) {
             setError(
                 err.message ||
@@ -262,7 +264,13 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 >
                     <View style={styles.bellWrap}>
                         <MaterialCommunityIcons name="bell-outline" size={23} color="#4E8C4A" />
-                        {unreadNotificationCount > 0 ? <View style={styles.bellUnreadDot} /> : null}
+                        {pendingNotificationCount > 0 ? (
+                            <View style={styles.bellUnreadDot}>
+                                <Text style={styles.bellUnreadText}>
+                                    {pendingNotificationCount > 9 ? '9+' : pendingNotificationCount}
+                                </Text>
+                            </View>
+                        ) : null}
                     </View>
                 </Pressable>
             </View>
@@ -1456,14 +1464,23 @@ const styles = StyleSheet.create({
 
     bellUnreadDot: {
         position: 'absolute',
-        top: 0,
-        right: 0,
-        width: 9,
-        height: 9,
-        borderRadius: 5,
+        top: -3,
+        right: -5,
+        minWidth: 18,
+        height: 18,
+        paddingHorizontal: 4,
+        borderRadius: 9,
         backgroundColor: '#D94B4B',
         borderWidth: 1,
         borderColor: '#F4F7EF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bellUnreadText: {
+        color: '#FFFFFF',
+        fontSize: 9,
+        fontWeight: '700',
+        lineHeight: 10,
     },
 
 
