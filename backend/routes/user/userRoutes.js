@@ -9,7 +9,8 @@ import {
     createBooking,
     getUserBookings,
     getUserNotifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    markAllNotificationsAsRead
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
 import {uploadSingleProfilePicture} from '../../middleware/uploadMiddleware.js'
@@ -35,5 +36,7 @@ router.get('/bookings', authMiddleware, getUserBookings)
 router.get('/notifications', authMiddleware, getUserNotifications)
 
 router.put('/notifications/:id/read', authMiddleware, markNotificationAsRead)
+
+router.put('/notifications/read-all', authMiddleware, markAllNotificationsAsRead)
 
 export default router

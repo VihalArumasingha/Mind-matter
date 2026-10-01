@@ -50,6 +50,19 @@ export default function UserNotificationsScreen({ navigation }) {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      await authFetch(`${API_BASE_URL}/api/users/notifications/read-all`, {
+        method: 'PUT',
+      });
+      
+      // Refresh notifications
+      loadNotifications();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error.message);
+    }
+  };
+
   useEffect(() => {
     loadNotifications();
   }, [token]);
@@ -123,7 +136,15 @@ export default function UserNotificationsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={24} color="#17231A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.placeholder} />
+        {notifications.some(n => !n.isRead) && (
+          <TouchableOpacity
+            style={styles.markAllReadButton}
+            onPress={markAllAsRead}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.markAllReadText}>Mark all read</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading ? (
@@ -155,14 +176,12 @@ export default function UserNotificationsScreen({ navigation }) {
             const zoomLink = notification.type === 'zoom_link_sent' ? extractZoomLink(notification.message) : null;
             
             return (
-              <TouchableOpacity
+              <View
                 key={notification._id}
                 style={[
                   styles.notificationItem,
                   !notification.isRead && styles.unreadNotification,
                 ]}
-                onPress={() => markAsRead(notification._id)}
-                activeOpacity={0.7}
               >
                 <View style={styles.iconContainer}>
                   <Ionicons
@@ -201,8 +220,16 @@ export default function UserNotificationsScreen({ navigation }) {
                     {new Date(notification.createdAt).toLocaleString()}
                   </Text>
                 </View>
-                {!notification.isRead && <View style={styles.unreadDot} />}
-              </TouchableOpacity>
+                {!notification.isRead && (
+                  <TouchableOpacity
+                    style={styles.markReadButton}
+                    onPress={() => markAsRead(notification._id)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="checkmark-done" size={20} color="#4E8C4A" />
+                  </TouchableOpacity>
+                )}
+              </View>
             );
           })}
         </ScrollView>
@@ -234,6 +261,17 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  markAllReadButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#EAF3ED',
+    borderRadius: 16,
+  },
+  markAllReadText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4E8C4A',
   },
   loadingContainer: {
     flex: 1,
@@ -332,11 +370,13 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 8,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4E8C4A',
+  markReadButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EAF3ED',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 8,
   },
 });
