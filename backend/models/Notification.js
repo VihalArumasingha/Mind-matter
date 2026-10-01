@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system'],
+      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system', 'zoom_link_sent'],
       required: true,
     },
     title: {

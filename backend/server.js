@@ -38,16 +38,6 @@ app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
 
-// Test volunteer endpoint
-app.get('/api/volunteer/test', (req, res) => {
-    console.log('[Test Endpoint] Volunteer test endpoint called');
-    res.json({
-        success: true,
-        message: 'Volunteer endpoint is working',
-        timestamp: new Date().toISOString()
-    });
-});
-
 app.use('/api/users/onboarding', onboardingRoutes)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

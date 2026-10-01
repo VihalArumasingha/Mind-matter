@@ -9,6 +9,8 @@ import {
   SafeAreaView,
   StatusBar,
   RefreshControl,
+  Linking,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
@@ -54,6 +56,8 @@ export default function UserNotificationsScreen({ navigation }) {
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'zoom_link_sent':
+        return 'videocam';
       case 'booking_approved':
         return 'checkmark-circle';
       case 'booking_declined':
@@ -67,6 +71,8 @@ export default function UserNotificationsScreen({ navigation }) {
 
   const getNotificationColor = (type) => {
     switch (type) {
+      case 'zoom_link_sent':
+        return '#0284C7';
       case 'booking_approved':
         return '#2F6B47';
       case 'booking_declined':
@@ -75,6 +81,36 @@ export default function UserNotificationsScreen({ navigation }) {
         return '#4E8C4A';
       default:
         return '#17231A';
+    }
+  };
+
+  const extractZoomLink = (message) => {
+    const zoomUrlRegex = /(https?:\/\/)?(?:www\.)?(zoom\.us\/j\/[^\s]+)/;
+    const match = message.match(zoomUrlRegex);
+    return match ? match[0] : null;
+  };
+
+  const openZoomLink = async (zoomLink) => {
+    try {
+      // Ensure the URL has a protocol
+      let normalizedUrl = zoomLink;
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = 'https://' + normalizedUrl;
+      }
+
+      // Try to open in Zoom app first
+      const zoomAppUrl = normalizedUrl.replace('https://', 'zoomus://').replace('http://', 'zoomus://');
+      
+      const supported = await Linking.canOpenURL(zoomAppUrl);
+      if (supported) {
+        await Linking.openURL(zoomAppUrl);
+      } else {
+        // Fallback to browser
+        await Linking.openURL(normalizedUrl);
+      }
+    } catch (error) {
+      console.error('Error opening Zoom link:', error);
+      Alert.alert('Error', 'Could not open Zoom link. Please try again.');
     }
   };
 
@@ -115,32 +151,60 @@ export default function UserNotificationsScreen({ navigation }) {
             />
           }
         >
-          {notifications.map((notification) => (
-            <TouchableOpacity
-              key={notification._id}
-              style={[
-                styles.notificationItem,
-                !notification.isRead && styles.unreadNotification,
-              ]}
-              onPress={() => markAsRead(notification._id)}
-            >
-              <View style={styles.iconContainer}>
-                <Ionicons
-                  name={getNotificationIcon(notification.type)}
-                  size={24}
-                  color={getNotificationColor(notification.type)}
-                />
-              </View>
-              <View style={styles.content}>
-                <Text style={styles.title}>{notification.title}</Text>
-                <Text style={styles.message}>{notification.message}</Text>
-                <Text style={styles.time}>
-                  {new Date(notification.createdAt).toLocaleString()}
-                </Text>
-              </View>
-              {!notification.isRead && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-          ))}
+          {notifications.map((notification) => {
+            const zoomLink = notification.type === 'zoom_link_sent' ? extractZoomLink(notification.message) : null;
+            
+            return (
+              <TouchableOpacity
+                key={notification._id}
+                style={[
+                  styles.notificationItem,
+                  !notification.isRead && styles.unreadNotification,
+                ]}
+                onPress={() => markAsRead(notification._id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name={getNotificationIcon(notification.type)}
+                    size={24}
+                    color={getNotificationColor(notification.type)}
+                  />
+                </View>
+                <View style={styles.content}>
+                  <Text style={styles.title}>{notification.title}</Text>
+                  <Text style={styles.message}>{notification.message}</Text>
+                  {zoomLink && (
+                    <View style={styles.zoomLinkContainer}>
+                      <TouchableOpacity
+                        style={styles.zoomLinkButton}
+                        onPress={() => openZoomLink(zoomLink)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="videocam" size={18} color="#0284C7" />
+                        <Text style={styles.zoomLinkText}>Open in Zoom App</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.zoomLinkButton}
+                        onPress={() => {
+                          const normalizedUrl = zoomLink.startsWith('http') ? zoomLink : 'https://' + zoomLink;
+                          Linking.openURL(normalizedUrl);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="open-outline" size={18} color="#4E8C4A" />
+                        <Text style={styles.zoomLinkText}>Open in Browser</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <Text style={styles.time}>
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+                {!notification.isRead && <View style={styles.unreadDot} />}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -244,9 +308,29 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 20,
   },
+  zoomLinkContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  zoomLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  zoomLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0284C7',
+  },
   time: {
     fontSize: 12,
     color: '#999',
+    marginTop: 8,
   },
   unreadDot: {
     width: 8,

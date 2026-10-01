@@ -12,12 +12,13 @@ import {
   BackHandler,
   TextInput,
   Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../styles/volunteerDashboardStyles';
-import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests } from '../services/volunteerService';
+import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests, sendZoomLink } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
@@ -133,6 +134,63 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
     setDetailsModalVisible(true);
   };
 
+  const handleSendZoomLink = async (requestId, name) => {
+    Alert.alert(
+      'Send Zoom Link',
+      `Generate and send Zoom meeting link to ${name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            try {
+              if (token) {
+                const result = await sendZoomLink(requestId, token);
+                console.log('[Send Zoom Link] Result:', result);
+                // Reload requests after sending Zoom link
+                await loadRequests();
+                Alert.alert('Zoom Link Sent', `Zoom meeting link has been generated and sent to ${name}. A notification has been created.`);
+              }
+            } catch (err) {
+              console.log('Send Zoom link error:', err.message);
+              Alert.alert('Error', `Failed to send Zoom link: ${err.message}. Please try again.`);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const extractZoomLink = (zoomMeetingLink) => {
+    if (!zoomMeetingLink) return null;
+    // Return the link as-is since it's already stored in the database
+    return zoomMeetingLink;
+  };
+
+  const openZoomLink = async (zoomLink) => {
+    try {
+      // Ensure the URL has a protocol
+      let normalizedUrl = zoomLink;
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = 'https://' + normalizedUrl;
+      }
+
+      // Try to open in Zoom app first
+      const zoomAppUrl = normalizedUrl.replace('https://', 'zoomus://').replace('http://', 'zoomus://');
+      
+      const supported = await Linking.canOpenURL(zoomAppUrl);
+      if (supported) {
+        await Linking.openURL(zoomAppUrl);
+      } else {
+        // Fallback to browser
+        await Linking.openURL(normalizedUrl);
+      }
+    } catch (error) {
+      console.error('Error opening Zoom link:', error);
+      Alert.alert('Error', 'Could not open Zoom link. Please try again.');
+    }
+  };
+
   const pendingCount = requestsList.filter((r) => r.status === 'pending' || r.tabCategory === 'pending').length;
   const acceptedCount = requestsList.filter((r) => r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted').length;
 
@@ -224,7 +282,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
           </View>
         ) : (
           filteredRequests.map((req) => (
-            <View key={req.id} style={styles.requestCard}>
+            <View key={req.id} style={[styles.requestCard, req.zoomLinkSent && styles.requestCardZoomSent]}>
               {/* Top User Info */}
               <View style={styles.cardHeader}>
                 <View style={[styles.avatarCircle, { backgroundColor: req.avatarBg }]}>
@@ -295,16 +353,67 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
               )}
 
               {(req.status === 'accepted' || req.status === 'confirmed') && (
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    style={styles.messageButton}
-                    onPress={() => onTabChange?.('messages')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={GREEN} />
-                    <Text style={styles.messageText}>Message User</Text>
-                  </TouchableOpacity>
-                </View>
+                <>
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      style={styles.messageButton}
+                      onPress={() => onTabChange?.('messages')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={GREEN} />
+                      <Text style={styles.messageText}>Message User</Text>
+                    </TouchableOpacity>
+                    
+                    {!req.zoomLinkSent ? (
+                      <TouchableOpacity
+                        style={styles.zoomButton}
+                        onPress={() => handleSendZoomLink(req.id, req.name)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="videocam-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.zoomButtonText}>Send Zoom Link</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.zoomSentBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                        <Text style={styles.zoomSentText}>Zoom Link Sent</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Display Zoom link with open buttons */}
+                  {req.zoomLinkSent && req.zoomMeetingLink && (
+                    <View style={styles.zoomLinkContainer}>
+                      <Text style={styles.zoomLinkLabel}>Meeting Link:</Text>
+                      <Text style={styles.zoomLinkUrl} numberOfLines={2}>
+                        {req.zoomMeetingLink}
+                      </Text>
+                      <View style={styles.zoomLinkButtons}>
+                        <TouchableOpacity
+                          style={styles.zoomLinkAppButton}
+                          onPress={() => openZoomLink(req.zoomMeetingLink)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="videocam" size={16} color="#0284C7" />
+                          <Text style={styles.zoomLinkAppButtonText}>Open in Zoom App</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.zoomLinkBrowserButton}
+                          onPress={() => {
+                            const normalizedUrl = req.zoomMeetingLink.startsWith('http') 
+                              ? req.zoomMeetingLink 
+                              : 'https://' + req.zoomMeetingLink;
+                            Linking.openURL(normalizedUrl);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="open-outline" size={16} color={GREEN} />
+                          <Text style={styles.zoomLinkBrowserButtonText}>Open in Browser</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           ))
@@ -569,6 +678,10 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
   },
+  requestCardZoomSent: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -712,6 +825,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: GREEN,
   },
+  zoomButton: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#2D8CFF',
+  },
+  zoomButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  zoomSentBadge: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+  },
+  zoomSentText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   seeOptionsButton: {
     flex: 1,
     flexDirection: 'row',
@@ -728,6 +871,66 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: TEXT_DARK,
+  },
+  zoomLinkContainer: {
+    marginTop: 12,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  zoomLinkLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0284C7',
+    marginBottom: 4,
+  },
+  zoomLinkUrl: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  zoomLinkButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  zoomLinkAppButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0284C7',
+  },
+  zoomLinkAppButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0284C7',
+  },
+  zoomLinkBrowserButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: GREEN,
+  },
+  zoomLinkBrowserButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GREEN,
   },
   modalOverlay: {
     flex: 1,

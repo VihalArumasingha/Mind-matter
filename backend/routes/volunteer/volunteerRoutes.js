@@ -10,6 +10,7 @@ import {
   getVolunteerRequests,
   acceptVolunteerRequest,
   declineVolunteerRequest,
+  sendZoomLink,
 } from '../../controllers/volunteer/volunteerController.js';
 import authMiddleware from '../../middleware/authMiddleware.js';
 
@@ -18,6 +19,7 @@ const router = express.Router();
 router.get('/dashboard', authMiddleware, getVolunteerDashboard);
 router.post('/requests/:id/accept', authMiddleware, acceptVolunteerRequest);
 router.post('/requests/:id/decline', authMiddleware, declineVolunteerRequest);
+router.post('/requests/:id/zoom', authMiddleware, sendZoomLink);
 router.get('/requests', authMiddleware, getVolunteerRequests);
 router.get('/availability/schedule', authMiddleware, getAvailabilitySchedule);
 router.post('/availability/schedule', authMiddleware, saveAvailabilitySchedule);

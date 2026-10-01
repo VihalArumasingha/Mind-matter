@@ -384,4 +384,53 @@ export const getVolunteerAvailabilitySchedule = async (token) => {
   }
 };
 
+/**
+ * Send Zoom meeting link for a confirmed booking
+ */
+export const sendZoomLink = async (requestId, token) => {
+  try {
+    const url = `${API_BASE_URL}/api/volunteer/requests/${requestId}/zoom`;
+    console.log('[sendZoomLink] Request URL:', url);
+    console.log('[sendZoomLink] Request ID:', requestId);
+    console.log('[sendZoomLink] Token exists:', !!token);
+    
+    const response = await fetch(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    console.log('[sendZoomLink] Response status:', response.status);
+    console.log('[sendZoomLink] Response statusText:', response.statusText);
+    
+    const contentType = response.headers.get('content-type');
+    console.log('[sendZoomLink] Content-Type:', contentType);
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[sendZoomLink] Received non-JSON response:', text.substring(0, 500));
+      throw new Error('Server returned non-JSON response. Please try again.');
+    }
+
+    const data = await response.json();
+    console.log('[sendZoomLink] Parsed JSON data:', data);
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send Zoom link');
+    }
+    return data;
+  } catch (error) {
+    console.error('[sendZoomLink] Error:', error);
+    console.error('[sendZoomLink] Error name:', error.name);
+    console.error('[sendZoomLink] Error message:', error.message);
+    throw error;
+  }
+};
+
 
