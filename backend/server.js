@@ -18,6 +18,7 @@ import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPost
 import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
+import startSessionReminderScheduler from './utils/sessionReminderScheduler.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -58,6 +59,9 @@ app.use('/api/moderation', moderationRoutes);
 const startServer = async () => {
     try {
         await connectDB();
+
+        // Start session reminder scheduler
+        startSessionReminderScheduler();
 
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`[Server] Running actively on port ${PORT}`);

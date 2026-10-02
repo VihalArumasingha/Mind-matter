@@ -92,6 +92,8 @@ export default function UserNotificationsScreen({ navigation }) {
         return 'close-circle';
       case 'booking':
         return 'calendar';
+      case 'session_reminder':
+        return 'time';
       default:
         return 'notifications';
     }
@@ -107,6 +109,8 @@ export default function UserNotificationsScreen({ navigation }) {
         return '#C0644A';
       case 'booking':
         return '#4E8C4A';
+      case 'session_reminder':
+        return '#F59E0B';
       default:
         return '#17231A';
     }
@@ -275,6 +279,11 @@ export default function UserNotificationsScreen({ navigation }) {
                           <Text style={styles.zoomLinkText}>Browser</Text>
                         </TouchableOpacity>
                       </View>
+                    </View>
+                  )}
+                  {notification.type === 'session_reminder' && (
+                    <View style={styles.reminderActionBox}>
+                      <Text style={styles.reminderText}>🕐 Don't forget to join your session!</Text>
                     </View>
                   )}
                   <Text style={styles.time}>
@@ -455,6 +464,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
     flex: 1,
+  },
+  reminderActionBox: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  reminderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+    textAlign: 'center',
   },
   time: {
     fontSize: 12,
