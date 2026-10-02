@@ -2,6 +2,7 @@ import React, {useState, useEffect} from 'react'
 import {StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, FlatList, ActivityIndicator} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import {getApprovedProfessionals, getProfessionCategories} from '../services/professionalService'
 import {useAuth} from '../../../context/AuthContext'
 import {PROFESSION_FILTERS} from '../../../config/professions'
@@ -17,6 +18,7 @@ const ProfessionalHelpScreen = ({navigation}) => {
     const [professionals, setProfessionals] = useState([])
     const [categories, setCategories] = useState(PROFESSION_FILTERS)
     const [isLoading, setIsLoading] = useState(true)
+    const [expandedCard, setExpandedCard] = useState(null)
 
     const fetchProfessionals = async () => {
         try {
@@ -74,31 +76,98 @@ const ProfessionalHelpScreen = ({navigation}) => {
         return () => clearTimeout(debounceTimer)
     }, [searchQuery, selectedFilter, token])
 
-    const renderProfessionalCard = ({item}) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{item.fullName.charAt(0)}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                    <Text style={styles.name}>{item.fullName}</Text>
-                    <Text style={styles.specialization}>{item.profession}</Text>
-                    <Text style={styles.details}>{item.specialization}</Text>
-                    <View style={styles.detailsRow}>
-                        <Text style={styles.details}>{item.expYears} years exp</Text>
-                        <Text style={styles.details}>•</Text>
-                        <Text style={styles.details}>License {item.licenseNum}</Text>
+    const renderProfessionalCard = ({item}) => {
+        const isExpanded = expandedCard === item._id;
+        
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{item.fullName.charAt(0)}</Text>
+                    </View>
+                    <View style={styles.cardInfo}>
+                        <Text style={styles.name}>{item.fullName}</Text>
+                        <Text style={styles.specialization}>{item.profession}</Text>
+                        <Text style={styles.details}>{item.specialization}</Text>
+                        <View style={styles.detailsRow}>
+                            <Text style={styles.details}>{item.expYears} years exp</Text>
+                            <Text style={styles.details}>•</Text>
+                            <Text style={styles.details}>License {item.licenseNum}</Text>
+                        </View>
                     </View>
                 </View>
+                
+                {isExpanded && (
+                    <View style={styles.expandedContent}>
+                        {item.bio && (
+                            <View style={styles.infoSection}>
+                                <View style={styles.infoHeader}>
+                                    <Icon name="person" size={16} color="#4E8C4A" />
+                                    <Text style={styles.infoLabel}>About</Text>
+                                </View>
+                                <Text style={styles.infoText}>{item.bio}</Text>
+                            </View>
+                        )}
+                        
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <Icon name="email" size={16} color="#4E8C4A" />
+                                <Text style={styles.infoLabel}>Contact</Text>
+                            </View>
+                            <Text style={styles.infoText}>{item.email}</Text>
+                            {item.phone && <Text style={styles.infoText}>{item.phone}</Text>}
+                        </View>
+                        
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <Icon name="star" size={16} color="#4E8C4A" />
+                                <Text style={styles.infoLabel}>Specialization</Text>
+                            </View>
+                            <Text style={styles.infoText}>{item.specialization || 'General practice'}</Text>
+                        </View>
+                        
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <Icon name="verified" size={16} color="#4E8C4A" />
+                                <Text style={styles.infoLabel}>License Verified</Text>
+                            </View>
+                            <Text style={styles.infoText}>License #{item.licenseNum}</Text>
+                        </View>
+                        
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <Icon name="schedule" size={16} color="#4E8C4A" />
+                                <Text style={styles.infoLabel}>Availability</Text>
+                            </View>
+                            <Text style={styles.infoText}>View available time slots when booking</Text>
+                        </View>
+                    </View>
+                )}
+                
+                <TouchableOpacity
+                    style={styles.seeMoreButton}
+                    onPress={() => setExpandedCard(isExpanded ? null : item._id)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.seeMoreText}>
+                        {isExpanded ? 'See Less' : 'See More'}
+                    </Text>
+                    <Ionicons 
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                        size={20} 
+                        color="#4E8C4A" 
+                    />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                    style={styles.bookButton}
+                    onPress={() => navigation.navigate('ProfessionalAvailabilityBooking', { professional: item })}
+                >
+                    <Text style={styles.bookButtonText}>Book Session</Text>
+                </TouchableOpacity>
             </View>
-            <TouchableOpacity
-                style={styles.bookButton}
-                onPress={() => navigation.navigate('ProfessionalAvailabilityBooking', { professional: item })}
-            >
-                <Text style={styles.bookButtonText}>Book Session</Text>
-            </TouchableOpacity>
-        </View>
-    )
+        );
+    }
 
     const handleGoBack = () => {
         if (navigation?.canGoBack && navigation.canGoBack()) {
@@ -365,6 +434,58 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 6,
         gap: 8,
+    },
+
+    expandedContent: {
+        backgroundColor: '#F8FAF8',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#E8ECE6',
+    },
+
+    infoSection: {
+        marginBottom: 12,
+    },
+
+    infoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 6,
+    },
+
+    infoLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#4E8C4A',
+    },
+
+    infoText: {
+        fontSize: 13,
+        color: '#4B5563',
+        lineHeight: 18,
+        marginLeft: 24,
+    },
+
+    seeMoreButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        marginBottom: 12,
+        borderWidth: 1.5,
+        borderColor: '#4E8C4A',
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+    },
+
+    seeMoreText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#4E8C4A',
     },
 
     bookButton: {
