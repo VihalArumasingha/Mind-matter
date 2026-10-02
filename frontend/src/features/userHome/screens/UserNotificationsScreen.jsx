@@ -20,6 +20,7 @@ export default function UserNotificationsScreen({ navigation }) {
   const { token, authFetch } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
 
   const loadNotifications = async () => {
     try {
@@ -52,14 +53,28 @@ export default function UserNotificationsScreen({ navigation }) {
 
   const markAllAsRead = async () => {
     try {
-      await authFetch(`${API_BASE_URL}/api/users/notifications/read-all`, {
+      setIsMarkingAll(true);
+      console.log('[Mark All Read] Starting...');
+      const response = await authFetch(`${API_BASE_URL}/api/users/notifications/read-all`, {
         method: 'PUT',
       });
       
-      // Refresh notifications
-      loadNotifications();
+      console.log('[Mark All Read] Response status:', response.status);
+      const data = await response.json();
+      console.log('[Mark All Read] Response data:', data);
+      
+      if (response.ok) {
+        // Refresh notifications
+        loadNotifications();
+      } else {
+        console.error('[Mark All Read] Failed:', data.message);
+        Alert.alert('Error', data.message || 'Failed to mark all as read');
+      }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error.message);
+      console.error('[Mark All Read] Error:', error.message);
+      Alert.alert('Error', 'Failed to mark all as read. Please try again.');
+    } finally {
+      setIsMarkingAll(false);
     }
   };
 
@@ -103,6 +118,30 @@ export default function UserNotificationsScreen({ navigation }) {
     return match ? match[0] : null;
   };
 
+  const parseZoomDetails = (zoomLink) => {
+    if (!zoomLink) return null;
+    
+    // Ensure the link has a protocol
+    let normalizedLink = zoomLink;
+    if (!normalizedLink.startsWith('http')) {
+      normalizedLink = 'https://' + normalizedLink;
+    }
+    
+    // Extract meeting ID from URL (e.g., /j/75067347179)
+    const meetingIdMatch = normalizedLink.match(/\/j\/(\d+)/);
+    const meetingId = meetingIdMatch ? meetingIdMatch[1] : null;
+    
+    // Extract password from URL (e.g., pwd=...)
+    const passwordMatch = normalizedLink.match(/[?&]pwd=([^&]+)/);
+    const password = passwordMatch ? passwordMatch[1] : null;
+    
+    return {
+      meetingId,
+      password,
+      fullLink: normalizedLink
+    };
+  };
+
   const openZoomLink = async (zoomLink) => {
     try {
       // Ensure the URL has a protocol
@@ -141,8 +180,13 @@ export default function UserNotificationsScreen({ navigation }) {
             style={styles.markAllReadButton}
             onPress={markAllAsRead}
             activeOpacity={0.7}
+            disabled={isMarkingAll}
           >
-            <Text style={styles.markAllReadText}>Mark all read</Text>
+            {isMarkingAll ? (
+              <ActivityIndicator size={16} color="#4E8C4A" />
+            ) : (
+              <Text style={styles.markAllReadText}>Mark all read</Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -174,6 +218,7 @@ export default function UserNotificationsScreen({ navigation }) {
         >
           {notifications.map((notification) => {
             const zoomLink = notification.type === 'zoom_link_sent' ? extractZoomLink(notification.message) : null;
+            const zoomDetails = zoomLink ? parseZoomDetails(zoomLink) : null;
             
             return (
               <View
@@ -193,27 +238,43 @@ export default function UserNotificationsScreen({ navigation }) {
                 <View style={styles.content}>
                   <Text style={styles.title}>{notification.title}</Text>
                   <Text style={styles.message}>{notification.message}</Text>
-                  {zoomLink && (
-                    <View style={styles.zoomLinkContainer}>
-                      <TouchableOpacity
-                        style={styles.zoomLinkButton}
-                        onPress={() => openZoomLink(zoomLink)}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="videocam" size={18} color="#0284C7" />
-                        <Text style={styles.zoomLinkText}>Open in Zoom App</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.zoomLinkButton}
-                        onPress={() => {
-                          const normalizedUrl = zoomLink.startsWith('http') ? zoomLink : 'https://' + zoomLink;
-                          Linking.openURL(normalizedUrl);
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="open-outline" size={18} color="#4E8C4A" />
-                        <Text style={styles.zoomLinkText}>Open in Browser</Text>
-                      </TouchableOpacity>
+                  {zoomDetails && (
+                    <View style={styles.zoomDetailsBox}>
+                      <View style={styles.zoomDetailRow}>
+                        <Text style={styles.zoomDetailLabel}>Meeting ID:</Text>
+                        <Text style={styles.zoomDetailValue}>{zoomDetails.meetingId}</Text>
+                      </View>
+                      <View style={styles.zoomDetailRow}>
+                        <Text style={styles.zoomDetailLabel}>Password:</Text>
+                        <Text style={styles.zoomDetailValue}>{zoomDetails.password}</Text>
+                      </View>
+                      <View style={styles.zoomDetailRow}>
+                        <Text style={styles.zoomDetailLabel}>Link:</Text>
+                        <Text style={styles.zoomDetailLink}>
+                          {zoomDetails.fullLink}
+                        </Text>
+                      </View>
+                      <View style={styles.zoomLinkContainer}>
+                        <TouchableOpacity
+                          style={styles.zoomLinkButton}
+                          onPress={() => openZoomLink(zoomLink)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="videocam" size={18} color="#0284C7" />
+                          <Text style={styles.zoomLinkText}>Zoom App</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.zoomLinkButton}
+                          onPress={() => {
+                            const normalizedUrl = zoomLink.startsWith('http') ? zoomLink : 'https://' + zoomLink;
+                            Linking.openURL(normalizedUrl);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="open-outline" size={18} color="#4E8C4A" />
+                          <Text style={styles.zoomLinkText}>Browser</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   )}
                   <Text style={styles.time}>
@@ -364,6 +425,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0284C7',
+  },
+  zoomDetailsBox: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  zoomDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+    alignItems: 'flex-start',
+  },
+  zoomDetailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0284C7',
+    width: 80,
+    flexShrink: 0,
+  },
+  zoomDetailValue: {
+    fontSize: 11,
+    color: '#333',
+    flex: 1,
+  },
+  zoomDetailLink: {
+    fontSize: 10,
+    color: '#666',
+    flex: 1,
   },
   time: {
     fontSize: 12,

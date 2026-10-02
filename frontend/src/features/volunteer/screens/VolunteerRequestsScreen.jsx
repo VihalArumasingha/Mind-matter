@@ -167,6 +167,30 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
     return zoomMeetingLink;
   };
 
+  const parseZoomDetails = (zoomLink) => {
+    if (!zoomLink) return null;
+    
+    // Ensure the link has a protocol
+    let normalizedLink = zoomLink;
+    if (!normalizedLink.startsWith('http')) {
+      normalizedLink = 'https://' + normalizedLink;
+    }
+    
+    // Extract meeting ID from URL (e.g., /j/75067347179)
+    const meetingIdMatch = normalizedLink.match(/\/j\/(\d+)/);
+    const meetingId = meetingIdMatch ? meetingIdMatch[1] : null;
+    
+    // Extract password from URL (e.g., pwd=...)
+    const passwordMatch = normalizedLink.match(/[?&]pwd=([^&]+)/);
+    const password = passwordMatch ? passwordMatch[1] : null;
+    
+    return {
+      meetingId,
+      password,
+      fullLink: normalizedLink
+    };
+  };
+
   const openZoomLink = async (zoomLink) => {
     try {
       // Ensure the URL has a protocol
@@ -382,37 +406,51 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                   </View>
 
                   {/* Display Zoom link with open buttons */}
-                  {req.zoomLinkSent && req.zoomMeetingLink && (
-                    <View style={styles.zoomLinkContainer}>
-                      <Text style={styles.zoomLinkLabel}>Meeting Link:</Text>
-                      <Text style={styles.zoomLinkUrl} numberOfLines={2}>
-                        {req.zoomMeetingLink}
-                      </Text>
-                      <View style={styles.zoomLinkButtons}>
-                        <TouchableOpacity
-                          style={styles.zoomLinkAppButton}
-                          onPress={() => openZoomLink(req.zoomMeetingLink)}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="videocam" size={16} color="#0284C7" />
-                          <Text style={styles.zoomLinkAppButtonText}>Open in Zoom App</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.zoomLinkBrowserButton}
-                          onPress={() => {
-                            const normalizedUrl = req.zoomMeetingLink.startsWith('http') 
-                              ? req.zoomMeetingLink 
-                              : 'https://' + req.zoomMeetingLink;
-                            Linking.openURL(normalizedUrl);
-                          }}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="open-outline" size={16} color={GREEN} />
-                          <Text style={styles.zoomLinkBrowserButtonText}>Open in Browser</Text>
-                        </TouchableOpacity>
+                  {req.zoomLinkSent && req.zoomMeetingLink && (() => {
+                    const zoomDetails = parseZoomDetails(req.zoomMeetingLink);
+                    return zoomDetails ? (
+                      <View style={styles.zoomLinkContainer}>
+                        <Text style={styles.zoomLinkLabel}>Meeting Details</Text>
+                        <View style={styles.zoomDetailRow}>
+                          <Text style={styles.zoomDetailLabel}>Meeting ID:</Text>
+                          <Text style={styles.zoomDetailValue}>{zoomDetails.meetingId}</Text>
+                        </View>
+                        <View style={styles.zoomDetailRow}>
+                          <Text style={styles.zoomDetailLabel}>Password:</Text>
+                          <Text style={styles.zoomDetailValue}>{zoomDetails.password}</Text>
+                        </View>
+                        <View style={styles.zoomDetailRow}>
+                          <Text style={styles.zoomDetailLabel}>Link:</Text>
+                          <Text style={styles.zoomDetailLink}>
+                            {zoomDetails.fullLink}
+                          </Text>
+                        </View>
+                        <View style={styles.zoomLinkButtons}>
+                          <TouchableOpacity
+                            style={styles.zoomLinkAppButton}
+                            onPress={() => openZoomLink(req.zoomMeetingLink)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="videocam" size={16} color="#0284C7" />
+                            <Text style={styles.zoomLinkAppButtonText}>Zoom App</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.zoomLinkBrowserButton}
+                            onPress={() => {
+                              const normalizedUrl = req.zoomMeetingLink.startsWith('http') 
+                                ? req.zoomMeetingLink 
+                                : 'https://' + req.zoomMeetingLink;
+                              Linking.openURL(normalizedUrl);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="open-outline" size={16} color={GREEN} />
+                            <Text style={styles.zoomLinkBrowserButtonText}>Browser</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-                  )}
+                    ) : null;
+                  })()}
                 </>
               )}
             </View>
@@ -881,20 +919,37 @@ const styles = StyleSheet.create({
     borderColor: '#BAE6FD',
   },
   zoomLinkLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#0284C7',
-    marginBottom: 4,
-  },
-  zoomLinkUrl: {
-    fontSize: 12,
-    color: '#555',
     marginBottom: 8,
-    lineHeight: 16,
+  },
+  zoomDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+    alignItems: 'flex-start',
+  },
+  zoomDetailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0284C7',
+    width: 85,
+    flexShrink: 0,
+  },
+  zoomDetailValue: {
+    fontSize: 11,
+    color: '#333',
+    flex: 1,
+  },
+  zoomDetailLink: {
+    fontSize: 10,
+    color: '#666',
+    flex: 1,
   },
   zoomLinkButtons: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
   zoomLinkAppButton: {
     flex: 1,
