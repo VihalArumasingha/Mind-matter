@@ -11,6 +11,7 @@ const MENU_ITEMS = [
   { id: 'posts', label: 'Posts', icon: '•' },
   { id: 'reports', label: 'Reports', icon: '•', badgeKey: 'openReports' },
   { id: 'analytics', label: 'Platform Health', icon: '•' },
+  { id: 'report-builder', label: 'Report Builder', icon: '•' },
   { id: 'broadcasts', label: 'Broadcasts', icon: '•' },
   { id: 'settings', label: 'Settings', icon: '•' },
   { id: 'audit-logs', label: 'Audit Logs', icon: '•' }
@@ -33,7 +34,6 @@ const SidebarMenu = ({ activeTab, onSelectTab, onClose, badges = {} }) => {
         }
       ]}
     >
-      {/* Brand Header */}
       <View 
         style={{
           flexDirection: 'row',
@@ -90,7 +90,6 @@ const SidebarMenu = ({ activeTab, onSelectTab, onClose, badges = {} }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Menu List */}
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {MENU_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
@@ -154,7 +153,6 @@ const SidebarMenu = ({ activeTab, onSelectTab, onClose, badges = {} }) => {
         })}
       </ScrollView>
 
-      {/* User Profile Footer */}
       <View 
         style={{
           borderTopWidth: 1,

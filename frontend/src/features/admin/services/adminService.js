@@ -304,6 +304,16 @@ export const getReportsApi = async (token, targetType = 'all', status = 'all') =
   }
 };
 
+export const createReportApi = async (token, report) => {
+  try {
+    const response = await apiRequest('/api/reports', 'POST', report, token);
+    return response.report || response;
+  } catch (error) {
+    console.error('Error submitting report:', error);
+    throw error;
+  }
+};
+
 export const investigateReportApi = async (token, id) => {
   try {
     const response = await apiRequest(`/api/admin/reports/${id}/investigate`, 'PUT', null, token);
@@ -371,6 +381,45 @@ export const getAuditLogs = async (token, search = '', action = 'all') => {
     return response.logs || response;
   } catch (error) {
     console.error('Error fetching audit logs:', error);
+    throw error;
+  }
+};
+
+export const getReportSummaryApi = async (token, queryString = '') => {
+  try {
+    const endpoint = queryString
+      ? `/api/admin/reports/summary?${queryString}`
+      : '/api/admin/reports/summary';
+    const response = await apiRequest(endpoint, 'GET', null, token);
+    return response.summary;
+  } catch (error) {
+    console.error('Error fetching stakeholder report summary:', error);
+    throw error;
+  }
+};
+
+export const exportReportDataApi = async (token, filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.targetType && filters.targetType !== 'all') {
+      params.append('targetType', filters.targetType);
+    }
+    if (filters.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    params.append('format', filters.format || 'json');
+
+    const response = await apiRequest(
+      `/api/admin/reports/export?${params.toString()}`,
+      'GET',
+      null,
+      token
+    );
+    return response;
+  } catch (error) {
+    console.error('Error exporting report data:', error);
     throw error;
   }
 };

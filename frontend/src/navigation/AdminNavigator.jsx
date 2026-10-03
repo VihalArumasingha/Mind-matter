@@ -40,6 +40,7 @@ import ProfessionalsManagementView from '../features/admin/views/ProfessionalsMa
 import CommunityOrganizerApplicationsView from '../features/admin/views/CommunityOrganizerApplicationsView';
 import PostsManagementView from '../features/admin/views/PostsManagementView';
 import PlatformHealthAnalyticsView from '../features/admin/views/PlatformHealthAnalyticsView';
+import ReportBuilderView from '../features/admin/views/ReportBuilderView';
 import SidebarMenu from '../features/admin/components/SidebarMenu';   
 import HeaderBar from '../features/admin/components/HeaderBar';
 
@@ -65,6 +66,7 @@ const AdminScreenWrapper = ({ children, navigation, badges = { pendingPros: 0, p
     reports: 'Reports Queue',
     analytics: 'Platform Health Analytics',
     communityHealth: 'Platform Health Analytics',
+    'report-builder': 'Report Builder',
     broadcasts: 'System Announcements',
     'audit-logs': 'Audit Logs'
   };
@@ -961,6 +963,7 @@ const AdminNavigator = () => {
       <Stack.Screen name="reports" component={ReportsScreen} />
       <Stack.Screen name="analytics" component={PlatformHealthAnalyticsView} />
       <Stack.Screen name="communityHealth" component={PlatformHealthAnalyticsView} />
+      <Stack.Screen name="report-builder" component={ReportBuilderView} />
       <Stack.Screen name="broadcasts" component={BroadcastsScreen} />
       <Stack.Screen name="audit-logs" component={AuditLogsScreen} />
     </Stack.Navigator>

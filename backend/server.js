@@ -18,16 +18,15 @@ import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPost
 import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
+import reportRoutes from './routes/reportRoutes.js'
 import organizerNotificationRoutes from './routes/supportCircleOrganizer/notifications/organizerNotificationRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Base test route
 app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
@@ -39,6 +38,7 @@ app.use('/api/users/moods', moodRoutes);
 app.use('/api/support-circles', supportCircleRoutes);
 app.use('/api/group-memberships', groupMembershipRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/volunteer', volunteerRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
@@ -64,4 +64,3 @@ const startServer = async () => {
 };
 
 startServer();
-
