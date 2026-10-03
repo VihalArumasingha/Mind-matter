@@ -145,6 +145,7 @@ export const getConversations = async (req, res) => {
     const receivedMessages = await Message.find({ receiver: currentUserId })
       .distinct('sender');
 
+    // Combine and deduplicate user IDs
     const uniqueUserIds = [...new Set([...sentMessages, ...receivedMessages])];
 
     // Get details for each conversation
@@ -190,9 +191,14 @@ export const getConversations = async (req, res) => {
       .filter((conv) => conv !== null)
       .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
+    // Deduplicate by userId (extra safety)
+    const deduplicatedConversations = validConversations.filter((conv, index, self) =>
+      index === self.findIndex((c) => c.userId.toString() === conv.userId.toString())
+    );
+
     return res.status(200).json({
       success: true,
-      data: validConversations,
+      data: deduplicatedConversations,
     });
   } catch (error) {
     console.error('[Get Conversations Error]', error);

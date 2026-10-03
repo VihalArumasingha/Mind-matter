@@ -313,60 +313,6 @@ const ProfessionalHelpScreen = ({navigation}) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Accepted Bookings Message Bar */}
-                {acceptedBookings.length > 0 && (
-                    <View style={styles.acceptedBarContainer}>
-                        <View style={styles.acceptedBarHeader}>
-                            <View style={styles.acceptedBarTitleRow}>
-                                <Icon name="event-available" size={17} color="#2D6A4F" />
-                                <Text style={styles.acceptedBarTitle}>
-                                    Accepted Bookings ({acceptedBookings.length})
-                                </Text>
-                            </View>
-                            <Text style={styles.acceptedBarHint}>Direct specialist chat</Text>
-                        </View>
-
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.acceptedBarScroll}
-                        >
-                            {acceptedBookings.map((b) => (
-                                <View key={b._id} style={styles.acceptedBarCard}>
-                                    <View style={styles.acceptedBarCardHeader}>
-                                        <View style={styles.acceptedBarAvatar}>
-                                            <Text style={styles.acceptedBarAvatarText}>
-                                                {b.professionalName?.charAt(0)?.toUpperCase() || 'P'}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.acceptedBarCardDetails}>
-                                            <Text style={styles.acceptedBarName} numberOfLines={1}>
-                                                {b.professionalName}
-                                            </Text>
-                                            <Text style={styles.acceptedBarTime}>
-                                                {b.date} · {b.startTime}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.acceptedBarChatBtn}
-                                        onPress={() => {
-                                            navigation.navigate('UserChat', {
-                                                userId: b.professional,
-                                                userName: b.professionalName,
-                                            });
-                                        }}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
-                                        <Text style={styles.acceptedBarChatBtnText}>Message</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </ScrollView>
-                    </View>
-                )}
-
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
                     <Icon name="search" size={20} color="#64748B" style={styles.searchIcon} />
@@ -418,11 +364,11 @@ const ProfessionalHelpScreen = ({navigation}) => {
                             </Text>
                         </TouchableOpacity>
 
-                        {categories.map((filter) => {
+                        {categories.map((filter, index) => {
                             const isActive = selectedFilter === filter
                             return (
                                 <TouchableOpacity
-                                    key={filter}
+                                    key={`${filter}-${index}`}
                                     style={[
                                         styles.filterChip,
                                         isActive && styles.filterChipActive
@@ -496,6 +442,60 @@ const ProfessionalHelpScreen = ({navigation}) => {
                         showsVerticalScrollIndicator={false}
                         ListFooterComponent={
                             <View style={styles.footerSection}>
+                                {/* Accepted Bookings Message Bar */}
+                                {acceptedBookings.length > 0 && (
+                                    <View style={styles.acceptedBarContainer}>
+                                        <View style={styles.acceptedBarHeader}>
+                                            <View style={styles.acceptedBarTitleRow}>
+                                                <Icon name="event-available" size={17} color="#2D6A4F" />
+                                                <Text style={styles.acceptedBarTitle}>
+                                                    Accepted Bookings ({acceptedBookings.length})
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.acceptedBarHint}>Direct specialist chat</Text>
+                                        </View>
+
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.acceptedBarScroll}
+                                        >
+                                            {acceptedBookings.map((b, index) => (
+                                                <View key={`${b._id}-${index}`} style={styles.acceptedBarCard}>
+                                                    <View style={styles.acceptedBarCardHeader}>
+                                                        <View style={styles.acceptedBarAvatar}>
+                                                            <Text style={styles.acceptedBarAvatarText}>
+                                                                {b.professionalName?.charAt(0)?.toUpperCase() || 'P'}
+                                                            </Text>
+                                                        </View>
+                                                        <View style={styles.acceptedBarCardDetails}>
+                                                            <Text style={styles.acceptedBarName} numberOfLines={1}>
+                                                                {b.professionalName}
+                                                            </Text>
+                                                            <Text style={styles.acceptedBarTime}>
+                                                                {b.date} · {b.startTime}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        style={styles.acceptedBarChatBtn}
+                                                        onPress={() => {
+                                                            navigation.navigate('UserChat', {
+                                                                userId: b.professional,
+                                                                userName: b.professionalName,
+                                                            });
+                                                        }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
+                                                        <Text style={styles.acceptedBarChatBtnText}>Message</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                )}
+
                                 <TouchableOpacity 
                                     style={styles.articlesBannerCard}
                                     onPress={() => navigation.navigate('ProfessionalPosts')}

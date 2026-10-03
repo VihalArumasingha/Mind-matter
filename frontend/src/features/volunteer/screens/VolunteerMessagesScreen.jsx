@@ -57,7 +57,13 @@ export default function VolunteerMessagesScreen({ navigation, onTabChange, onGoB
               avatarColor: '#2F6B47',
             };
           });
-          setConversations(mapped);
+
+          // Deduplicate conversations by userId
+          const uniqueConversations = mapped.filter((conv, index, self) =>
+            index === self.findIndex((c) => c.userId === conv.userId)
+          );
+
+          setConversations(uniqueConversations);
         }
       }
     } catch (err) {
