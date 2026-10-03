@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 import {
     getAttendanceForSession,
     updateAttendanceStatus,
@@ -282,7 +283,14 @@ const AttendanceScreen = ({navigation, route}) => {
 
                                 {/* ── Info ── */}
                                 <View style={styles.memberInfo}>
-                                    <Text style={styles.memberName}>{name}</Text>
+                                    <View style={styles.memberNameRow}>
+                                        <Text style={styles.memberName}>{name}</Text>
+                                        <CommunityOrganizerBadge
+                                            role={user?.role}
+                                            size="small"
+                                            style={styles.memberBadge}
+                                        />
+                                    </View>
                                     {user.email ? (
                                         <Text style={styles.memberEmail}>
                                             {user.email}
@@ -594,10 +602,22 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
+    memberNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+
     memberName: {
         fontSize: 15,
         fontWeight: '600',
         color: '#252A25',
+    },
+
+    memberBadge: {
+        width: 14,
+        height: 14,
     },
 
     memberEmail: {

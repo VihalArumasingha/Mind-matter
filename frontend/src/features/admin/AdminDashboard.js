@@ -8,6 +8,7 @@ import TherapistApplicationForm from '../therapist/TherapistApplicationForm';
 import DashboardOverviewView from './views/DashboardOverviewView';
 import UsersManagementView from './views/UsersManagementView';
 import ProfessionalsManagementView from './views/ProfessionalsManagementView';
+import CommunityOrganizerApplicationsView from './views/CommunityOrganizerApplicationsView';
 import CommunitiesManagementView from './views/CommunitiesManagementView';
 import PostsManagementView from './views/PostsManagementView';
 import PlatformHealthAnalyticsView from './views/PlatformHealthAnalyticsView';
@@ -21,8 +22,11 @@ import {
   suspendUserApi,
   unsuspendUserApi,
   getProfessionalApplicationsApi,
+  getCommunityOrganizerApplicationsApi,
   approveProfessionalApi,
   rejectProfessionalApi,
+  approveCommunityOrganizerApi,
+  rejectCommunityOrganizerApi,
   getCommunitiesApi,
   warnCommunityApi,
   restrictCommunityApi,
@@ -62,6 +66,7 @@ const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState({ stats: {}, recentActivities: [] });
   const [users, setUsers] = useState([]);
   const [professionals, setProfessionals] = useState([]);
+  const [communityOrganizerRequests, setCommunityOrganizerRequests] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [posts, setPosts] = useState([]);
   const [reports, setReports] = useState([]);
@@ -80,6 +85,9 @@ const AdminDashboard = () => {
 
       const p = await getProfessionalApplicationsApi();
       setProfessionals(p || []);
+
+      const organizerApps = await getCommunityOrganizerApplicationsApi();
+      setCommunityOrganizerRequests(organizerApps || []);
 
       const c = await getCommunitiesApi();
       setCommunities(c || []);
@@ -190,6 +198,7 @@ const AdminDashboard = () => {
   };
 
   const pendingProsCount = professionals.filter((p) => p.status === 'pending').length;
+  const pendingCommunityOrganizerCount = communityOrganizerRequests.filter((p) => p.status === 'pending').length;
   const openReportsCount = reports.filter((r) => r.status === 'open' || r.status === 'investigating').length;
 
   const [showApplyFormModal, setShowApplyFormModal] = useState(false);
@@ -230,6 +239,20 @@ const AdminDashboard = () => {
             onReject={handleRejectProfessional}
             onOpenApplyForm={() => setShowApplyFormModal(true)}
             onRefresh={loadAdminData}
+          />
+        );
+      case 'community-organizer-requests':
+        return (
+          <CommunityOrganizerApplicationsView
+            applications={communityOrganizerRequests}
+            onApprove={async (id) => {
+              await approveCommunityOrganizerApi(id);
+              loadAdminData();
+            }}
+            onReject={async (id, reason) => {
+              await rejectCommunityOrganizerApi(id, reason);
+              loadAdminData();
+            }}
           />
         );
       case 'communities':
@@ -275,7 +298,7 @@ const AdminDashboard = () => {
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
         onClose={() => setSidebarOpen(false)}
-        badges={{ pendingPros: pendingProsCount, openReports: openReportsCount }}
+        badges={{ pendingPros: pendingProsCount, pendingCommunityOrganizers: pendingCommunityOrganizerCount, openReports: openReportsCount }}
       />
     )}
 

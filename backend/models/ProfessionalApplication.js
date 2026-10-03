@@ -36,6 +36,11 @@ const professionalApplicationSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    applicationType: {
+      type: String,
+      enum: ['professional', 'communityOrganizer'],
+      default: 'professional'
+    },
     licenseNum: {
       type: String,
       required: true,

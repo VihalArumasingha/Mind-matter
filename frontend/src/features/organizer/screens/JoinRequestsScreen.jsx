@@ -12,8 +12,10 @@ import {
 } from 'react-native'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 import {
     getPendingRequests,
+    getAllPendingRequests,
     respondToRequest,
 } from '../services/supportCircleService'
 
@@ -63,10 +65,9 @@ const JoinRequestsScreen = ({navigation, route}) => {
         try {
             setError('')
 
-            const data = await getPendingRequests(
-                token,
-                circleId,
-            )
+            const data = circleId
+                ? await getPendingRequests(token, circleId)
+                : await getAllPendingRequests(token)
 
             setRequests(data.requests ?? [])
         } catch (err) {
@@ -348,12 +349,19 @@ const JoinRequestsScreen = ({navigation, route}) => {
                                         style={
                                             styles.cardNameBlock
                                         }>
-                                        <Text
-                                            style={
-                                                styles.cardName
-                                            }>
-                                            {name}
-                                        </Text>
+                                        <View style={styles.nameRow}>
+                                            <Text
+                                                style={
+                                                    styles.cardName
+                                                }>
+                                                {name}
+                                            </Text>
+                                            <CommunityOrganizerBadge
+                                                role={applicant?.role}
+                                                size="small"
+                                                style={styles.cardBadge}
+                                            />
+                                        </View>
 
                                         {applicant.email ? (
                                             <Text
@@ -947,10 +955,22 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+
     cardName: {
         fontSize: 15,
         fontWeight: '700',
         color: '#252A25',
+    },
+
+    cardBadge: {
+        width: 14,
+        height: 14,
     },
 
     cardEmail: {

@@ -17,6 +17,7 @@ import {
   getAuditLogs,
   getUsersApi,
   getProfessionalApplicationsApi,
+  getCommunityOrganizerApplicationsApi,
   getCommunitiesApi,
   getPostsApi,
   getReportsApi,
@@ -27,6 +28,8 @@ import {
   unsuspendUserApi,
   approveProfessionalApi,
   rejectProfessionalApi,
+  approveCommunityOrganizerApi,
+  rejectCommunityOrganizerApi,
   keepPostApi,
   restrictPostApi,
   removePostApi
@@ -34,6 +37,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import UsersManagementView from '../features/admin/views/UsersManagementView';
 import ProfessionalsManagementView from '../features/admin/views/ProfessionalsManagementView';
+import CommunityOrganizerApplicationsView from '../features/admin/views/CommunityOrganizerApplicationsView';
 import PostsManagementView from '../features/admin/views/PostsManagementView';
 import PlatformHealthAnalyticsView from '../features/admin/views/PlatformHealthAnalyticsView';
 import ReportBuilderView from '../features/admin/views/ReportBuilderView';
@@ -49,13 +53,14 @@ const BROADCAST_AUDIENCES = [
   { value: 'communityOrganizer', label: 'Organizers' }
 ];
 
-const AdminScreenWrapper = ({ children, navigation }) => {
+const AdminScreenWrapper = ({ children, navigation, badges = { pendingPros: 0, pendingCommunityOrganizers: 0, openReports: 0 } }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const SCREEN_TITLES = {
     dashboard: 'MindMatter Mental Health Admin Portal',
     users: 'User Management',
     professionals: 'Professionals Management',
+    'community-organizer-requests': 'Community Organizer Requests',
     communities: 'Communities & Groups',
     posts: 'Posts Moderation',
     reports: 'Reports Queue',
@@ -92,7 +97,7 @@ const AdminScreenWrapper = ({ children, navigation }) => {
             setSidebarOpen(false);
           }}
           onClose={() => setSidebarOpen(false)}
-          badges={{ pendingPros: 0, openReports: 0 }}
+          badges={badges}
         />
       )}
       <HeaderBar 
@@ -361,6 +366,91 @@ const ProfessionalsScreen = ({ navigation }) => {
         onApprove={handleApprove}
         onReject={handleReject}
         onOpenApplyForm={handleOpenApplyForm}
+      />
+    </AdminScreenWrapper>
+  );
+};
+
+const CommunityOrganizerRequestsScreen = ({ navigation }) => {
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { token } = useAuth();
+
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getCommunityOrganizerApplicationsApi(token);
+      setApplications(response || []);
+    } catch (error) {
+      console.error('Error fetching organizer applications:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchApplications();
+    }, [token])
+  );
+
+  const handleApprove = async (id) => {
+    try {
+      await approveCommunityOrganizerApi(token, id);
+      Alert.alert('Success', 'Community organizer request approved successfully');
+      fetchApplications();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to approve organizer application');
+    }
+  };
+
+  const handleReject = async (id, reason) => {
+    try {
+      await rejectCommunityOrganizerApi(token, id, reason);
+      Alert.alert('Success', 'Community organizer request rejected successfully');
+      fetchApplications();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to reject organizer application');
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4E8C4A" />
+        <Text style={styles.loadingText}>Loading community organizer requests...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={fetchApplications}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <AdminScreenWrapper
+      title="Community Organizer Requests"
+      navigation={navigation}
+      badges={{
+        pendingPros: 0,
+        pendingCommunityOrganizers: applications.filter((app) => app.status === 'pending').length,
+        openReports: 0
+      }}
+    >
+      <CommunityOrganizerApplicationsView
+        applications={applications}
+        onApprove={handleApprove}
+        onReject={handleReject}
       />
     </AdminScreenWrapper>
   );
@@ -867,6 +957,7 @@ const AdminNavigator = () => {
       <Stack.Screen name="dashboard" component={DashboardScreen} />
       <Stack.Screen name="users" component={UsersScreen} />
       <Stack.Screen name="professionals" component={ProfessionalsScreen} />
+      <Stack.Screen name="community-organizer-requests" component={CommunityOrganizerRequestsScreen} />
       <Stack.Screen name="communities" component={CommunitiesScreen} />
       <Stack.Screen name="posts" component={PostsScreen} />
       <Stack.Screen name="reports" component={ReportsScreen} />

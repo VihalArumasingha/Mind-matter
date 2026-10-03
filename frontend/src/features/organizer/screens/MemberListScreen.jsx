@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 import {getCircleMembers, removeMember} from '../services/supportCircleService'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -226,6 +227,11 @@ const MemberListScreen = ({navigation, route}) => {
                                 <View style={styles.memberInfo}>
                                     <View style={styles.memberNameRow}>
                                         <Text style={styles.memberName}>{name}</Text>
+                                        <CommunityOrganizerBadge
+                                            role={user?.role}
+                                            size="small"
+                                            style={styles.memberBadge}
+                                        />
                                         <View
                                             style={[
                                                 styles.roleBadge,
@@ -519,6 +525,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         paddingHorizontal: 7,
         paddingVertical: 2,
+    },
+
+    memberBadge: {
+        width: 14,
+        height: 14,
     },
 
     roleBadgeText: {

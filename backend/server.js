@@ -19,6 +19,7 @@ import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChat
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
+import organizerNotificationRoutes from './routes/supportCircleOrganizer/notifications/organizerNotificationRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +47,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
 app.use('/api/group-chat', groupChatRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/organizer/notifications', organizerNotificationRoutes);
 
 const startServer = async () => {
     try {

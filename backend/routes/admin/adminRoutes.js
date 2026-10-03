@@ -6,9 +6,12 @@ import {
   suspendUser,
   unsuspendUser,
   getProfessionalApplications,
+  getCommunityOrganizerApplications,
   submitProfessionalApplication,
   approveProfessional,
   rejectProfessional,
+  approveCommunityOrganizer,
+  rejectCommunityOrganizer,
   getReports,
   investigateReport,
   resolveReport,
@@ -39,10 +42,13 @@ router.put('/users/:id/warn', warnUser);
 router.put('/users/:id/suspend', suspendUser);
 router.put('/users/:id/unsuspend', unsuspendUser);
 
-router.get('/professionals/applications', getProfessionalApplications);
+router.get('/professionals/applications', authMiddleware, requireRole('admin'), getProfessionalApplications);
+router.get('/community-organizers/applications', authMiddleware, requireRole('admin'), getCommunityOrganizerApplications);
 router.post('/professionals/applications/apply', uploadMultiple, submitProfessionalApplication);
-router.put('/professionals/applications/:id/approve', approveProfessional);
-router.put('/professionals/applications/:id/reject', rejectProfessional);
+router.put('/professionals/applications/:id/approve', authMiddleware, requireRole('admin'), approveProfessional);
+router.put('/professionals/applications/:id/reject', authMiddleware, requireRole('admin'), rejectProfessional);
+router.put('/community-organizers/applications/:id/approve', authMiddleware, requireRole('admin'), approveCommunityOrganizer);
+router.put('/community-organizers/applications/:id/reject', authMiddleware, requireRole('admin'), rejectCommunityOrganizer);
 
 router.get('/reports', getReports);
 router.put('/reports/:id/investigate', investigateReport);
