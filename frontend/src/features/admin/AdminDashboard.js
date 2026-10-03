@@ -10,7 +10,8 @@ import UsersManagementView from './views/UsersManagementView';
 import ProfessionalsManagementView from './views/ProfessionalsManagementView';
 import CommunitiesManagementView from './views/CommunitiesManagementView';
 import PostsManagementView from './views/PostsManagementView';
-import PlatformAnalyticsView from './views/PlatformAnalyticsView';
+import PlatformHealthAnalyticsView from './views/PlatformHealthAnalyticsView';
+import ReportBuilderView from './views/ReportBuilderView';
 
 
 import {
@@ -48,6 +49,7 @@ const TITLES = {
   posts: 'Peer Posts Moderation',
   reports: 'User Reports Queue',
   analytics: 'Platform Health & Analytics',
+  'report-builder': 'Report Builder',
   broadcasts: 'System Announcements',
   settings: 'Admin System Settings',
   'audit-logs': 'System Audit Logs'
@@ -249,13 +251,9 @@ const AdminDashboard = () => {
           />
         );
       case 'analytics':
-        return (
-          <PlatformAnalyticsView
-            stats={dashboardData.stats}
-            recentActivities={dashboardData.recentActivities}
-            onNavigate={handleSelectTab}
-          />
-        );
+        return <PlatformHealthAnalyticsView />;
+      case 'report-builder':
+        return <ReportBuilderView />;
 
       default:
         return <DashboardOverviewView stats={dashboardData.stats} recentActivities={dashboardData.recentActivities} onNavigate={handleSelectTab} />;
