@@ -15,6 +15,35 @@ import Booking from '../../models/Booking.js';
 import ProfessionalPost from '../../models/ProfessionalPost.js';
 import bcrypt from 'bcryptjs';
 
+export const resolveApplicationType = (application = {}) => {
+  const type = application.applicationType || (application.profession === 'Community Organizer' ? 'communityOrganizer' : 'professional');
+  return type === 'communityOrganizer' ? 'communityOrganizer' : 'professional';
+};
+
+export const buildApplicationTypeQuery = (applicationType = 'professional') => {
+  const normalizedType = applicationType === 'communityOrganizer' ? 'communityOrganizer' : 'professional';
+
+  if (normalizedType === 'communityOrganizer') {
+    return {
+      $or: [
+        { applicationType: 'communityOrganizer' },
+        { applicationType: { $exists: false }, profession: 'Community Organizer' }
+      ]
+    };
+  }
+
+  return {
+    $or: [
+      { applicationType: 'professional' },
+      { applicationType: { $exists: false }, profession: { $ne: 'Community Organizer' } }
+    ]
+  };
+};
+
+export const getApprovalRoleForApplication = (application = {}) => {
+  return resolveApplicationType(application) === 'communityOrganizer' ? 'communityOrganizer' : 'therapist';
+};
+
 const aggregateActiveUsers = (Model, userField, since, eligibleRoles) => Model.aggregate([
   {
     $match: {
@@ -322,7 +351,7 @@ export const unsuspendUser = async (req, res) => {
 export const getProfessionalApplications = async (req, res) => {
   try {
     const { status } = req.query;
-    let query = {};
+    let query = buildApplicationTypeQuery('professional');
     if (status && status !== 'all') {
       query.status = status;
     }
@@ -334,6 +363,29 @@ export const getProfessionalApplications = async (req, res) => {
       docCount: app.documents?.length || 0,
       docs: app.documents?.map(d => ({ title: d.title, url: d.url }))
     })));
+
+    return res.status(200).json({
+      success: true,
+      applications
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const getCommunityOrganizerApplications = async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = buildApplicationTypeQuery('communityOrganizer');
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    const applications = await ProfessionalApplication.find(query)
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -363,7 +415,8 @@ export const submitProfessionalApplication = async (req, res) => {
       specialization,
       expYears,
       bio,
-      userId
+      userId,
+      applicationType
     } = req.body;
 
     if (!fullName || !email || !licenseNum) {
@@ -403,6 +456,12 @@ export const submitProfessionalApplication = async (req, res) => {
         });
       }
     }
+    const normalizedProfession = profession || 'Clinical Psychologist';
+    const normalizedApplicationType = resolveApplicationType({
+      applicationType,
+      profession: normalizedProfession
+    });
+
     const applicationData = {
       userId: userId || null,
       fullName: fullName.trim(),
@@ -410,7 +469,8 @@ export const submitProfessionalApplication = async (req, res) => {
       accountEmail: accountEmail?.trim().toLowerCase() || email.trim().toLowerCase(), // Store account email separately for linking
       password: password ? password.trim() : '',
       phone: phone || '',
-      profession: profession || 'Clinical Psychologist',
+      profession: normalizedProfession,
+      applicationType: normalizedApplicationType,
       licenseNum: licenseNum.trim(),
       specialization: specialization || 'General Mental Health Support',
       expYears: parseInt(expYears, 10) || 1,
@@ -475,12 +535,10 @@ export const approveProfessional = async (req, res) => {
     
     // Handle user account creation or update
     let user;
+    const roleToSet = getApprovalRoleForApplication(application);
 
     if (application.userId) {
       console.log('Updating existing user with ID:', application.userId);
-      const roleToSet = application.profession === 'Community Organizer'
-        ? 'communityOrganizer'
-        : 'therapist';
       user = await User.findByIdAndUpdate(application.userId, {
         role: roleToSet,
         phone: application.phone,
@@ -498,10 +556,9 @@ export const approveProfessional = async (req, res) => {
       const existingUser = await User.findOne({ email: emailToCheck });
       
       if (existingUser) {
-        console.log('Found existing user with account email, updating role to therapist:', existingUser.name);
-        // Update existing user to therapist role - skip documents to avoid schema conflicts
+        console.log('Found existing user with account email, updating role:', roleToSet, existingUser.name);
         user = await User.findByIdAndUpdate(existingUser._id, {
-          role: 'therapist',
+          role: roleToSet,
           phone: application.phone,
           profession: application.profession,
           licenseNum: application.licenseNum,
@@ -509,19 +566,18 @@ export const approveProfessional = async (req, res) => {
           expYears: application.expYears,
           bio: application.bio
         }, { returnDocument: 'after' });
-        console.log('Updated existing user role to therapist:', user.name, 'New role:', user.role);
+        console.log('Updated existing user role:', user.name, 'New role:', user.role);
       } else {
-        console.log('Creating new user with therapist role using account email');
-        // Create new user with therapist role using account email
+        console.log('Creating new user with role using account email:', roleToSet);
         const hashedPassword = application.password 
           ? await bcrypt.hash(application.password, 10)
-          : await bcrypt.hash('Therapist@123', 10); // Default password for cases where password wasn't provided
+          : await bcrypt.hash('Therapist@123', 10);
         
         user = await User.create({
           name: application.fullName,
-          email: application.accountEmail || application.email, // Use account email for user account
+          email: application.accountEmail || application.email,
           password: hashedPassword,
-          role: 'therapist',
+          role: roleToSet,
           phone: application.phone,
           profession: application.profession,
           licenseNum: application.licenseNum,
@@ -529,7 +585,7 @@ export const approveProfessional = async (req, res) => {
           expYears: application.expYears,
           bio: application.bio
         });
-        console.log('Created new user with therapist role:', user.name, 'Role:', user.role);
+        console.log('Created new user with role:', user.name, 'Role:', user.role);
       }
     }
     
@@ -596,6 +652,135 @@ export const rejectProfessional = async (req, res) => {
     });
   } catch (error) {
     console.error('Error rejecting professional:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const approveCommunityOrganizer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminName = req.user?.name || 'Admin User';
+    const application = await ProfessionalApplication.findById(id);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Community organizer application not found'
+      });
+    }
+
+    application.status = 'approved';
+    application.reviewedBy = adminName;
+    application.applicationType = resolveApplicationType(application);
+    await application.save();
+
+    const roleToSet = getApprovalRoleForApplication(application);
+    let user = null;
+
+    if (application.userId) {
+      user = await User.findByIdAndUpdate(application.userId, {
+        role: roleToSet,
+        phone: application.phone,
+        profession: application.profession,
+        specialization: application.specialization,
+        bio: application.bio 
+      }, { returnDocument: 'after' });
+    } else {
+      const emailToCheck = application.accountEmail || application.email;
+      const existingUser = await User.findOne({ email: emailToCheck });
+
+      if (existingUser) {
+        user = await User.findByIdAndUpdate(existingUser._id, {
+          role: roleToSet,
+          phone: application.phone,
+          profession: application.profession,
+          specialization: application.specialization,
+          bio: application.bio
+        }, { returnDocument: 'after' });
+      } else {
+        const hashedPassword = application.password
+          ? await bcrypt.hash(application.password, 10)
+          : await bcrypt.hash('CommunityOrganizer@123', 10);
+
+        user = await User.create({
+          name: application.fullName,
+          email: application.accountEmail || application.email,
+          password: hashedPassword,
+          role: roleToSet,
+          phone: application.phone,
+          profession: application.profession,
+          specialization: application.specialization,
+          bio: application.bio
+        });
+      }
+    }
+
+    await AuditLog.create({
+      adminName,
+      action: 'APPROVE_COMMUNITY_ORGANIZER',
+      targetType: 'Community Organizer',
+      targetId: application._id,
+      targetName: application.fullName,
+      details: `Approved community organizer application for ${application.fullName}`
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Community organizer application approved successfully.',
+      application,
+      user: {
+        id: user?._id,
+        name: user?.name,
+        email: user?.email,
+        role: user?.role
+      }
+    });
+  } catch (error) {
+    console.error('Error approving community organizer application:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const rejectCommunityOrganizer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminName = req.user?.name || 'Admin User';
+
+    const application = await ProfessionalApplication.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Community organizer application not found'
+      });
+    }
+
+    application.status = 'rejected';
+    application.rejectionReason = reason || 'Application did not meet requirements';
+    application.reviewedBy = adminName;
+    await application.save();
+
+    await AuditLog.create({
+      adminName,
+      action: 'REJECT_COMMUNITY_ORGANIZER',
+      targetType: 'Community Organizer',
+      targetId: application._id,
+      targetName: application.fullName,
+      details: `Rejected community organizer application. Reason: ${reason || 'Application did not meet requirements'}`
+    });
+
+    res.status(200).json({
+      success: true,
+      application
+    });
+  } catch (error) {
+    console.error('Error rejecting community organizer application:', error);
     res.status(500).json({
       success: false,
       message: error.message

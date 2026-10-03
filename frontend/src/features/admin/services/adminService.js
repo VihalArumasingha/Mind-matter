@@ -111,6 +111,17 @@ export const getProfessionalApplicationsApi = async (token, status = 'all') => {
   }
 };
 
+export const getCommunityOrganizerApplicationsApi = async (token, status = 'all') => {
+  try {
+    const query = status !== 'all' ? `?status=${status}` : '';
+    const response = await apiRequest(`/api/admin/community-organizers/applications${query}`, 'GET', null, token);
+    return response.applications || response;
+  } catch (error) {
+    console.error('Error fetching community organizer applications:', error);
+    throw error;
+  }
+};
+
 export const submitTherapistApplicationWithFiles  = async (formData) => {
   try {
     console.log('Submitting application - Form email:', formData.email, 'Account email:', formData.userEmail);
@@ -122,15 +133,16 @@ export const submitTherapistApplicationWithFiles  = async (formData) => {
       },
       body: JSON.stringify({
         fullName: formData.fullName,
-        email: formData.email, // Save form email as-is in the application
-        accountEmail: formData.userEmail, // Use logged-in user's email for account linking
+        email: formData.email,
+        accountEmail: formData.userEmail,
         phone: formData.phone || '',
         profession: formData.profession || 'Clinical Psychologist',
+        applicationType: formData.applicationType || (formData.profession === 'Community Organizer' ? 'communityOrganizer' : 'professional'),
         licenseNum: formData.licenseNum,
         specialization: formData.specialization || 'General Mental Health Support',
         expYears: formData.expYears || 1,
         bio: formData.bio || '',
-        userId: formData.userId || formData.user?._id || null, // Use logged-in user's ID
+        userId: formData.userId || formData.user?._id || null,
         documents: formData.documents || [],
       }),
     });
@@ -147,7 +159,10 @@ export const submitTherapistApplicationWithFiles  = async (formData) => {
     throw error;
   }
 };
-export const approveProfessionalApi = async (token, id) => {
+export const approveProfessionalApi = async (tokenOrId, maybeId) => {
+  const token = maybeId !== undefined ? tokenOrId : null;
+  const id = maybeId !== undefined ? maybeId : tokenOrId;
+
   try {
     const response = await apiRequest(`/api/admin/professionals/applications/${id}/approve`, 'PUT', null, token);
     return response.application || response;
@@ -157,12 +172,43 @@ export const approveProfessionalApi = async (token, id) => {
   }
 };
 
-export const rejectProfessionalApi = async (token, id, reason) => {
+export const rejectProfessionalApi = async (tokenOrId, maybeId, maybeReason) => {
+  const token = arguments.length >= 3 ? tokenOrId : null;
+  const id = arguments.length >= 3 ? maybeId : tokenOrId;
+  const reason = arguments.length >= 3 ? maybeReason : maybeId;
+
   try {
     const response = await apiRequest(`/api/admin/professionals/applications/${id}/reject`, 'PUT', { reason }, token);
     return response.application || response;
   } catch (error) {
     console.error('Error rejecting professional:', error);
+    throw error;
+  }
+};
+
+export const approveCommunityOrganizerApi = async (tokenOrId, maybeId) => {
+  const token = maybeId !== undefined ? tokenOrId : null;
+  const id = maybeId !== undefined ? maybeId : tokenOrId;
+
+  try {
+    const response = await apiRequest(`/api/admin/community-organizers/applications/${id}/approve`, 'PUT', null, token);
+    return response.application || response;
+  } catch (error) {
+    console.error('Error approving community organizer application:', error);
+    throw error;
+  }
+};
+
+export const rejectCommunityOrganizerApi = async (tokenOrId, maybeId, maybeReason) => {
+  const token = arguments.length >= 3 ? tokenOrId : null;
+  const id = arguments.length >= 3 ? maybeId : tokenOrId;
+  const reason = arguments.length >= 3 ? maybeReason : maybeId;
+
+  try {
+    const response = await apiRequest(`/api/admin/community-organizers/applications/${id}/reject`, 'PUT', { reason }, token);
+    return response.application || response;
+  } catch (error) {
+    console.error('Error rejecting community organizer application:', error);
     throw error;
   }
 };
