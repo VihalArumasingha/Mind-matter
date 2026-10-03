@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import { COLORS } from '../styles/volunteerDashboardStyles';
 import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests, sendZoomLink } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
 
-export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
+export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoBack }) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'accepted' | 'history'
   const [requestsList, setRequestsList] = useState([]);
@@ -32,7 +32,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
 
   // Load requests from backend using the same endpoint as dashboard
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -70,11 +70,11 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     loadRequests();
-  }, [token, activeTab]);
+  }, [loadRequests, activeTab]);
 
   const filteredRequests = requestsList.filter((r) => {
     if (activeTab === 'pending') return r.status === 'pending' || r.tabCategory === 'pending';
@@ -218,15 +218,17 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
   const pendingCount = requestsList.filter((r) => r.status === 'pending' || r.tabCategory === 'pending').length;
   const acceptedCount = requestsList.filter((r) => r.status === 'confirmed' || r.status === 'accepted' || r.tabCategory === 'accepted').length;
 
-  const handleGoBack = () => {
-    if (onTabChange) {
+  const handleGoBack = useCallback(() => {
+    if (onGoBack) {
+      onGoBack();
+    } else if (onTabChange) {
       onTabChange('dashboard');
     } else if (navigation?.canGoBack && navigation.canGoBack()) {
       navigation.goBack();
     } else if (navigation?.navigate) {
       navigation.navigate('VolunteerDashboard');
     }
-  };
+  }, [onGoBack, onTabChange, navigation]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -235,7 +237,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [onTabChange, navigation]);
+  }, [handleGoBack]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -381,7 +383,7 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange }) {
                   <View style={styles.actionsRow}>
                     <TouchableOpacity
                       style={styles.messageButton}
-                      onPress={() => onTabChange?.('messages')}
+                      onPress={() => navigation.navigate('VolunteerChat', { userId: req.userId, userName: req.name })}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="chatbubble-ellipses-outline" size={18} color={GREEN} />

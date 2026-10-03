@@ -411,6 +411,7 @@ export const getVolunteerRequests = async (req, res) => {
       
       return {
         id: booking._id.toString(),
+        userId: booking.user ? booking.user.toString() : null,
         name: booking.fullName,
         initials: initials,
         category: booking.profession,

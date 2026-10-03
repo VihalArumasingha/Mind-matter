@@ -12,6 +12,7 @@ import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import UserNotificationsScreen from '../features/userHome/screens/UserNotificationsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
 import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
+import VolunteerChatScreen from '../features/volunteer/screens/VolunteerChatScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -61,6 +62,16 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="UserNotifications"
                 component={UserNotificationsScreen}
+            />
+
+            <Stack.Screen
+                name="UserChat"
+                component={VolunteerChatScreen}
+            />
+
+            <Stack.Screen
+                name="VolunteerChat"
+                component={VolunteerChatScreen}
             />
 
             <Stack.Screen

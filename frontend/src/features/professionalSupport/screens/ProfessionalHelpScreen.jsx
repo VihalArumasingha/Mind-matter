@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons'
 import {getApprovedProfessionals, getProfessionCategories} from '../services/professionalService'
 import {useAuth} from '../../../context/AuthContext'
 import {PROFESSION_FILTERS} from '../../../config/professions'
+import {API_BASE_URL} from '../../../config/api'
 
 const AVATAR_COLORS = [
     '#2D6A4F', // Forest green
@@ -59,13 +60,30 @@ const getInitials = (name = '') => {
 }
 
 const ProfessionalHelpScreen = ({navigation}) => {
-    const {token} = useAuth()
+    const {token, authFetch} = useAuth()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedFilter, setSelectedFilter] = useState(null)
     const [professionals, setProfessionals] = useState([])
     const [categories, setCategories] = useState(PROFESSION_FILTERS)
     const [isLoading, setIsLoading] = useState(true)
     const [expandedCard, setExpandedCard] = useState(null)
+    const [acceptedBookings, setAcceptedBookings] = useState([])
+
+    const fetchUserBookings = useCallback(async () => {
+        if (!token) return
+        try {
+            const res = await authFetch(`${API_BASE_URL}/api/users/bookings`)
+            if (res.ok) {
+                const data = await res.json()
+                const confirmed = (data.bookings || []).filter(
+                    b => b.status === 'confirmed' || b.status === 'accepted' || b.status === 'approved'
+                )
+                setAcceptedBookings(confirmed)
+            }
+        } catch (err) {
+            console.log('[ProfessionalHelpScreen] Error loading bookings:', err.message)
+        }
+    }, [token, authFetch])
 
     const fetchProfessionals = useCallback(async () => {
         try {
@@ -98,10 +116,11 @@ const ProfessionalHelpScreen = ({navigation}) => {
     useEffect(() => {
         if (token) {
             fetchCategories()
+            fetchUserBookings()
         } else {
             setIsLoading(false)
         }
-    }, [token, fetchCategories])
+    }, [token, fetchCategories, fetchUserBookings])
 
     useEffect(() => {
         if (!token) return
@@ -293,6 +312,60 @@ const ProfessionalHelpScreen = ({navigation}) => {
                         <Icon name="article" size={20} color="#2D6A4F" />
                     </TouchableOpacity>
                 </View>
+
+                {/* Accepted Bookings Message Bar */}
+                {acceptedBookings.length > 0 && (
+                    <View style={styles.acceptedBarContainer}>
+                        <View style={styles.acceptedBarHeader}>
+                            <View style={styles.acceptedBarTitleRow}>
+                                <Icon name="event-available" size={17} color="#2D6A4F" />
+                                <Text style={styles.acceptedBarTitle}>
+                                    Accepted Bookings ({acceptedBookings.length})
+                                </Text>
+                            </View>
+                            <Text style={styles.acceptedBarHint}>Direct specialist chat</Text>
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.acceptedBarScroll}
+                        >
+                            {acceptedBookings.map((b) => (
+                                <View key={b._id} style={styles.acceptedBarCard}>
+                                    <View style={styles.acceptedBarCardHeader}>
+                                        <View style={styles.acceptedBarAvatar}>
+                                            <Text style={styles.acceptedBarAvatarText}>
+                                                {b.professionalName?.charAt(0)?.toUpperCase() || 'P'}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.acceptedBarCardDetails}>
+                                            <Text style={styles.acceptedBarName} numberOfLines={1}>
+                                                {b.professionalName}
+                                            </Text>
+                                            <Text style={styles.acceptedBarTime}>
+                                                {b.date} · {b.startTime}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.acceptedBarChatBtn}
+                                        onPress={() => {
+                                            navigation.navigate('UserChat', {
+                                                userId: b.professional,
+                                                userName: b.professionalName,
+                                            });
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
+                                        <Text style={styles.acceptedBarChatBtnText}>Message</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
@@ -514,6 +587,114 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#C8E6C9',
+    },
+
+    /* Accepted Bookings Message Bar */
+    acceptedBarContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 14,
+        borderWidth: 1.5,
+        borderColor: '#B8DBC2',
+        shadowColor: '#2D6A4F',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+
+    acceptedBarHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+
+    acceptedBarTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
+    acceptedBarTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1B4332',
+    },
+
+    acceptedBarHint: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#2D6A4F',
+    },
+
+    acceptedBarScroll: {
+        gap: 10,
+        paddingRight: 8,
+    },
+
+    acceptedBarCard: {
+        backgroundColor: '#F4F9F5',
+        borderRadius: 12,
+        padding: 10,
+        width: 220,
+        borderWidth: 1,
+        borderColor: '#D8EEDB',
+    },
+
+    acceptedBarCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+
+    acceptedBarAvatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#2D6A4F',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8,
+    },
+
+    acceptedBarAvatarText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    acceptedBarCardDetails: {
+        flex: 1,
+    },
+
+    acceptedBarName: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+
+    acceptedBarTime: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 1,
+    },
+
+    acceptedBarChatBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2D6A4F',
+        borderRadius: 8,
+        paddingVertical: 6,
+        gap: 6,
+    },
+
+    acceptedBarChatBtnText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
     },
 
     /* Search Bar */

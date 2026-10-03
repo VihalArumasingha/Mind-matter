@@ -25,6 +25,7 @@ const UserHomeScreen = ({navigation}) => {
     const [isLoading, setIsLoading] = useState(true)
     const [unreadCount, setUnreadCount] = useState(0)
     const [latestApprovedBooking, setLatestApprovedBooking] = useState(null)
+    const [latestMessage, setLatestMessage] = useState(null)
 
     const loadPosts = useCallback(async () => {
         try {
@@ -45,8 +46,11 @@ const UserHomeScreen = ({navigation}) => {
             if (res.ok) {
                 const data = await res.json()
                 setUnreadCount(data.unreadCount || 0)
-                const approved = (data.notifications || []).find(n => n.type === 'booking_approved' && !n.isRead)
+                const notifs = data.notifications || []
+                const approved = notifs.find(n => (n.type === 'booking_approved' || n.type === 'zoom_link_sent') && !n.isRead)
                 setLatestApprovedBooking(approved || null)
+                const msgNotif = notifs.find(n => n.type === 'new_message' && !n.isRead)
+                setLatestMessage(msgNotif || null)
             }
         } catch (err) {
             console.log('[UserHomeScreen] Failed to load notifications:', err.message)
@@ -221,12 +225,38 @@ const UserHomeScreen = ({navigation}) => {
                             )}
                         </TouchableOpacity>
                     </View>
-                    {latestApprovedBooking && (
+                    {latestMessage && (
                         <TouchableOpacity
-                            style={styles.approvedBanner}
-                            onPress={() => navigation.navigate('UserNotifications')}
+                            style={styles.messageBanner}
+                            onPress={() => {
+                                navigation.navigate('UserChat', {
+                                    userId: latestMessage.relatedUserId,
+                                    userName: latestMessage.relatedUserName || 'Professional',
+                                });
+                            }}
                             activeOpacity={0.88}
                         >
+                            <View style={styles.messageBannerIcon}>
+                                <Icon name="chat" size={24} color="#FFFFFF" />
+                            </View>
+                            <View style={styles.messageBannerContent}>
+                                <View style={styles.approvedBannerHeader}>
+                                    <Text style={styles.messageBannerTitle}>
+                                        Message from {latestMessage.relatedUserName || 'Professional'}
+                                    </Text>
+                                    <View style={styles.messageNewBadge}>
+                                        <Text style={styles.newBadgeText}>NEW</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.messageBannerText} numberOfLines={2}>
+                                    {latestMessage.message}
+                                </Text>
+                                <Text style={styles.messageBannerTap}>Tap to open chat & reply →</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    {latestApprovedBooking && (
+                        <View style={styles.approvedBanner}>
                             <View style={styles.approvedBannerIcon}>
                                 <Icon name="event-available" size={26} color="#2F6B47" />
                             </View>
@@ -242,9 +272,29 @@ const UserHomeScreen = ({navigation}) => {
                                 <Text style={styles.approvedBannerMessage} numberOfLines={2}>
                                     {latestApprovedBooking.message}
                                 </Text>
-                                <Text style={styles.approvedBannerTap}>Tap to view in notifications →</Text>
+                                <View style={styles.approvedBannerButtons}>
+                                    {latestApprovedBooking.relatedUserId && (
+                                        <TouchableOpacity
+                                            style={styles.approvedBannerChatBtn}
+                                            onPress={() => navigation.navigate('UserChat', {
+                                                userId: latestApprovedBooking.relatedUserId,
+                                                userName: latestApprovedBooking.relatedUserName || 'Professional',
+                                            })}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Icon name="chat" size={14} color="#FFFFFF" />
+                                            <Text style={styles.approvedBannerChatBtnText}>Chat with Professional</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        onPress={() => navigation.navigate('UserNotifications')}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={styles.approvedBannerTap}>View Details →</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </TouchableOpacity>
+                        </View>
                     )}
                     <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><Text style={styles.composerText}>What's on your mind?</Text><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
                     <View style={styles.feedTabs}><Text style={styles.activeTab}>For You</Text><Text style={styles.tab}>Following</Text><Text style={styles.tab}>Latest</Text></View>
@@ -577,6 +627,79 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
         color: '#2F6B47',
+        marginTop: 6,
+    },
+    approvedBannerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginTop: 8,
+    },
+    approvedBannerChatBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2F6B47',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 5,
+    },
+    approvedBannerChatBtnText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    messageBanner: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 12,
+        borderWidth: 1.5,
+        borderColor: '#86EFAC',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        shadowColor: '#16A34A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    messageBannerIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#2F6B47',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+        marginTop: 2,
+    },
+    messageBannerContent: {
+        flex: 1,
+    },
+    messageBannerTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#14532D',
+        flex: 1,
+    },
+    messageNewBadge: {
+        backgroundColor: '#16A34A',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 6,
+    },
+    messageBannerText: {
+        fontSize: 13,
+        color: '#166534',
+        lineHeight: 18,
+        marginTop: 2,
+    },
+    messageBannerTap: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#15803D',
         marginTop: 6,
     },
     notificationBellContainer: {

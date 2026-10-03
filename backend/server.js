@@ -18,6 +18,7 @@ import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPost
 import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
+import messageRoutes from './routes/message/messageRoutes.js'
 import startSessionReminderScheduler from './utils/sessionReminderScheduler.js'
 
 const app = express();
@@ -55,6 +56,8 @@ app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
 app.use('/api/group-chat', groupChatRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/messages', messageRoutes);
+console.log('[Server] Message routes mounted at /api/messages');
 
 const startServer = async () => {
     try {

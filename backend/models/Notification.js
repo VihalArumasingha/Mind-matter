@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system', 'zoom_link_sent'],
+      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system', 'zoom_link_sent', 'new_message'],
       required: true,
     },
     title: {
@@ -32,6 +32,10 @@ const notificationSchema = new mongoose.Schema(
     relatedBookingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Booking',
+    },
+    relatedMessageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
     },
     isRead: {
       type: Boolean,

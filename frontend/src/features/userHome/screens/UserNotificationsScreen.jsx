@@ -86,6 +86,8 @@ export default function UserNotificationsScreen({ navigation }) {
     switch (type) {
       case 'zoom_link_sent':
         return 'videocam';
+      case 'new_message':
+        return 'chatbubble-ellipses';
       case 'booking_approved':
         return 'checkmark-circle';
       case 'booking_declined':
@@ -103,6 +105,8 @@ export default function UserNotificationsScreen({ navigation }) {
     switch (type) {
       case 'zoom_link_sent':
         return '#0284C7';
+      case 'new_message':
+        return '#2F6B47';
       case 'booking_approved':
         return '#2F6B47';
       case 'booking_declined':
@@ -285,6 +289,39 @@ export default function UserNotificationsScreen({ navigation }) {
                     <View style={styles.reminderActionBox}>
                       <Text style={styles.reminderText}>🕐 Don't forget to join your session!</Text>
                     </View>
+                  )}
+                  {notification.type === 'new_message' && notification.relatedUserId && (
+                    <TouchableOpacity
+                      style={styles.chatActionBtn}
+                      onPress={() => {
+                        markAsRead(notification._id);
+                        navigation.navigate('UserChat', {
+                          userId: notification.relatedUserId,
+                          userName: notification.relatedUserName || 'Professional',
+                        });
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses" size={16} color="#FFFFFF" />
+                      <Text style={styles.chatActionBtnText}>
+                        Reply to {notification.relatedUserName || 'Message'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {notification.type === 'booking_approved' && notification.relatedUserId && (
+                    <TouchableOpacity
+                      style={styles.chatSecondaryBtn}
+                      onPress={() => {
+                        navigation.navigate('UserChat', {
+                          userId: notification.relatedUserId,
+                          userName: notification.relatedUserName || 'Professional',
+                        });
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={16} color="#2F6B47" />
+                      <Text style={styles.chatSecondaryBtnText}>Message Professional</Text>
+                    </TouchableOpacity>
                   )}
                   <Text style={styles.time}>
                     {new Date(notification.createdAt).toLocaleString()}
@@ -492,5 +529,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  chatActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#2F6B47',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  chatActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  chatSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#EAF3ED',
+    borderWidth: 1,
+    borderColor: '#B8DBC2',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  chatSecondaryBtnText: {
+    color: '#2F6B47',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
