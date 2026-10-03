@@ -349,6 +349,7 @@ export default function ReportBuilderView() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+        
     
       <StatusBar
         barStyle="light-content"

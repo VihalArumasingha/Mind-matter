@@ -3,18 +3,14 @@ import { View, Text, TouchableOpacity, ScrollView, Platform, StatusBar } from 'r
 import { adminStyles, COLORS } from '../styles/adminStyles';
 
 const MENU_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '•' },
-  { id: 'users', label: 'Users', icon: '•' },
-  { id: 'professionals', label: 'Professionals', icon: '•', badgeKey: 'pendingPros' },
-  { id: 'community-organizer-requests', label: 'Community Organizer Requests', icon: '•', badgeKey: 'pendingCommunityOrganizers' },
-  { id: 'communities', label: 'Communities / Groups', icon: '•' },
-  { id: 'posts', label: 'Posts', icon: '•' },
-  { id: 'reports', label: 'Reports', icon: '•', badgeKey: 'openReports' },
-  { id: 'analytics', label: 'Platform Health', icon: '•' },
-  { id: 'report-builder', label: 'Report Builder', icon: '•' },
-  { id: 'broadcasts', label: 'Broadcasts', icon: '•' },
-  { id: 'settings', label: 'Settings', icon: '•' },
-  { id: 'audit-logs', label: 'Audit Logs', icon: '•' }
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'users', label: 'Users' },
+  { id: 'professionals', label: 'Professionals', badgeKey: 'pendingPros' },
+  { id: 'community-organizer-requests', label: 'Community Organizer Requests', badgeKey: 'pendingCommunityOrganizers' },
+  { id: 'posts', label: 'Posts' },
+  { id: 'analytics', label: 'Platform Health'},
+  { id: 'report-builder', label: 'Report Builder' },
+  { id: 'broadcasts', label: 'Broadcasts'}
 ];
 
 const SidebarMenu = ({ activeTab, onSelectTab, onClose, badges = {} }) => {
