@@ -47,7 +47,7 @@ export const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 13,
     fontWeight: '500',
-    color: COLORS.textMuted,
+    color: '#000000',
     letterSpacing: 0.2,
   },
   nameText: {
