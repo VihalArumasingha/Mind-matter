@@ -175,6 +175,7 @@ const TherapistApplicationForm = ({ onSubmitted, onClose, userId, applicationTyp
         email: email.trim(),
         phone: phone.trim(),
         profession: profession,
+        applicationType: isOrganizerApplication ? 'communityOrganizer' : 'professional',
         licenseNum: isOrganizerApplication ? communityFocus.trim() : licenseNum.trim(),
         specialization: isOrganizerApplication ? (communityFocus.trim() || 'Community Engagement') : (specialization.trim() || 'General Mental Health Support'),
         expYears: isOrganizerApplication ? 1 : (parseInt(expYears, 10) || 1),
@@ -577,7 +578,7 @@ const styles = StyleSheet.create({
   primaryBtn: {
     backgroundColor: COLORS.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8,
-    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 },
+    shadowColor: COLORS.primary, shadowOffset: { width:0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   primaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },

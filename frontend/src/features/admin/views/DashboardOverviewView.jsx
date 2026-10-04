@@ -114,24 +114,7 @@ const DashboardOverviewView = ({
           subtitle="Peer contributions"
           onPress={() => onNavigate('posts')}
         />
-        <MetricCard
-          title="Total Communities"
-          value={stats.totalCommunities || 0}
-          tag="GROUPS"
-          color={COLORS.primary}
-          bg={COLORS.primaryLight}
-          subtitle="Peer support groups"
-          onPress={() => onNavigate('communities')}
-        />
-        <MetricCard
-          title="Open Reports"
-          value={stats.totalReports || 0}
-          tag="REPORTS"
-          color={COLORS.danger}
-          bg={COLORS.dangerBg}
-          subtitle="Requires investigation"
-          onPress={() => onNavigate('reports')}
-        />
+        
       </View>
       <View style={[adminStyles.card, { marginTop: 12 }]}>
         <Text style={adminStyles.cardTitle}>Quick Admin Tasks</Text>
@@ -139,9 +122,9 @@ const DashboardOverviewView = ({
           
           <Pressable
             style={[adminStyles.btn, adminStyles.btnDanger, { flex: 1, minWidth: 140, margin: 4, paddingVertical: 10 }]}
-            onPress={() => onNavigate('reports')}
+            onPress={() => onNavigate('report-builder')}
           >
-            <Text style={adminStyles.btnText}>Flagged Reports</Text>
+            <Text style={adminStyles.btnText}>Report Builder</Text>
           </Pressable>
           <Pressable
             style={[adminStyles.btn, adminStyles.btnSecondary, { flex: 1, minWidth: 140, margin: 4, paddingVertical: 10 }]}
@@ -153,7 +136,6 @@ const DashboardOverviewView = ({
         </View>
       </View>
 
-      {/* Activity Logs Card */}
       <View style={[adminStyles.card, { marginTop: 12 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Text style={adminStyles.cardTitle}>Recent Activity Logs</Text>

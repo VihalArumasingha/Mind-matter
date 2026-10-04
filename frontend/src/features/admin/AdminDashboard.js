@@ -8,8 +8,11 @@ import TherapistApplicationForm from '../therapist/TherapistApplicationForm';
 import DashboardOverviewView from './views/DashboardOverviewView';
 import UsersManagementView from './views/UsersManagementView';
 import ProfessionalsManagementView from './views/ProfessionalsManagementView';
+import CommunityOrganizerApplicationsView from './views/CommunityOrganizerApplicationsView';
 import CommunitiesManagementView from './views/CommunitiesManagementView';
 import PostsManagementView from './views/PostsManagementView';
+import PlatformHealthAnalyticsView from './views/PlatformHealthAnalyticsView';
+import ReportBuilderView from './views/ReportBuilderView';
 
 
 import {
@@ -19,8 +22,11 @@ import {
   suspendUserApi,
   unsuspendUserApi,
   getProfessionalApplicationsApi,
+  getCommunityOrganizerApplicationsApi,
   approveProfessionalApi,
   rejectProfessionalApi,
+  approveCommunityOrganizerApi,
+  rejectCommunityOrganizerApi,
   getCommunitiesApi,
   warnCommunityApi,
   restrictCommunityApi,
@@ -46,7 +52,8 @@ const TITLES = {
   communities: 'Communities & Groups',
   posts: 'Peer Posts Moderation',
   reports: 'User Reports Queue',
-  analytics: 'Platform Analytics',
+  analytics: 'Platform Health & Analytics',
+  'report-builder': 'Report Builder',
   broadcasts: 'System Announcements',
   settings: 'Admin System Settings',
   'audit-logs': 'System Audit Logs'
@@ -59,6 +66,7 @@ const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState({ stats: {}, recentActivities: [] });
   const [users, setUsers] = useState([]);
   const [professionals, setProfessionals] = useState([]);
+  const [communityOrganizerRequests, setCommunityOrganizerRequests] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [posts, setPosts] = useState([]);
   const [reports, setReports] = useState([]);
@@ -66,7 +74,6 @@ const AdminDashboard = () => {
   const [broadcasts, setBroadcasts] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
 
-  // Load All Admin Data
   const loadAdminData = async () => {
     setLoading(true);
     try {
@@ -78,6 +85,9 @@ const AdminDashboard = () => {
 
       const p = await getProfessionalApplicationsApi();
       setProfessionals(p || []);
+
+      const organizerApps = await getCommunityOrganizerApplicationsApi();
+      setCommunityOrganizerRequests(organizerApps || []);
 
       const c = await getCommunitiesApi();
       setCommunities(c || []);
@@ -109,10 +119,9 @@ const AdminDashboard = () => {
 
   const handleSelectTab = (tabId) => {
     setActiveTab(tabId);
-    setSidebarOpen(false); // Auto close sidebar on selection
+    setSidebarOpen(false); 
   };
 
-  // Action Handlers
   const handleWarnUser = async (id, reason) => {
     await warnUserApi(id, reason);
     loadAdminData();
@@ -189,6 +198,7 @@ const AdminDashboard = () => {
   };
 
   const pendingProsCount = professionals.filter((p) => p.status === 'pending').length;
+  const pendingCommunityOrganizerCount = communityOrganizerRequests.filter((p) => p.status === 'pending').length;
   const openReportsCount = reports.filter((r) => r.status === 'open' || r.status === 'investigating').length;
 
   const [showApplyFormModal, setShowApplyFormModal] = useState(false);
@@ -231,6 +241,20 @@ const AdminDashboard = () => {
             onRefresh={loadAdminData}
           />
         );
+      case 'community-organizer-requests':
+        return (
+          <CommunityOrganizerApplicationsView
+            applications={communityOrganizerRequests}
+            onApprove={async (id) => {
+              await approveCommunityOrganizerApi(id);
+              loadAdminData();
+            }}
+            onReject={async (id, reason) => {
+              await rejectCommunityOrganizerApi(id, reason);
+              loadAdminData();
+            }}
+          />
+        );
       case 'communities':
         return (
           <CommunitiesManagementView
@@ -249,8 +273,11 @@ const AdminDashboard = () => {
             onRemovePost={handleRemovePost}
           />
         );
-      
-      
+      case 'analytics':
+        return <PlatformHealthAnalyticsView />;
+      case 'report-builder':
+        return <ReportBuilderView />;
+
       default:
         return <DashboardOverviewView stats={dashboardData.stats} recentActivities={dashboardData.recentActivities} onNavigate={handleSelectTab} />;
     }
@@ -258,7 +285,6 @@ const AdminDashboard = () => {
 
   return (
     <View style={adminStyles.container}>
-      {/* Overlay Drawer Backdrop */}
       {sidebarOpen && (
       <TouchableOpacity
         style={adminStyles.drawerBackdrop}
@@ -267,17 +293,15 @@ const AdminDashboard = () => {
       />
     )}
 
-    {/* Slide-out Sidebar Drawer - MENU EKA MEKE */}
     {sidebarOpen && (
       <SidebarMenu
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
         onClose={() => setSidebarOpen(false)}
-        badges={{ pendingPros: pendingProsCount, openReports: openReportsCount }}
+        badges={{ pendingPros: pendingProsCount, pendingCommunityOrganizers: pendingCommunityOrganizerCount, openReports: openReportsCount }}
       />
     )}
 
-    {/* Main Full-Width Content Area */}
     <View style={adminStyles.mainContent}>
       <HeaderBar
         title={TITLES[activeTab] || 'Admin Dashboard'}
@@ -290,7 +314,6 @@ const AdminDashboard = () => {
       {renderActiveView()}
     </View>
 
-      {/* Modal for User-Facing Therapist Registration Form */}
       <Modal
         visible={showApplyFormModal}
         animationType="slide"

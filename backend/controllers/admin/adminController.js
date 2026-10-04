@@ -4,7 +4,109 @@ import Report from '../../models/Report.js';
 import AuditLog from '../../models/AuditLog.js';
 import { uploadFilesToCloudinary } from '../../middleware/uploadMiddleware.js';
 import Post from '../../models/Post.js';
+import Notification from '../../models/Notification.js';
+import Broadcast from '../../models/Broadcast.js';
+import SupportCircle from '../../models/SupportCircle.js';
+import GroupMembership from '../../models/GroupMembership.js';
+import Session from '../../models/Session.js';
+import Attendance from '../../models/Attendance.js';
+import Mood from '../../models/Mood.js';
+import Booking from '../../models/Booking.js';
+import ProfessionalPost from '../../models/ProfessionalPost.js';
 import bcrypt from 'bcryptjs';
+
+export const resolveApplicationType = (application = {}) => {
+  const type = application.applicationType || (application.profession === 'Community Organizer' ? 'communityOrganizer' : 'professional');
+  return type === 'communityOrganizer' ? 'communityOrganizer' : 'professional';
+};
+
+export const buildApplicationTypeQuery = (applicationType = 'professional') => {
+  const normalizedType = applicationType === 'communityOrganizer' ? 'communityOrganizer' : 'professional';
+
+  if (normalizedType === 'communityOrganizer') {
+    return {
+      $or: [
+        { applicationType: 'communityOrganizer' },
+        { applicationType: { $exists: false }, profession: 'Community Organizer' }
+      ]
+    };
+  }
+
+  return {
+    $or: [
+      { applicationType: 'professional' },
+      { applicationType: { $exists: false }, profession: { $ne: 'Community Organizer' } }
+    ]
+  };
+};
+
+export const getApprovalRoleForApplication = (application = {}) => {
+  return resolveApplicationType(application) === 'communityOrganizer' ? 'communityOrganizer' : 'therapist';
+};
+
+const aggregateActiveUsers = (Model, userField, since, eligibleRoles) => Model.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: since },
+      [userField]: { $ne: null }
+    }
+  },
+  { $group: { _id: `$${userField}` } },
+  {
+    $lookup: {
+      from: 'users',
+      localField: '_id',
+      foreignField: '_id',
+      as: 'actor'
+    }
+  },
+  { $unwind: '$actor' },
+  {
+    $match: {
+      'actor.role': { $in: eligibleRoles },
+      'actor.status': { $ne: 'suspended' }
+    }
+  },
+  { $project: { _id: 0, userId: '$_id' } }
+]);
+
+const aggregateMonthlyActiveUsers = (Model, userField, since, eligibleRoles) => Model.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: since },
+      [userField]: { $ne: null }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        month: { $dateToString: { format: '%Y-%m', date: '$createdAt', timezone: 'UTC' } },
+        userId: `$${userField}`
+      }
+    }
+  },
+  {
+    $lookup: {
+      from: 'users',
+      localField: '_id.userId',
+      foreignField: '_id',
+      as: 'actor'
+    }
+  },
+  { $unwind: '$actor' },
+  {
+    $match: {
+      'actor.role': { $in: eligibleRoles },
+      'actor.status': { $ne: 'suspended' }
+    }
+  },
+  {
+    $group: {
+      _id: '$_id.month',
+      users: { $addToSet: '$_id.userId' }
+    }
+  }
+]);
 
 export const getDashboardOverview = async (req, res) => {
   try {
@@ -249,7 +351,7 @@ export const unsuspendUser = async (req, res) => {
 export const getProfessionalApplications = async (req, res) => {
   try {
     const { status } = req.query;
-    let query = {};
+    let query = buildApplicationTypeQuery('professional');
     if (status && status !== 'all') {
       query.status = status;
     }
@@ -261,6 +363,29 @@ export const getProfessionalApplications = async (req, res) => {
       docCount: app.documents?.length || 0,
       docs: app.documents?.map(d => ({ title: d.title, url: d.url }))
     })));
+
+    return res.status(200).json({
+      success: true,
+      applications
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const getCommunityOrganizerApplications = async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = buildApplicationTypeQuery('communityOrganizer');
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    const applications = await ProfessionalApplication.find(query)
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -290,7 +415,8 @@ export const submitProfessionalApplication = async (req, res) => {
       specialization,
       expYears,
       bio,
-      userId
+      userId,
+      applicationType
     } = req.body;
 
     if (!fullName || !email || !licenseNum) {
@@ -330,6 +456,12 @@ export const submitProfessionalApplication = async (req, res) => {
         });
       }
     }
+    const normalizedProfession = profession || 'Clinical Psychologist';
+    const normalizedApplicationType = resolveApplicationType({
+      applicationType,
+      profession: normalizedProfession
+    });
+
     const applicationData = {
       userId: userId || null,
       fullName: fullName.trim(),
@@ -337,7 +469,8 @@ export const submitProfessionalApplication = async (req, res) => {
       accountEmail: accountEmail?.trim().toLowerCase() || email.trim().toLowerCase(), // Store account email separately for linking
       password: password ? password.trim() : '',
       phone: phone || '',
-      profession: profession || 'Clinical Psychologist',
+      profession: normalizedProfession,
+      applicationType: normalizedApplicationType,
       licenseNum: licenseNum.trim(),
       specialization: specialization || 'General Mental Health Support',
       expYears: parseInt(expYears, 10) || 1,
@@ -402,12 +535,10 @@ export const approveProfessional = async (req, res) => {
     
     // Handle user account creation or update
     let user;
+    const roleToSet = getApprovalRoleForApplication(application);
 
     if (application.userId) {
       console.log('Updating existing user with ID:', application.userId);
-      const roleToSet = application.profession === 'Community Organizer'
-        ? 'communityOrganizer'
-        : 'therapist';
       user = await User.findByIdAndUpdate(application.userId, {
         role: roleToSet,
         phone: application.phone,
@@ -425,10 +556,9 @@ export const approveProfessional = async (req, res) => {
       const existingUser = await User.findOne({ email: emailToCheck });
       
       if (existingUser) {
-        console.log('Found existing user with account email, updating role to therapist:', existingUser.name);
-        // Update existing user to therapist role - skip documents to avoid schema conflicts
+        console.log('Found existing user with account email, updating role:', roleToSet, existingUser.name);
         user = await User.findByIdAndUpdate(existingUser._id, {
-          role: 'therapist',
+          role: roleToSet,
           phone: application.phone,
           profession: application.profession,
           licenseNum: application.licenseNum,
@@ -436,19 +566,18 @@ export const approveProfessional = async (req, res) => {
           expYears: application.expYears,
           bio: application.bio
         }, { returnDocument: 'after' });
-        console.log('Updated existing user role to therapist:', user.name, 'New role:', user.role);
+        console.log('Updated existing user role:', user.name, 'New role:', user.role);
       } else {
-        console.log('Creating new user with therapist role using account email');
-        // Create new user with therapist role using account email
+        console.log('Creating new user with role using account email:', roleToSet);
         const hashedPassword = application.password 
           ? await bcrypt.hash(application.password, 10)
-          : await bcrypt.hash('Therapist@123', 10); // Default password for cases where password wasn't provided
+          : await bcrypt.hash('Therapist@123', 10);
         
         user = await User.create({
           name: application.fullName,
-          email: application.accountEmail || application.email, // Use account email for user account
+          email: application.accountEmail || application.email,
           password: hashedPassword,
-          role: 'therapist',
+          role: roleToSet,
           phone: application.phone,
           profession: application.profession,
           licenseNum: application.licenseNum,
@@ -456,7 +585,7 @@ export const approveProfessional = async (req, res) => {
           expYears: application.expYears,
           bio: application.bio
         });
-        console.log('Created new user with therapist role:', user.name, 'Role:', user.role);
+        console.log('Created new user with role:', user.name, 'Role:', user.role);
       }
     }
     
@@ -523,6 +652,135 @@ export const rejectProfessional = async (req, res) => {
     });
   } catch (error) {
     console.error('Error rejecting professional:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const approveCommunityOrganizer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminName = req.user?.name || 'Admin User';
+    const application = await ProfessionalApplication.findById(id);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Community organizer application not found'
+      });
+    }
+
+    application.status = 'approved';
+    application.reviewedBy = adminName;
+    application.applicationType = resolveApplicationType(application);
+    await application.save();
+
+    const roleToSet = getApprovalRoleForApplication(application);
+    let user = null;
+
+    if (application.userId) {
+      user = await User.findByIdAndUpdate(application.userId, {
+        role: roleToSet,
+        phone: application.phone,
+        profession: application.profession,
+        specialization: application.specialization,
+        bio: application.bio 
+      }, { returnDocument: 'after' });
+    } else {
+      const emailToCheck = application.accountEmail || application.email;
+      const existingUser = await User.findOne({ email: emailToCheck });
+
+      if (existingUser) {
+        user = await User.findByIdAndUpdate(existingUser._id, {
+          role: roleToSet,
+          phone: application.phone,
+          profession: application.profession,
+          specialization: application.specialization,
+          bio: application.bio
+        }, { returnDocument: 'after' });
+      } else {
+        const hashedPassword = application.password
+          ? await bcrypt.hash(application.password, 10)
+          : await bcrypt.hash('CommunityOrganizer@123', 10);
+
+        user = await User.create({
+          name: application.fullName,
+          email: application.accountEmail || application.email,
+          password: hashedPassword,
+          role: roleToSet,
+          phone: application.phone,
+          profession: application.profession,
+          specialization: application.specialization,
+          bio: application.bio
+        });
+      }
+    }
+
+    await AuditLog.create({
+      adminName,
+      action: 'APPROVE_COMMUNITY_ORGANIZER',
+      targetType: 'Community Organizer',
+      targetId: application._id,
+      targetName: application.fullName,
+      details: `Approved community organizer application for ${application.fullName}`
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Community organizer application approved successfully.',
+      application,
+      user: {
+        id: user?._id,
+        name: user?.name,
+        email: user?.email,
+        role: user?.role
+      }
+    });
+  } catch (error) {
+    console.error('Error approving community organizer application:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const rejectCommunityOrganizer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminName = req.user?.name || 'Admin User';
+
+    const application = await ProfessionalApplication.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Community organizer application not found'
+      });
+    }
+
+    application.status = 'rejected';
+    application.rejectionReason = reason || 'Application did not meet requirements';
+    application.reviewedBy = adminName;
+    await application.save();
+
+    await AuditLog.create({
+      adminName,
+      action: 'REJECT_COMMUNITY_ORGANIZER',
+      targetType: 'Community Organizer',
+      targetId: application._id,
+      targetName: application.fullName,
+      details: `Rejected community organizer application. Reason: ${reason || 'Application did not meet requirements'}`
+    });
+
+    res.status(200).json({
+      success: true,
+      application
+    });
+  } catch (error) {
+    console.error('Error rejecting community organizer application:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -996,35 +1254,217 @@ export const getAuditLogs = async (req, res) => {
 
 export const getAnalytics = async (req, res) => {
   try {
-    const userGrowth = await User.aggregate([
-      {
-        $group: {
-          _id: { $month: '$createdAt' },
-          count: { $sum: 1 }
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+    const platformRoles = ['user', 'volunteer', 'therapist', 'communityOrganizer'];
+    const [
+      userGrowth,
+      approvedProfessionals,
+      pendingProfessionals,
+      rejectedProfessionals,
+      openReports,
+      investigatingReports,
+      resolvedReports,
+      dismissedReports,
+      totalCommunities,
+      activeCommunities,
+      archivedCommunities,
+      deletedCommunities,
+      approvedMembers,
+      pendingJoinRequests,
+      upcomingSessions,
+      activeCommunityPosts,
+      openCommunityReports,
+      totalCommunityReports,
+      activeCircleCapacity,
+      monthlyJoinRequests,
+      eligibleUsers,
+      newUsers30d,
+      moodCheckins30d,
+      communityPosts30d,
+      professionalPosts30d,
+      bookings30d,
+      sessionRsvps30d,
+      sessionCheckins30d,
+      upcomingSessions30d,
+      completedSessions30d,
+      totalSessionRsvps,
+      checkedInAttendance,
+      finalizedAttendance,
+      recentActivityUsers,
+      monthlyActivityBySource
+    ] = await Promise.all([
+      User.aggregate([
+        {
+          $group: {
+            _id: { $month: '$createdAt' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      ProfessionalApplication.countDocuments({ status: 'approved' }),
+      ProfessionalApplication.countDocuments({ status: 'pending' }),
+      ProfessionalApplication.countDocuments({ status: 'rejected' }),
+      Report.countDocuments({ status: 'open' }),
+      Report.countDocuments({ status: 'investigating' }),
+      Report.countDocuments({ status: 'resolved' }),
+      Report.countDocuments({ status: 'dismissed' }),
+      SupportCircle.countDocuments({ status: { $ne: 'deleted' } }),
+      SupportCircle.countDocuments({ status: 'active' }),
+      SupportCircle.countDocuments({ status: 'archived' }),
+      SupportCircle.countDocuments({ status: 'deleted' }),
+      GroupMembership.countDocuments({ status: 'approved' }),
+      GroupMembership.countDocuments({ status: 'pending' }),
+      Session.countDocuments({ status: 'upcoming', scheduledAt: { $gte: now } }),
+      Post.countDocuments({ supportCircle: { $ne: null }, status: 'active' }),
+      Report.countDocuments({ targetType: 'Community', status: { $in: ['open', 'investigating'] } }),
+      Report.countDocuments({ targetType: 'Community' }),
+      SupportCircle.aggregate([
+        { $match: { status: 'active' } },
+        {
+          $group: {
+            _id: null,
+            memberCount: { $sum: '$currentMemberCount' },
+            capacity: { $sum: '$maxCapacity' }
+          }
         }
-      },
-      { $sort: { _id: 1 } }
+      ]),
+      GroupMembership.aggregate([
+        { $match: { role: 'member', createdAt: { $gte: sixMonthsAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt', timezone: 'UTC' } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      User.countDocuments({ role: { $in: platformRoles }, status: { $ne: 'suspended' } }),
+      User.countDocuments({
+        role: { $in: platformRoles },
+        status: { $ne: 'suspended' },
+        createdAt: { $gte: thirtyDaysAgo }
+      }),
+      Mood.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Post.countDocuments({
+        status: 'active',
+        isBroadcast: { $ne: true },
+        createdAt: { $gte: thirtyDaysAgo }
+      }),
+      ProfessionalPost.countDocuments({ status: 'published', createdAt: { $gte: thirtyDaysAgo } }),
+      Booking.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Attendance.countDocuments({
+        createdAt: { $gte: thirtyDaysAgo },
+        status: { $in: ['registered', 'checked-in', 'absent', 'excused'] }
+      }),
+      Attendance.countDocuments({ checkedInAt: { $gte: thirtyDaysAgo } }),
+      Session.countDocuments({ status: 'upcoming', scheduledAt: { $gte: now } }),
+      Session.countDocuments({ status: 'completed' }),
+      Attendance.countDocuments({}),
+      Attendance.countDocuments({ status: 'checked-in' }),
+      Attendance.countDocuments({ status: { $in: ['checked-in', 'absent', 'excused'] } }),
+      Promise.all([
+        aggregateActiveUsers(Post, 'author', thirtyDaysAgo, platformRoles),
+        aggregateActiveUsers(ProfessionalPost, 'authorId', thirtyDaysAgo, platformRoles),
+        aggregateActiveUsers(Mood, 'user', thirtyDaysAgo, platformRoles),
+        aggregateActiveUsers(Booking, 'user', thirtyDaysAgo, platformRoles),
+        aggregateActiveUsers(Attendance, 'userId', thirtyDaysAgo, platformRoles)
+      ]),
+      Promise.all([
+        aggregateMonthlyActiveUsers(Post, 'author', sixMonthsAgo, platformRoles),
+        aggregateMonthlyActiveUsers(ProfessionalPost, 'authorId', sixMonthsAgo, platformRoles),
+        aggregateMonthlyActiveUsers(Mood, 'user', sixMonthsAgo, platformRoles),
+        aggregateMonthlyActiveUsers(Booking, 'user', sixMonthsAgo, platformRoles),
+        aggregateMonthlyActiveUsers(Attendance, 'userId', sixMonthsAgo, platformRoles)
+      ])
     ]);
-    
-    const professionalStats = {
-      approved: await ProfessionalApplication.countDocuments({ status: 'approved' }),
-      pending: await ProfessionalApplication.countDocuments({ status: 'pending' }),
-      rejected: await ProfessionalApplication.countDocuments({ status: 'rejected' })
+
+    const joinRequestCounts = new Map(monthlyJoinRequests.map(({ _id, count }) => [_id, count]));
+    const monthlyJoinRequestTrend = Array.from({ length: 6 }, (_, index) => {
+      const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5 + index, 1));
+      const key = `${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, '0')}`;
+
+      return {
+        month: key,
+        count: joinRequestCounts.get(key) || 0
+      };
+    });
+
+    const activeCapacity = activeCircleCapacity[0] || { memberCount: 0, capacity: 0 };
+    const activeUserIds = new Set(recentActivityUsers.flat().map(({ userId }) => userId.toString()));
+    const monthlyActiveUsers = new Map();
+    monthlyActivityBySource.flat().forEach(({ _id, users }) => {
+      const monthlyUsers = monthlyActiveUsers.get(_id) || new Set();
+      users.forEach((userId) => monthlyUsers.add(userId.toString()));
+      monthlyActiveUsers.set(_id, monthlyUsers);
+    });
+    const monthlyEngagementTrend = Array.from({ length: 6 }, (_, index) => {
+      const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5 + index, 1));
+      const key = `${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, '0')}`;
+
+      return {
+        month: key,
+        engagedUsers: monthlyActiveUsers.get(key)?.size || 0
+      };
+    });
+    const sessionAttendanceRate = finalizedAttendance
+      ? Math.round((checkedInAttendance / finalizedAttendance) * 100)
+      : 0;
+    const platformHealth = {
+      eligibleUsers,
+      engagedUsers30d: activeUserIds.size,
+      engagementRate30d: eligibleUsers
+        ? Math.round((activeUserIds.size / eligibleUsers) * 100)
+        : 0,
+      newUsers30d,
+      moodCheckins30d,
+      postsPublished30d: communityPosts30d + professionalPosts30d,
+      bookings30d,
+      sessionRsvps30d,
+      sessionCheckins30d,
+      upcomingSessions: upcomingSessions30d,
+      completedSessions: completedSessions30d,
+      totalSessionRsvps,
+      checkedInAttendance,
+      sessionAttendanceRate,
+      monthlyEngagementTrend
     };
-    
-    const reportStats = {
-      open: await Report.countDocuments({ status: 'open' }),
-      investigating: await Report.countDocuments({ status: 'investigating' }),
-      resolved: await Report.countDocuments({ status: 'resolved' }),
-      dismissed: await Report.countDocuments({ status: 'dismissed' })
+    const communityHealth = {
+      totalCommunities,
+      activeCommunities,
+      archivedCommunities,
+      deletedCommunities,
+      approvedMembers,
+      pendingJoinRequests,
+      upcomingSessions,
+      activeCommunityPosts,
+      openReports: openCommunityReports,
+      totalReports: totalCommunityReports,
+      capacityUtilization: activeCapacity.capacity
+        ? Math.min(100, Math.round((activeCapacity.memberCount / activeCapacity.capacity) * 100))
+        : 0,
+      monthlyJoinRequestTrend
     };
     
     res.status(200).json({
       success: true,
       analytics: {
         userGrowth,
-        professionalStats,
-        reportStats
+        professionalStats: {
+          approved: approvedProfessionals,
+          pending: pendingProfessionals,
+          rejected: rejectedProfessionals
+        },
+        reportStats: {
+          open: openReports,
+          investigating: investigatingReports,
+          resolved: resolvedReports,
+          dismissed: dismissedReports
+        },
+        platformHealth,
+        communityHealth
       }
     });
   } catch (error) {
@@ -1032,6 +1472,113 @@ export const getAnalytics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+};
+
+const BROADCAST_ROLES = ['user', 'volunteer', 'therapist', 'communityOrganizer'];
+
+export const createBroadcast = async (req, res) => {
+  try {
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    const { targetAudience } = req.body;
+
+    if (!title || title.length > 120) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required and must be 120 characters or fewer'
+      });
+    }
+
+    if (!message || message.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message is required and must be 2000 characters or fewer'
+      });
+    }
+
+    if (targetAudience !== 'all' && !BROADCAST_ROLES.includes(targetAudience)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid target audience is required'
+      });
+    }
+
+    const recipientFilter = {
+      role: targetAudience === 'all' ? { $in: BROADCAST_ROLES } : targetAudience,
+      status: { $ne: 'suspended' }
+    };
+    const recipients = await User.find(recipientFilter).select('_id').lean();
+
+    if (recipients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'There are no eligible recipients for this audience'
+      });
+    }
+
+    const broadcast = new Broadcast({
+      title,
+      message,
+      targetAudience,
+      recipientCount: recipients.length,
+      sentBy: req.user._id,
+      senderName: req.user.name
+    });
+
+    try {
+      await Notification.insertMany(
+        recipients.map(({ _id }) => ({
+          userId: _id,
+          type: 'system',
+          title,
+          message,
+          broadcastId: broadcast._id
+        }))
+      );
+      await broadcast.save();
+    } catch (error) {
+      try {
+        await Promise.all([
+          Notification.deleteMany({ broadcastId: broadcast._id }),
+          Broadcast.deleteOne({ _id: broadcast._id })
+        ]);
+      } catch (cleanupError) {
+        console.error('Failed to roll back incomplete broadcast:', cleanupError);
+      }
+      throw error;
+    }
+
+    res.status(201).json({
+      success: true,
+      broadcast
+    });
+  } catch (error) {
+    console.error('Error sending broadcast:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Unable to send broadcast'
+    });
+  }
+};
+
+export const getBroadcasts = async (req, res) => {
+  try {
+    const broadcasts = await Broadcast.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      broadcasts
+    });
+  } catch (error) {
+    console.error('Error fetching broadcasts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Unable to fetch broadcasts'
     });
   }
 };

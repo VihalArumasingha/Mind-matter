@@ -1,5 +1,6 @@
 import GroupMembership from '../../../models/GroupMembership.js'
 import SupportCircle from '../../../models/SupportCircle.js'
+import { createOrganizerNotification } from '../../../utils/organizerNotifications.js'
 
 // Request to join a support circle
 export const requestToJoinCircle = async (req, res) => {
@@ -44,6 +45,16 @@ export const requestToJoinCircle = async (req, res) => {
             groupId: circleId,
             role: 'member',
             status: 'pending'
+        })
+
+        await createOrganizerNotification({
+            recipient: circle.ownerId,
+            actorId: req.user._id,
+            type: 'MEMBER_REQUEST',
+            title: 'New Member Request',
+            message: `${req.user.name || 'A member'} wants to join ${circle.topic}.`,
+            circleId: circle._id,
+            membershipId: membership._id,
         })
 
         res.status(201).json({

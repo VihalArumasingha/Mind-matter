@@ -9,7 +9,19 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['comment', 'like', 'booking', 'booking_approved', 'booking_declined', 'system', 'zoom_link_sent', 'new_message'],
+      enum: [
+        'comment',
+        'like',
+        'booking',
+        'booking_approved',
+        'booking_declined',
+        'system',
+        'zoom_link_sent',
+        'new_message',
+        'MEMBER_REQUEST',
+        'POST_MODERATION',
+        'SESSION_REGISTRATION',
+      ],
       required: true,
     },
     title: {
@@ -24,6 +36,10 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ProfessionalPost',
     },
+    broadcastId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Broadcast',
+    },
     relatedUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -36,6 +52,22 @@ const notificationSchema = new mongoose.Schema(
     relatedMessageId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',
+    },
+    circleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SupportCircle',
+    },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Session',
+    },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+    },
+    membershipId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'GroupMembership',
     },
     isRead: {
       type: Boolean,

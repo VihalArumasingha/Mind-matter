@@ -10,6 +10,7 @@ import {
     View,
 } from 'react-native'
 import {useAuth} from '../../../context/AuthContext'
+import {getCircleById} from '../services/supportCircleService'
 import {
     createSession,
     updateSession,
@@ -36,6 +37,8 @@ const buildISO = (dateStr, timeStr) => {
 }
 
 const DURATION_OPTIONS = [30, 45, 60, 90, 120]
+
+const isValidUrl = value => /^https?:\/\//i.test((value || '').trim())
 
 // ─── Date / time helpers (no external lib) ───────────────────────────────────
 
@@ -67,20 +70,40 @@ const SessionFormScreen = ({navigation, route}) => {
     const [dateStr, setDateStr] = useState(toDateString(now))
     const [timeStr, setTimeStr] = useState(toTimeString(now))
     const [duration, setDuration] = useState(60)
-    const [location, setLocation] = useState('')
+    const [meetingType, setMeetingType] = useState('online')
+    const [scheduleLocation, setScheduleLocation] = useState('')
+    const [meetingLink, setMeetingLink] = useState('')
+    const [capacity, setCapacity] = useState('')
+    const [circleMeetingTypes, setCircleMeetingTypes] = useState([])
 
-    const [isLoading, setIsLoading] = useState(isEditMode)
+    const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [isCancelling, setIsCancelling] = useState(false)
     const [error, setError] = useState('')
 
     // ── Load existing session (edit mode) ──────────────────────────────────
     useEffect(() => {
-        if (!isEditMode) return
-
         const load = async () => {
             try {
-                // We don't have a getSessionById endpoint, so fetch list and find
+                setError('')
+                const circleData = await getCircleById(token, circleId)
+                const circle = circleData.circle ?? circleData
+                const allowedMeetingTypes = Array.isArray(circle.meetingTypes) && circle.meetingTypes.length
+                    ? circle.meetingTypes
+                    : ['online']
+
+                setCircleMeetingTypes(allowedMeetingTypes)
+                const defaultMeetingType = allowedMeetingTypes[0] || 'online'
+                setMeetingType(defaultMeetingType)
+
+                if (!isEditMode) {
+                    setScheduleLocation('')
+                    setMeetingLink('')
+                    setCapacity('')
+                    setIsLoading(false)
+                    return
+                }
+
                 const data = await getSessionsForCircle(token, circleId)
                 const session = (data.sessions ?? []).find(s => s._id === sessionId)
 
@@ -89,18 +112,31 @@ const SessionFormScreen = ({navigation, route}) => {
                     return
                 }
 
+                const resolvedMeetingType = allowedMeetingTypes.includes(session.meetingType)
+                    ? session.meetingType
+                    : defaultMeetingType
+
                 const scheduledDate = new Date(session.scheduledAt)
                 setTitle(session.title ?? '')
                 setDescription(session.description ?? '')
                 setDateStr(toDateString(scheduledDate))
                 setTimeStr(toTimeString(scheduledDate))
                 setDuration(session.durationMinutes ?? 60)
-                setLocation(session.location ?? '')
+                setMeetingType(resolvedMeetingType)
+                setMeetingLink(session.meetingLink ?? '')
+                setScheduleLocation(session.location ?? '')
+                setCapacity(session.capacity ? String(session.capacity) : '')
             } catch (err) {
                 setError(err.message || 'Failed to load session')
             } finally {
                 setIsLoading(false)
             }
+        }
+
+        if (!circleId) {
+            setError('Community ID is missing')
+            setIsLoading(false)
+            return
         }
 
         load()
@@ -112,13 +148,37 @@ const SessionFormScreen = ({navigation, route}) => {
             setError('Session title is required')
             return
         }
-        if (!location.trim()) {
-            setError('Location or meeting link is required')
-            return
-        }
+
         if (!dateStr || !timeStr) {
             setError('Date and time are required')
             return
+        }
+
+        const selectedMeetingType = circleMeetingTypes.length > 1 ? meetingType : circleMeetingTypes[0] || 'online'
+
+        if (selectedMeetingType === 'online') {
+            const cleanLink = meetingLink.trim()
+
+            if (!cleanLink) {
+                setError('Meeting link is required for online sessions')
+                return
+            }
+
+            if (!isValidUrl(cleanLink)) {
+                setError('Please enter a valid meeting link starting with http:// or https://')
+                return
+            }
+        } else {
+            if (!scheduleLocation.trim()) {
+                setError('Physical location is required')
+                return
+            }
+
+            const capacityNumber = Number(capacity)
+            if (!Number.isInteger(capacityNumber) || capacityNumber <= 0) {
+                setError('Capacity must be a positive integer for physical sessions')
+                return
+            }
         }
 
         setError('')
@@ -130,7 +190,18 @@ const SessionFormScreen = ({navigation, route}) => {
                 description: description.trim(),
                 scheduledAt: buildISO(dateStr, timeStr),
                 durationMinutes: duration,
-                location: location.trim(),
+                meetingType: selectedMeetingType,
+                ...(selectedMeetingType === 'online'
+                    ? {
+                        meetingLink: meetingLink.trim(),
+                        location: null,
+                        capacity: null,
+                    }
+                    : {
+                        meetingLink: null,
+                        location: scheduleLocation.trim(),
+                        capacity: Number(capacity),
+                    }),
             }
 
             if (isEditMode) {
@@ -151,7 +222,7 @@ const SessionFormScreen = ({navigation, route}) => {
     const handleCancelSession = () => {
         Alert.alert(
             'Cancel Session',
-            'This will mark the session as cancelled and notify registered members.',
+            'This will mark the session as cancelled. Members can see the updated status in the Announcements tab.',
             [
                 {text: 'Keep Session', style: 'cancel'},
                 {
@@ -329,17 +400,90 @@ const SessionFormScreen = ({navigation, route}) => {
                     </View>
                 </View>
 
-                {/* ══ SECTION 4: Location ══ */}
+                {/* ══ SECTION 4: Meeting details ══ */}
                 <View style={styles.sectionCard}>
-                    <Text style={styles.sectionHeading}>LOCATION / MEETING LINK</Text>
-                    <Text style={styles.fieldLabel}>LOCATION *</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={location}
-                        onChangeText={setLocation}
-                        placeholder="https://meet.google.com/xxx  or  Room 4B"
-                        placeholderTextColor="#B0B7B0"
-                    />
+                    <Text style={styles.sectionHeading}>MEETING DETAILS</Text>
+
+                    {circleMeetingTypes.length > 1 ? (
+                        <>
+                            <Text style={styles.fieldLabel}>MEETING TYPE</Text>
+                            <View style={styles.typeToggleRow}>
+                                {circleMeetingTypes.map(type => (
+                                    <Pressable
+                                        key={type}
+                                        style={[
+                                            styles.typeToggle,
+                                            meetingType === type && styles.typeToggleActive,
+                                        ]}
+                                        onPress={() => {
+                                            setMeetingType(type)
+                                            if (type === 'online') {
+                                                setScheduleLocation('')
+                                            } else {
+                                                setMeetingLink('')
+                                                setCapacity('')
+                                            }
+                                        }}>
+                                        <Text
+                                            style={[
+                                                styles.typeToggleText,
+                                                meetingType === type && styles.typeToggleTextActive,
+                                            ]}>
+                                            {type === 'online' ? 'Online' : 'Physical'}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </>
+                    ) : (
+                        <View style={styles.meetingTypeInfoCard}>
+                            <Text style={styles.meetingTypeInfoTitle}>
+                                {circleMeetingTypes[0] === 'online' ? 'Online session' : 'Physical session'}
+                            </Text>
+                            <Text style={styles.meetingTypeInfoSubtitle}>
+                                {circleMeetingTypes[0] === 'online'
+                                    ? 'This community supports online sessions only.'
+                                    : 'This community supports physical sessions only.'}
+                            </Text>
+                        </View>
+                    )}
+
+                    {((circleMeetingTypes.length > 1 && meetingType === 'online') ||
+                        (circleMeetingTypes.length === 1 && circleMeetingTypes[0] === 'online')) ? (
+                        <>
+                            <Text style={styles.fieldLabel}>MEETING LINK *</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={meetingLink}
+                                onChangeText={setMeetingLink}
+                                placeholder="https://meet.google.com/..."
+                                placeholderTextColor="#B0B7B0"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.fieldLabel}>PHYSICAL LOCATION *</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={scheduleLocation}
+                                onChangeText={setScheduleLocation}
+                                placeholder="Community Hall / Room 4B"
+                                placeholderTextColor="#B0B7B0"
+                            />
+
+                            <Text style={styles.fieldLabel}>MAXIMUM ATTENDEES *</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={capacity}
+                                onChangeText={setCapacity}
+                                placeholder="20"
+                                placeholderTextColor="#B0B7B0"
+                                keyboardType="number-pad"
+                            />
+                        </>
+                    )}
                 </View>
 
                 {/* ── Preview pill ── */}
@@ -527,6 +671,59 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+    },
+
+    typeToggleRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 6,
+    },
+
+    typeToggle: {
+        flex: 1,
+        backgroundColor: '#F4F7EF',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#DCE4DC',
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+
+    typeToggleActive: {
+        backgroundColor: '#4E8C4A',
+        borderColor: '#4E8C4A',
+    },
+
+    typeToggleText: {
+        color: '#666C66',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    typeToggleTextActive: {
+        color: '#FFFFFF',
+    },
+
+    meetingTypeInfoCard: {
+        backgroundColor: '#EEF5EB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D5E7D3',
+        padding: 12,
+        marginTop: 8,
+    },
+
+    meetingTypeInfoTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#284D2A',
+    },
+
+    meetingTypeInfoSubtitle: {
+        marginTop: 4,
+        color: '#536057',
+        fontSize: 12,
+        lineHeight: 18,
     },
 
     dateStepBtn: {

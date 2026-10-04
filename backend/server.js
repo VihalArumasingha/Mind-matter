@@ -20,11 +20,12 @@ import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderat
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
 import messageRoutes from './routes/message/messageRoutes.js'
 import startSessionReminderScheduler from './utils/sessionReminderScheduler.js'
+import reportRoutes from './routes/reportRoutes.js'
+import organizerNotificationRoutes from './routes/supportCircleOrganizer/notifications/organizerNotificationRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -47,6 +48,7 @@ app.use('/api/users/moods', moodRoutes);
 app.use('/api/support-circles', supportCircleRoutes);
 app.use('/api/group-memberships', groupMembershipRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/volunteer', volunteerRoutes);
 console.log('[Server] Volunteer routes mounted at /api/volunteer');
 app.use('/api/sessions', sessionRoutes);
@@ -58,6 +60,7 @@ app.use('/api/group-chat', groupChatRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/messages', messageRoutes);
 console.log('[Server] Message routes mounted at /api/messages');
+app.use('/api/organizer/notifications', organizerNotificationRoutes);
 
 const startServer = async () => {
     try {
@@ -77,4 +80,3 @@ const startServer = async () => {
 };
 
 startServer();
-

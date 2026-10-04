@@ -19,6 +19,11 @@ import {
     getDashboardStats,
     respondToRequest,
 } from '../services/supportCircleService'
+import {
+    countPendingOrganizerNotifications,
+    getOrganizerNotifications,
+} from '../services/organizerNotificationService'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 
 
 const TABS = ['Overview', 'My Circles', 'Request']
@@ -41,6 +46,17 @@ const BOTTOM_TABS = [
     },
 ]
 
+const relativeTime = value => {
+    if (!value) return ''
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000))
+    if (elapsedMinutes < 1) return 'Just now'
+    if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`
+    const elapsedHours = Math.floor(elapsedMinutes / 60)
+    if (elapsedHours < 24) return `${elapsedHours}h ago`
+    const elapsedDays = Math.floor(elapsedHours / 24)
+    return elapsedDays === 1 ? 'Yesterday' : `${elapsedDays}d ago`
+}
+
 const OrganizerDashboardScreen = ({navigation}) => {
     const {token, user} = useAuth()
 
@@ -52,9 +68,14 @@ const OrganizerDashboardScreen = ({navigation}) => {
     const [stats, setStats] = useState(null)
     const [circles, setCircles] = useState([])
     const [requests, setRequests] = useState([])
+    const [notifications, setNotifications] = useState([])
+    const pendingNotificationCount = countPendingOrganizerNotifications(notifications)
 
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
+
+    const hasPendingRequests = requests.length > 0
+    const hasPendingModeration = (stats?.pendingPostApprovals ?? 0) > 0
 
     // Currently selected join request for the preview modal
     const [selectedRequest, setSelectedRequest] =
@@ -75,15 +96,18 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 statsData,
                 circlesData,
                 requestsData,
+                notificationsData,
             ] = await Promise.all([
                 getDashboardStats(token),
                 getMyCircles(token),
                 getAllPendingRequests(token),
+                getOrganizerNotifications(token),
             ])
 
             setStats(statsData)
             setCircles(circlesData.circles ?? [])
             setRequests(requestsData.requests ?? [])
+            setNotifications(notificationsData.notifications ?? [])
         } catch (err) {
             setError(
                 err.message ||
@@ -168,6 +192,10 @@ const OrganizerDashboardScreen = ({navigation}) => {
         if (screen === 'Profile') {
             navigation.navigate('OrganizerProfile')
         }
+
+        if (screen === 'Moderation') {
+            navigation.navigate('Moderation')
+        }
     }
 
     const handleTabChange = tabName => {
@@ -228,14 +256,24 @@ const OrganizerDashboardScreen = ({navigation}) => {
                     MindMatter
                 </Text>
 
-                <Text style={styles.bellIcon}>
-                    🔔
-                </Text>
+                <Pressable
+                    style={styles.bellButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open notifications"
+                    onPress={() => navigation.navigate('OrganizerNotificationsScreen')}
+                >
+                    <View style={styles.bellWrap}>
+                        <MaterialCommunityIcons name="bell-outline" size={23} color="#4E8C4A" />
+                        {pendingNotificationCount > 0 ? (
+                            <View style={styles.bellUnreadDot}>
+                                <Text style={styles.bellUnreadText}>
+                                    {pendingNotificationCount > 9 ? '9+' : pendingNotificationCount}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
+                </Pressable>
             </View>
-
-            {/* ================================================================
-                TOP TABS
-            ================================================================= */}
 
             <View style={styles.tabRow}>
                 {TABS.map(tab => (
@@ -249,21 +287,23 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         onPress={() =>
                             setActiveTab(tab)
                         }>
-                        <Text
-                            style={[
-                                styles.tabText,
-                                activeTab === tab &&
-                                    styles.tabTextActive,
-                            ]}>
-                            {tab}
-                        </Text>
+                        <View style={styles.tabContent}>
+                            <Text
+                                style={[
+                                    styles.tabText,
+                                    activeTab === tab &&
+                                        styles.tabTextActive,
+                                ]}>
+                                {tab}
+                            </Text>
+                            {tab === 'Request' && hasPendingRequests ? (
+                                <View style={styles.notificationDot} />
+                            ) : null}
+                        </View>
                     </Pressable>
                 ))}
             </View>
 
-            {/* ================================================================
-                ERROR
-            ================================================================= */}
 
             {error ? (
                 <Text style={styles.errorText}>
@@ -271,9 +311,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 </Text>
             ) : null}
 
-            {/* ================================================================
-                OVERVIEW TAB
-            ================================================================= */}
 
             {activeTab === 'Overview' && (
                 <ScrollView
@@ -354,46 +391,144 @@ const OrganizerDashboardScreen = ({navigation}) => {
 
                     </View>
 
-                    <Text style={styles.sectionTitle}>
-                        RECENT ACTIVITIES
-                    </Text>
+                    <View style={styles.attentionHeadingRow}>
+                        <Text style={styles.sectionTitle}>NEEDS YOUR ATTENTION</Text>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={17} color="#4E8C4A" />
+                    </View>
 
-                    {!stats?.recentActivity ||
-                    stats.recentActivity.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Text
-                                style={
-                                    styles.emptyStateBody
-                                }>
-                                Nothing yet — activity will
-                                show up here as your
-                                circles grow.
-                            </Text>
+                    {(stats?.pendingRequests ?? requests.length) > 0 ||
+                    (stats?.pendingPostApprovals ?? 0) > 0 ||
+                    notifications.some(item => item.type === 'SESSION_REGISTRATION' && !item.isRead) ? (
+                        <View style={styles.attentionList}>
+                            {(stats?.pendingRequests ?? requests.length) > 0 ? (
+                                <Pressable style={styles.attentionCard} onPress={() => navigation.navigate('JoinRequests')}>
+                                    <View style={[styles.attentionIcon, styles.requestAttentionIcon]}>
+                                        <MaterialCommunityIcons name="account-plus-outline" size={22} color="#4E8C4A" />
+                                    </View>
+                                    <View style={styles.attentionContent}>
+                                        <Text style={styles.attentionTitle}>
+                                            {stats?.pendingRequests ?? requests.length} New Member Request{(stats?.pendingRequests ?? requests.length) === 1 ? '' : 's'}
+                                        </Text>
+                                        <Text style={styles.attentionSubtitle}>Review requests across your circles</Text>
+                                    </View>
+                                    <MaterialCommunityIcons name="chevron-right" size={22} color="#758075" />
+                                </Pressable>
+                            ) : null}
+
+{hasPendingModeration ? <View style={styles.notificationDotCard} /> : null}
+
+{(stats?.pendingPostApprovals ?? 0) > 0 ? (
+    <Pressable
+        style={styles.attentionCard}
+        onPress={() => navigation.navigate('Moderation')}
+    >
+        <View style={[styles.attentionIcon, styles.moderationAttentionIcon]}>
+            <MaterialCommunityIcons
+                name="shield-alert-outline"
+                size={22}
+                color="#B8762B"
+            />
+        </View>
+
+        <View style={styles.attentionContent}>
+            <Text style={styles.attentionTitle}>
+                {stats.pendingPostApprovals} Post
+                {stats.pendingPostApprovals === 1 ? '' : 's'} Awaiting Review
+            </Text>
+
+            <Text style={styles.attentionSubtitle}>
+                Community Post Moderation
+            </Text>
+        </View>
+
+        <MaterialCommunityIcons
+            name="chevron-right"
+            size={22}
+            color="#758075"
+        />
+    </Pressable>
+) : null}
+
+                            {(() => {
+                                const registrations = notifications.filter(item =>
+                                    item.type === 'SESSION_REGISTRATION' && !item.isRead,
+                                )
+                                const latestRegistration = registrations[0]
+                                if (!latestRegistration) return null
+                                return (
+                                    <Pressable
+                                        style={styles.attentionCard}
+                                        onPress={() => navigation.navigate('Attendance', {
+                                            sessionId: latestRegistration.sessionId?._id ?? latestRegistration.sessionId,
+                                            sessionTitle: latestRegistration.sessionId?.title,
+                                            circleId: latestRegistration.circleId?._id ?? latestRegistration.circleId,
+                                        })}>
+                                        <View style={[styles.attentionIcon, styles.sessionAttentionIcon]}>
+                                            <MaterialCommunityIcons name="calendar-check-outline" size={22} color="#397A85" />
+                                        </View>
+                                        <View style={styles.attentionContent}>
+                                            <Text style={styles.attentionTitle}>
+                                                {registrations.length} New Session Registration{registrations.length === 1 ? '' : 's'}
+                                            </Text>
+                                            <Text style={styles.attentionSubtitle} numberOfLines={1}>
+                                                {latestRegistration.sessionId?.title || latestRegistration.circleId?.topic || 'Open attendance'}
+                                            </Text>
+                                        </View>
+                                        <MaterialCommunityIcons name="chevron-right" size={22} color="#758075" />
+                                    </Pressable>
+                                )
+                            })()}
                         </View>
                     ) : (
-                        stats.recentActivity.map(
-                            (activity, index) => (
-                                <View
-                                    key={index}
-                                    style={
-                                        styles.activityCard
-                                    }>
-                                    <Text
-                                        style={
-                                            styles.activityText
-                                        }>
-                                        {activity.message}
-                                    </Text>
-                                </View>
-                            ),
-                        )
+                        <View style={styles.caughtUpCard}>
+                            <MaterialCommunityIcons name="check-circle-outline" size={23} color="#4E8C4A" />
+                            <View style={styles.caughtUpContent}>
+                                <Text style={styles.caughtUpTitle}>ALL CAUGHT UP</Text>
+                                <Text style={styles.caughtUpText}>There are no new actions requiring your attention.</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    <View style={styles.recentHeadingRow}>
+                        <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
+                        <Pressable onPress={() => navigation.navigate('OrganizerNotificationsScreen')}>
+                            <Text style={styles.viewAllText}>View all</Text>
+                        </Pressable>
+                    </View>
+
+                    {!stats?.recentActivity || stats.recentActivity.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateBody}>Nothing yet — activity will show up here as your circles grow.</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.activityList}>
+                            {stats.recentActivity.map((activity, index) => {
+                                const isSession = activity.message?.startsWith('Session ')
+                                const isRequest = activity.message?.includes('requested to join')
+                                return (
+                                    <View key={`${activity.timestamp}-${index}`} style={styles.activityRow}>
+                                        <View style={styles.activityIconWrap}>
+                                            <MaterialCommunityIcons
+                                                name={isSession ? 'calendar-outline' : 'account-outline'}
+                                                size={18}
+                                                color={isSession ? '#397A85' : '#6C786C'}
+                                            />
+                                        </View>
+                                        <View style={styles.activityContent}>
+                                            <Text style={styles.activityTitle}>
+                                                {isSession ? 'Session scheduled' : isRequest ? 'Member request received' : 'Member joined'}
+                                            </Text>
+                                            <Text style={styles.activityText} numberOfLines={2}>{activity.message}</Text>
+                                        </View>
+                                        <Text style={styles.activityTime}>{relativeTime(activity.timestamp)}</Text>
+                                    </View>
+                                )
+                            })}
+                        </View>
                     )}
                 </ScrollView>
             )}
 
-            {/* ================================================================
-                MY CIRCLES TAB
-            ================================================================= */}
 
             {activeTab === 'My Circles' && (
                 <ScrollView
@@ -535,10 +670,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
 
                 </ScrollView>
             )}
-
-            {/* ================================================================
-                REQUEST TAB
-            ================================================================= */}
 
             {activeTab === 'Request' && (
                 <ScrollView
@@ -692,7 +823,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
 
                                     </View>
 
-                                    {/* BIO PREVIEW */}
 
                                     {bio ? (
                                         <Text
@@ -713,7 +843,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                         </Text>
                                     )}
 
-                                    {/* REVIEW HINT */}
+                                 
 
                                     <Text
                                         style={
@@ -722,7 +852,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                         Tap to review member
                                     </Text>
 
-                                    {/* ACTION BUTTONS */}
 
                                     <View
                                         style={
@@ -809,9 +938,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                 </ScrollView>
             )}
 
-            {/* ================================================================
-                MEMBER PREVIEW MODAL
-            ================================================================= */}
 
             <Modal
                 visible={!!selectedRequest}
@@ -826,7 +952,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         styles.modalOverlay
                     }>
 
-                    {/* DARK BACKDROP */}
 
                     <Pressable
                         style={
@@ -839,11 +964,9 @@ const OrganizerDashboardScreen = ({navigation}) => {
                         }
                     />
 
-                    {/* MODAL CARD */}
 
                     <View style={styles.modalCard}>
 
-                        {/* CLOSE BUTTON */}
 
                         <Pressable
                             style={
@@ -863,7 +986,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </Pressable>
 
-                        {/* PROFILE IMAGE */}
 
                         {selectedRequest?.userId
                             ?.profilePicture ? (
@@ -898,7 +1020,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </View>
                         )}
 
-                        {/* NAME */}
+                   
 
                         <Text
                             style={
@@ -909,7 +1031,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 'Unknown member'}
                         </Text>
 
-                        {/* EMAIL */}
 
                         {selectedRequest?.userId
                             ?.email ? (
@@ -924,7 +1045,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         ) : null}
 
-                        {/* STATUS */}
+                    
 
                         <View
                             style={
@@ -944,7 +1065,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </View>
 
-                        {/* DIVIDER */}
+                   
 
                         <View
                             style={
@@ -952,7 +1073,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             }
                         />
 
-                        {/* ABOUT */}
+                    
 
                         <Text
                             style={
@@ -975,7 +1096,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </View>
 
-                        {/* COMMUNITY */}
+                 
 
                         <Text
                             style={
@@ -992,7 +1113,7 @@ const OrganizerDashboardScreen = ({navigation}) => {
                             </Text>
                         </Text>
 
-                        {/* MODAL ACTIONS */}
+                       
 
                         <View
                             style={
@@ -1116,15 +1237,18 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                     <Text style={styles.drawerUserName} numberOfLines={1}>
                                         {user?.name || 'MindMatter User'}
                                     </Text>
-                                    <View style={styles.drawerRoleRow}>
-                                            <Image
-                                                    source={require('../../../assets/images/community-organizer-badge.png')}
-                                                    style={styles.drawerBadgeIcon}
+                                    {user?.role === 'communityOrganizer' ? (
+                                        <View style={styles.drawerRoleRow}>
+                                            <CommunityOrganizerBadge
+                                                role={user?.role}
+                                                size="small"
+                                                style={styles.drawerBadgeIcon}
                                             />
-                                        <Text style={styles.drawerRole}>
-                                            Community Organizer
-                                        </Text>
-                                    </View>
+                                            <Text style={styles.drawerRole}>
+                                                Community Organizer
+                                            </Text>
+                                        </View>
+                                    ) : null}
                                 </View>
                             </View>
 
@@ -1247,15 +1371,20 @@ const OrganizerDashboardScreen = ({navigation}) => {
                                 )
                             }>
 
-                            <MaterialCommunityIcons
-                                name={item.icon}
-                                size={22}
-                                color={
-                                    isActive
-                                        ? '#4E8C4A'
-                                        : '#707770'
-                                }
-                            />
+                            <View style={styles.bottomNavIconWrap}>
+                                <MaterialCommunityIcons
+                                    name={item.icon}
+                                    size={22}
+                                    color={
+                                        isActive
+                                            ? '#4E8C4A'
+                                            : '#707770'
+                                    }
+                                />
+                                {item.key === 'requests' && hasPendingRequests ? (
+                                    <View style={styles.notificationDotBottom} />
+                                ) : null}
+                            </View>
 
                             <Text
                                 style={[
@@ -1275,9 +1404,6 @@ const OrganizerDashboardScreen = ({navigation}) => {
     )
 }
 
-// ============================================================================
-// STYLES
-// ============================================================================
 
 const styles = StyleSheet.create({
     container: {
@@ -1292,10 +1418,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F4F7EF',
     },
 
-    // ------------------------------------------------------------------------
-    // HEADER
-    // ------------------------------------------------------------------------
-
+  
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1325,13 +1448,41 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    bellIcon: {
-        fontSize: 18,
+    bellButton: {
+        width: 42,
+        height: 42,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
-    // ------------------------------------------------------------------------
-    // TOP TABS
-    // ------------------------------------------------------------------------
+    bellWrap: {
+        width: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    bellUnreadDot: {
+        position: 'absolute',
+        top: -3,
+        right: -5,
+        minWidth: 18,
+        height: 18,
+        paddingHorizontal: 4,
+        borderRadius: 9,
+        backgroundColor: '#D94B4B',
+        borderWidth: 1,
+        borderColor: '#F4F7EF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bellUnreadText: {
+        color: '#FFFFFF',
+        fontSize: 9,
+        fontWeight: '700',
+        lineHeight: 10,
+    },
+
 
     tabRow: {
         flexDirection: 'row',
@@ -1347,6 +1498,12 @@ const styles = StyleSheet.create({
         paddingVertical: 9,
         borderRadius: 20,
         alignItems: 'center',
+    },
+
+    tabContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
 
     tabActive: {
@@ -1370,15 +1527,49 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
 
-    // ------------------------------------------------------------------------
-    // CONTENT
-    // ------------------------------------------------------------------------
+    notificationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#D92D20',
+        position: 'absolute',
+        right: -8,
+        top: -2,
+    },
 
+    notificationDotCard: {
+        position: 'absolute',
+        right: 14,
+        top: 14,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#D92D20',
+    },
+
+    notificationDotBottom: {
+        position: 'absolute',
+        right: -3,
+        top: -2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#D92D20',
+    },
+
+    bottomNavIconWrap: {
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+  
     content: {
         padding: 16,
         paddingBottom: 110,
     },
 
+   
     // ------------------------------------------------------------------------
     // SIDE DRAWER
     // ------------------------------------------------------------------------
@@ -1583,10 +1774,6 @@ const styles = StyleSheet.create({
         color: '#4E8C4A',
     },
 
-    // ------------------------------------------------------------------------
-    // OVERVIEW
-    // ------------------------------------------------------------------------
-
     statRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -1625,6 +1812,89 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
 
+    attentionHeadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 2,
+    },
+
+    attentionList: {
+        gap: 9,
+        marginBottom: 22,
+    },
+
+    attentionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 76,
+        padding: 12,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E7DD',
+    },
+
+    attentionIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+
+    requestAttentionIcon: {backgroundColor: '#EAF4E6'},
+    moderationAttentionIcon: {backgroundColor: '#FBF1E5'},
+    sessionAttentionIcon: {backgroundColor: '#EAF3F4'},
+
+    attentionContent: {
+        flex: 1,
+        minWidth: 0,
+    },
+
+    attentionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#2B342B',
+    },
+
+    attentionSubtitle: {
+        marginTop: 4,
+        fontSize: 12,
+        lineHeight: 17,
+        color: '#737D73',
+    },
+
+    caughtUpCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        marginBottom: 22,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#DCE8D8',
+        backgroundColor: '#F0F6ED',
+    },
+
+    caughtUpContent: {flex: 1, marginLeft: 12},
+    caughtUpTitle: {fontSize: 12, fontWeight: '800', color: '#3F7540'},
+    caughtUpText: {marginTop: 3, color: '#687368', fontSize: 12, lineHeight: 17},
+
+    recentHeadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 2,
+    },
+
+    viewAllText: {
+        marginBottom: 10,
+        color: '#4E8C4A',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
     emptyState: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
@@ -1647,17 +1917,47 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 
-    activityCard: {
-        backgroundColor: '#4E8C4A',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 10,
+    activityList: {
+        paddingHorizontal: 12,
+        paddingVertical: 2,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E4E9E2',
     },
 
+    activityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEF1EC',
+    },
+
+    activityIconWrap: {
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+        borderRadius: 16,
+        backgroundColor: '#F1F4F0',
+    },
+
+    activityContent: {flex: 1, minWidth: 0},
+    activityTitle: {fontSize: 12, fontWeight: '700', color: '#394239'},
+
     activityText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontWeight: '500',
+        marginTop: 3,
+        color: '#737D73',
+        fontSize: 11,
+        lineHeight: 15,
+    },
+
+    activityTime: {
+        marginLeft: 8,
+        color: '#929A92',
+        fontSize: 10,
     },
 
     // ------------------------------------------------------------------------
@@ -1737,10 +2037,7 @@ circleAvatarText: {
         fontWeight: '500',
     },
 
-    // ------------------------------------------------------------------------
-    // REQUEST CARDS
-    // ------------------------------------------------------------------------
-
+   
     requestCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
@@ -1871,10 +2168,7 @@ circleAvatarText: {
         opacity: 0.55,
     },
 
-    // ------------------------------------------------------------------------
-    // MEMBER PREVIEW MODAL
-    // ------------------------------------------------------------------------
-
+   
     modalOverlay: {
         flex: 1,
         alignItems: 'center',
@@ -2068,6 +2362,8 @@ circleAvatarText: {
         fontSize: 14,
         fontWeight: '700',
     },
+
+
 })
 
 export default OrganizerDashboardScreen

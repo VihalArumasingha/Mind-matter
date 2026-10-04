@@ -12,9 +12,15 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen'
 import EditProfileScreen from '../features/profile/screens/EditProfileScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
+import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
+import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
 import UserHomeScreen from '../features/userHome/screens/UserHomeScreen'
 import CommunitiesScreen from '../features/userCommunities/screens/CommunitiesScreen'
 import CreatePostScreen from '../features/posts/screens/CreatePostScreen'
+import GroupPostCreateScreen from '../features/userCommunities/screens/GroupPostCreateScreen'
+import ModerationScreen from '../features/organizer/screens/ModerationScreen'
+import OrganizerNotificationsScreen from '../features/organizer/screens/OrganizerNotificationsScreen'
+
 
 const Stack = createNativeStackNavigator()
 
@@ -25,6 +31,10 @@ const OrganizerNavigator = () => {
             <Stack.Screen
                 name="OrganizerDashboard"
                 component={OrganizerDashboardScreen}
+            />
+            <Stack.Screen
+                name="OrganizerNotificationsScreen"
+                component={OrganizerNotificationsScreen}
             />
 
             {/* ── Normal MindMatter user experience ── */}
@@ -90,6 +100,27 @@ const OrganizerNavigator = () => {
                 name="MemberCircleDetail"
                 component={MemberCircleDetailScreen}
             />
+
+            <Stack.Screen
+                name="Notifications"
+                component={ProfessionalNotificationsScreen}
+                
+            />  
+            <Stack.Screen  
+            name="MemberCircleActivity"
+                component={MemberCircleActivityScreen}
+                />
+
+            <Stack.Screen
+                name="GroupPostCreate"
+                component={GroupPostCreateScreen}
+            />
+
+            <Stack.Screen
+                name="Moderation"
+                component={ModerationScreen}
+            />
+
         </Stack.Navigator>
     )
 }

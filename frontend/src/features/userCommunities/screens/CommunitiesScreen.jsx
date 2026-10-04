@@ -113,12 +113,26 @@ const CommunitiesScreen = () => {
         : filteredMyCommunities
 
     const openCommunity = circle => {
-        navigation.getParent()?.navigate('MemberCircleActivity', {circleId: circle._id})
+    const params = {circleId: circle._id}
+
+    if (navigation.getState()?.routeNames?.includes('MemberCircleActivity')) {
+        navigation.navigate('MemberCircleActivity', params)
+        return
     }
 
-    const openCommunityDetails = circle => {
-        navigation.getParent()?.navigate('MemberCircleDetail', {circleId: circle._id})
+    navigation.getParent()?.navigate('MemberCircleActivity', params)
+}
+
+const openCommunityDetails = circle => {
+    const params = {circleId: circle._id}
+
+    if (navigation.getState()?.routeNames?.includes('MemberCircleDetail')) {
+        navigation.navigate('MemberCircleDetail', params)
+        return
     }
+
+    navigation.getParent()?.navigate('MemberCircleDetail', params)
+}
 
     const joinCommunity = async circle => {
         if (joiningCircleId) return

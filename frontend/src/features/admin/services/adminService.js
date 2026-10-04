@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { API_BASE_URL } from '../../../config/api';
 
 const apiRequest = async (endpoint, method = 'GET', body = null, token = null) => {
@@ -29,17 +28,20 @@ const apiRequest = async (endpoint, method = 'GET', body = null, token = null) =
       console.error('❌ Received HTML instead of JSON. Backend might be down or route not found.');
       throw new Error('Backend server returned HTML. Please check if server is running.');
     }
+    let data;
     try {
-      const data = JSON.parse(text);
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-      return data;
+      data = JSON.parse(text);
     } catch (parseError) {
       console.error('❌ JSON Parse error:', parseError);
       console.error('📄 Raw response:', text);
       throw new Error('Invalid JSON response from server');
     }
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
     
   } catch (error) {
     console.error(`❌ API Error (${endpoint}):`, error.message);
@@ -109,6 +111,17 @@ export const getProfessionalApplicationsApi = async (token, status = 'all') => {
   }
 };
 
+export const getCommunityOrganizerApplicationsApi = async (token, status = 'all') => {
+  try {
+    const query = status !== 'all' ? `?status=${status}` : '';
+    const response = await apiRequest(`/api/admin/community-organizers/applications${query}`, 'GET', null, token);
+    return response.applications || response;
+  } catch (error) {
+    console.error('Error fetching community organizer applications:', error);
+    throw error;
+  }
+};
+
 export const submitTherapistApplicationWithFiles  = async (formData) => {
   try {
     console.log('Submitting application - Form email:', formData.email, 'Account email:', formData.userEmail);
@@ -120,15 +133,16 @@ export const submitTherapistApplicationWithFiles  = async (formData) => {
       },
       body: JSON.stringify({
         fullName: formData.fullName,
-        email: formData.email, // Save form email as-is in the application
-        accountEmail: formData.userEmail, // Use logged-in user's email for account linking
+        email: formData.email,
+        accountEmail: formData.userEmail,
         phone: formData.phone || '',
         profession: formData.profession || 'Clinical Psychologist',
+        applicationType: formData.applicationType || (formData.profession === 'Community Organizer' ? 'communityOrganizer' : 'professional'),
         licenseNum: formData.licenseNum,
         specialization: formData.specialization || 'General Mental Health Support',
         expYears: formData.expYears || 1,
         bio: formData.bio || '',
-        userId: formData.userId || formData.user?._id || null, // Use logged-in user's ID
+        userId: formData.userId || formData.user?._id || null,
         documents: formData.documents || [],
       }),
     });
@@ -145,7 +159,10 @@ export const submitTherapistApplicationWithFiles  = async (formData) => {
     throw error;
   }
 };
-export const approveProfessionalApi = async (token, id) => {
+export const approveProfessionalApi = async (tokenOrId, maybeId) => {
+  const token = maybeId !== undefined ? tokenOrId : null;
+  const id = maybeId !== undefined ? maybeId : tokenOrId;
+
   try {
     const response = await apiRequest(`/api/admin/professionals/applications/${id}/approve`, 'PUT', null, token);
     return response.application || response;
@@ -155,12 +172,43 @@ export const approveProfessionalApi = async (token, id) => {
   }
 };
 
-export const rejectProfessionalApi = async (token, id, reason) => {
+export const rejectProfessionalApi = async (tokenOrId, maybeId, maybeReason) => {
+  const token = arguments.length >= 3 ? tokenOrId : null;
+  const id = arguments.length >= 3 ? maybeId : tokenOrId;
+  const reason = arguments.length >= 3 ? maybeReason : maybeId;
+
   try {
     const response = await apiRequest(`/api/admin/professionals/applications/${id}/reject`, 'PUT', { reason }, token);
     return response.application || response;
   } catch (error) {
     console.error('Error rejecting professional:', error);
+    throw error;
+  }
+};
+
+export const approveCommunityOrganizerApi = async (tokenOrId, maybeId) => {
+  const token = maybeId !== undefined ? tokenOrId : null;
+  const id = maybeId !== undefined ? maybeId : tokenOrId;
+
+  try {
+    const response = await apiRequest(`/api/admin/community-organizers/applications/${id}/approve`, 'PUT', null, token);
+    return response.application || response;
+  } catch (error) {
+    console.error('Error approving community organizer application:', error);
+    throw error;
+  }
+};
+
+export const rejectCommunityOrganizerApi = async (tokenOrId, maybeId, maybeReason) => {
+  const token = arguments.length >= 3 ? tokenOrId : null;
+  const id = arguments.length >= 3 ? maybeId : tokenOrId;
+  const reason = arguments.length >= 3 ? maybeReason : maybeId;
+
+  try {
+    const response = await apiRequest(`/api/admin/community-organizers/applications/${id}/reject`, 'PUT', { reason }, token);
+    return response.application || response;
+  } catch (error) {
+    console.error('Error rejecting community organizer application:', error);
     throw error;
   }
 };
@@ -256,6 +304,16 @@ export const getReportsApi = async (token, targetType = 'all', status = 'all') =
   }
 };
 
+export const createReportApi = async (token, report) => {
+  try {
+    const response = await apiRequest('/api/reports', 'POST', report, token);
+    return response.report || response;
+  } catch (error) {
+    console.error('Error submitting report:', error);
+    throw error;
+  }
+};
+
 export const investigateReportApi = async (token, id) => {
   try {
     const response = await apiRequest(`/api/admin/reports/${id}/investigate`, 'PUT', null, token);
@@ -323,6 +381,45 @@ export const getAuditLogs = async (token, search = '', action = 'all') => {
     return response.logs || response;
   } catch (error) {
     console.error('Error fetching audit logs:', error);
+    throw error;
+  }
+};
+
+export const getReportSummaryApi = async (token, queryString = '') => {
+  try {
+    const endpoint = queryString
+      ? `/api/admin/reports/summary?${queryString}`
+      : '/api/admin/reports/summary';
+    const response = await apiRequest(endpoint, 'GET', null, token);
+    return response.summary;
+  } catch (error) {
+    console.error('Error fetching stakeholder report summary:', error);
+    throw error;
+  }
+};
+
+export const exportReportDataApi = async (token, filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.targetType && filters.targetType !== 'all') {
+      params.append('targetType', filters.targetType);
+    }
+    if (filters.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    params.append('format', filters.format || 'json');
+
+    const response = await apiRequest(
+      `/api/admin/reports/export?${params.toString()}`,
+      'GET',
+      null,
+      token
+    );
+    return response;
+  } catch (error) {
+    console.error('Error exporting report data:', error);
     throw error;
   }
 };

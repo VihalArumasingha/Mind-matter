@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -16,7 +17,13 @@ import {SafeAreaView} from 'react-native-safe-area-context'
 import {pick, types} from '@react-native-documents/picker'
 
 import {useAuth} from '../../../context/AuthContext'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 import {getCircleById, getMyMemberships} from '../../organizer/services/supportCircleService'
+import {getSessionsForCircle} from '../../organizer/services/sessionService'
+import {
+    getAttendanceForSession,
+    registerAttendance,
+} from '../../organizer/services/attendanceService'
 import {
     createGroupPost,
     getCircleMessages,
@@ -44,6 +51,8 @@ const MemberCircleActivityScreen = () => {
     const [membership, setMembership] = useState(null)
     const [posts, setPosts] = useState([])
     const [messages, setMessages] = useState([])
+    const [sessions, setSessions] = useState([])
+    const [attendanceBySession, setAttendanceBySession] = useState({})
     const [activeSection, setActiveSection] = useState('posts')
     const [postTitle, setPostTitle] = useState('')
     const [postDescription, setPostDescription] = useState('')
@@ -55,6 +64,7 @@ const MemberCircleActivityScreen = () => {
     const [error, setError] = useState('')
     const [isPosting, setIsPosting] = useState(false)
     const [isSendingMessage, setIsSendingMessage] = useState(false)
+    const [registeringSessionId, setRegisteringSessionId] = useState(null)
 
     const loadActivity = useCallback(async () => {
         try {
@@ -65,12 +75,14 @@ const MemberCircleActivityScreen = () => {
                 groupPostData,
                 myPostData,
                 messageData,
+                sessionData,
             ] = await Promise.all([
                 getCircleById(token, circleId),
                 getMyMemberships(token),
                 getGroupPosts(token, circleId),
                 getMyGroupPosts(token, circleId),
                 getCircleMessages(token, circleId),
+                getSessionsForCircle(token, circleId),
             ])
 
             setCircle(circleData)
@@ -82,6 +94,20 @@ const MemberCircleActivityScreen = () => {
                 ),
             )
             setMessages(messageData.messages || [])
+            const upcomingSessions = sessionData.sessions || []
+            setSessions(upcomingSessions)
+
+            const attendanceMap = {}
+            const attendanceResults = await Promise.all(
+                upcomingSessions.map(async session => {
+                    const attendanceData = await getAttendanceForSession(token, session._id)
+                    attendanceMap[session._id] = attendanceData.attendance || []
+                }),
+            )
+
+            if (attendanceResults.length) {
+                setAttendanceBySession(attendanceMap)
+            }
 
             const currentMembership = (membershipData.memberships || []).find(item =>
                 item.groupId?._id === circleId || item.groupId === circleId,
@@ -94,22 +120,39 @@ const MemberCircleActivityScreen = () => {
         }
     }, [token, circleId])
 
+    const refreshMessages = useCallback(async () => {
+        if (!token || !circleId) return
+
+        try {
+            const data = await getCircleMessages(token, circleId)
+            setMessages(data.messages || [])
+        } catch (refreshError) {
+            console.error('Failed to refresh community chat:', refreshError)
+        }
+    }, [token, circleId])
+
     useFocusEffect(
         useCallback(() => {
             loadActivity()
 
-            const refreshMessages = async () => {
-                try {
-                    const data = await getCircleMessages(token, circleId)
-                    setMessages(data.messages || [])
-                } catch (refreshError) {
-                    console.error('Failed to refresh community chat:', refreshError)
-                }
+            const isFocused = typeof navigation?.isFocused === 'function'
+                ? navigation.isFocused()
+                : false
+
+            if (!isFocused) {
+                return undefined
             }
 
-            const interval = setInterval(refreshMessages, 4000)
+            const interval = setInterval(() => {
+                if (typeof navigation?.isFocused === 'function' && !navigation.isFocused()) {
+                    return
+                }
+
+                refreshMessages()
+            }, 4000)
+
             return () => clearInterval(interval)
-        }, [loadActivity, token, circleId]),
+        }, [loadActivity, navigation, refreshMessages]),
     )
 
     const canParticipate = membership?.status === 'approved'
@@ -178,6 +221,26 @@ const MemberCircleActivityScreen = () => {
         }
     }
 
+    const handleSessionRegister = async sessionId => {
+        if (!sessionId || !canParticipate) return
+
+        try {
+            setRegisteringSessionId(sessionId)
+            const result = await registerAttendance(token, sessionId)
+
+            const attendanceRecord = result.attendance || {}
+            setAttendanceBySession(current => ({
+                ...current,
+                [sessionId]: [...(current[sessionId] || []), attendanceRecord],
+            }))
+            Alert.alert('You are registered', 'Your session registration has been saved.')
+        } catch (registerError) {
+            Alert.alert('Unable to register', registerError.message || 'Please try again.')
+        } finally {
+            setRegisteringSessionId(null)
+        }
+    }
+
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea}>
@@ -205,31 +268,83 @@ const MemberCircleActivityScreen = () => {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <View style={styles.header}>
+            <View style={styles.communityHeader}>
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Back to communities"
                     onPress={() => navigation.goBack()}
-                    style={styles.backButton}>
+                    style={styles.activityBackButton}>
                     <Text style={styles.backButtonText}>‹</Text>
                 </Pressable>
+
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${circle.topic}. Open community details`}
-                    onPress={() => navigation.navigate('MemberCircleDetail', {circleId})}
-                    style={styles.circleIdentity}>
-                    <View style={styles.circleAvatar}>
-                        {circle.profileImage ? (
-                            <Image source={{uri: circle.profileImage}} style={styles.circleAvatarImage} />
+                    onPress={() =>
+                        navigation.navigate('MemberCircleDetail', {circleId})
+                    }
+                    style={styles.activityCommunityCard}>
+
+                    <View style={styles.activityCover}>
+                        {circle.coverImage ? (
+                            <Image
+                                source={{uri: circle.coverImage}}
+                                style={styles.activityCoverImage}
+                            />
                         ) : (
-                            <Text style={styles.circleAvatarFallback}>♥</Text>
+                            <View style={styles.activityCoverFallback}>
+                                <Text style={styles.activityCoverFallbackText}>
+                                    {circle.topic?.charAt(0)?.toUpperCase() || 'C'}
+                                </Text>
+                            </View>
                         )}
                     </View>
-                    <View style={styles.circleIdentityText}>
-                        <Text numberOfLines={1} style={styles.circleName}>{circle.topic}</Text>
-                        <Text style={styles.circleLink}>Community details</Text>
+
+                    <View style={styles.activityProfileWrapper}>
+                        {circle.profileImage ? (
+                            <Image
+                                source={{uri: circle.profileImage}}
+                                style={styles.activityProfileImage}
+                            />
+                        ) : (
+                            <View style={styles.activityProfileFallback}>
+                                <Text style={styles.activityProfileFallbackText}>
+                                    ♥
+                                </Text>
+                            </View>
+                        )}
                     </View>
-                    <Text style={styles.identityArrow}>›</Text>
+
+                    <View style={styles.activityCommunityInfo}>
+                        <Text
+                            numberOfLines={1}
+                            style={styles.activityCommunityName}>
+                            {circle.topic}
+                        </Text>
+
+                        <View style={styles.activityCategoryBadge}>
+                            <Text style={styles.activityCategoryText}>
+                                {circle.category || 'Support community'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.activityMetaRow}>
+                            {circle.status === 'active' ? (
+                                <View style={styles.activityActiveBadge}>
+                                    <View style={styles.activityActiveDot} />
+                                    <Text style={styles.activityActiveText}>
+                                        Active
+                                    </Text>
+                                </View>
+                            ) : null}
+
+                            <Text style={styles.activityDetailsText}>
+                                Community details
+                            </Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.activityArrow}>›</Text>
                 </Pressable>
             </View>
 
@@ -237,6 +352,7 @@ const MemberCircleActivityScreen = () => {
                 {[
                     {key: 'posts', label: 'Posts'},
                     {key: 'chat', label: 'Chat'},
+                    {key: 'announcements', label: 'Announcements'},
                 ].map(section => (
                     <Pressable
                         key={section.key}
@@ -331,9 +447,18 @@ const MemberCircleActivityScreen = () => {
                         {posts.map(post => (
                             <View key={post._id} style={styles.postCard}>
                                 <View style={styles.postMetaRow}>
-                                    <Text style={styles.postAuthor}>
-                                        {post.isAnonymous ? 'Anonymous' : post.author?.name || 'Community member'}
-                                    </Text>
+                                    <View style={styles.postAuthorRow}>
+                                        <Text style={styles.postAuthor}>
+                                            {post.isAnonymous ? 'Anonymous' : post.author?.name || 'Community member'}
+                                        </Text>
+                                        {!post.isAnonymous ? (
+                                            <CommunityOrganizerBadge
+                                                role={post.author?.role}
+                                                size="small"
+                                                style={styles.postAuthorBadge}
+                                            />
+                                        ) : null}
+                                    </View>
                                     {post.status !== 'active' ? (
                                         <Text style={styles.pendingLabel}>
                                             {post.status === 'pending' ? 'Awaiting review' : 'Removed'}
@@ -353,7 +478,7 @@ const MemberCircleActivityScreen = () => {
                         ))}
                         {posts.length === 0 ? <Text style={styles.emptyText}>No community posts yet.</Text> : null}
                     </>
-                ) : (
+                ) : activeSection === 'chat' ? (
                     <>
                         <View style={styles.chatHistory}>
                             {messages.map(item => {
@@ -361,7 +486,16 @@ const MemberCircleActivityScreen = () => {
                                 return (
                                     <View key={item._id} style={[styles.messageRow, isOwnMessage && styles.ownMessageRow]}>
                                         <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-                                            {!isOwnMessage ? <Text style={styles.messageSender}>{item.sender?.name || 'Community member'}</Text> : null}
+                                            {!isOwnMessage ? (
+                                                <View style={styles.messageSenderRow}>
+                                                    <Text style={styles.messageSender}>{item.sender?.name || 'Community member'}</Text>
+                                                    <CommunityOrganizerBadge
+                                                        role={item.sender?.role}
+                                                        size="small"
+                                                        style={styles.messageSenderBadge}
+                                                    />
+                                                </View>
+                                            ) : null}
                                             <Text style={[styles.messageContent, isOwnMessage && styles.ownMessageContent]}>{item.content}</Text>
                                             <Text style={styles.messageTime}>
                                                 {new Date(item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
@@ -396,6 +530,152 @@ const MemberCircleActivityScreen = () => {
                             <Text style={styles.readOnlyNote}>Join this community to send messages.</Text>
                         )}
                     </>
+                ) : (
+                    <>
+                        <View style={styles.announcementIntro}>
+                            <Text style={styles.announcementIntroTitle}>Community Announcements</Text>
+                            <Text style={styles.announcementIntroText}>
+                                Session updates and upcoming community meetings will appear here.
+                            </Text>
+                        </View>
+
+                        {sessions.map(session => {
+                            const scheduledAt = new Date(session.scheduledAt)
+                            const sessionMeetingType =
+                                session.meetingType ||
+                                (session.meetingLink ? 'online' : session.location ? 'physical' : 'online')
+                            const isCancelled = session.status === 'cancelled'
+                            const isCompleted = session.status === 'completed' || scheduledAt < new Date()
+                            const statusLabel = isCancelled
+                                ? 'CANCELLED'
+                                : isCompleted
+                                  ? 'COMPLETED'
+                                  : 'UPCOMING'
+                            const attendanceRecords = attendanceBySession[session._id] || []
+                            const registeredCount = attendanceRecords.filter(item => item.status === 'registered').length
+                            const userRegistration = attendanceRecords.find(
+                                item => (item.userId?._id || item.userId) === user?._id && item.status === 'registered',
+                            )
+                            const isPhysicalSession = sessionMeetingType === 'physical'
+                            const capacityReached = isPhysicalSession && Number(session.capacity) > 0 && registeredCount >= Number(session.capacity)
+                            const registrationDisabled =
+                                !canParticipate ||
+                                isCancelled ||
+                                isCompleted ||
+                                !!userRegistration ||
+                                (registeringSessionId === session._id) ||
+                                (isPhysicalSession && capacityReached)
+
+                            return (
+                                <View key={session._id} style={styles.announcementCard}>
+                                    <View style={styles.announcementTopRow}>
+                                        <View style={styles.announcementBadge}>
+                                            <Text style={styles.announcementBadgeText}>SESSION</Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.announcementStatus,
+                                                isCancelled && styles.announcementStatusCancelled,
+                                                isCompleted && styles.announcementStatusCompleted,
+                                            ]}>
+                                            {statusLabel}
+                                        </Text>
+                                    </View>
+
+                                    <Text style={styles.announcementTitle}>{session.title}</Text>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>📅</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {scheduledAt.toLocaleDateString([], {
+                                                weekday: 'short',
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric',
+                                            })}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>🕐</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {scheduledAt.toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })} · {session.durationMinutes} min
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.announcementInfoRow}>
+                                        <Text style={styles.announcementInfoIcon}>🏷️</Text>
+                                        <Text style={styles.announcementInfoText}>
+                                            {sessionMeetingType === 'online' ? 'Online session' : 'Physical session'}
+                                        </Text>
+                                    </View>
+
+                                    {sessionMeetingType === 'online' ? (
+                                        <Pressable
+                                            onPress={() => session.meetingLink && Linking.openURL(session.meetingLink)}
+                                            style={styles.meetingLinkRow}>
+                                            <Text style={styles.announcementInfoIcon}>🔗</Text>
+                                            <Text style={styles.linkText} numberOfLines={2}>
+                                                {session.meetingLink || 'Meeting link unavailable'}
+                                            </Text>
+                                        </Pressable>
+                                    ) : (
+                                        <View style={styles.announcementInfoRow}>
+                                            <Text style={styles.announcementInfoIcon}>📍</Text>
+                                            <Text style={styles.announcementInfoText} numberOfLines={2}>
+                                                {session.location || 'Location unavailable'}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {isPhysicalSession ? (
+                                        <View style={styles.capacityRow}>
+                                            <Text style={styles.capacityText}>
+                                                {registeredCount} / {session.capacity || 0} registered
+                                            </Text>
+                                            {capacityReached ? (
+                                                <Text style={styles.capacityFull}>FULL</Text>
+                                            ) : null}
+                                        </View>
+                                    ) : null}
+
+                                    {session.description ? (
+                                        <Text style={styles.announcementDescription}>
+                                            {session.description}
+                                        </Text>
+                                    ) : null}
+
+                                    <View style={styles.registerRow}>
+                                        <Pressable
+                                            disabled={registrationDisabled}
+                                            onPress={() => handleSessionRegister(session._id)}
+                                            style={[
+                                                styles.registerButton,
+                                                registrationDisabled && styles.registerButtonDisabled,
+                                                capacityReached && styles.registerButtonFull,
+                                            ]}>
+                                            <Text style={styles.registerButtonText}>
+                                                {userRegistration ? '✓ REGISTERED' : capacityReached ? 'FULL' : 'REGISTER'}
+                                            </Text>
+                                        </Pressable>
+                                    </View>
+                                </View>
+                            )
+                        })}
+
+                        {sessions.length === 0 ? (
+                            <View style={styles.emptyAnnouncementState}>
+                                <Text style={styles.emptyAnnouncementIcon}>📢</Text>
+                                <Text style={styles.emptyAnnouncementTitle}>No announcements yet</Text>
+                                <Text style={styles.emptyText}>
+                                    Session announcements from the community organizer will appear here.
+                                </Text>
+                            </View>
+                        ) : null}
+                    </>
                 )}
             </ScrollView>
         </SafeAreaView>
@@ -404,49 +684,207 @@ const MemberCircleActivityScreen = () => {
 
 const styles = StyleSheet.create({
     safeArea: {flex: 1, backgroundColor: '#F8FAF5'},
-    header: {
-        minHeight: 76,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
+    communityHeader: {
+        backgroundColor: '#F8FAF5',
         borderBottomWidth: 1,
         borderBottomColor: '#E2E9DF',
+        paddingBottom: 10,
     },
-    backButton: {width: 36, height: 44, justifyContent: 'center'},
-    backButtonText: {color: '#354335', fontSize: 34, lineHeight: 38},
-    circleIdentity: {flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0, paddingVertical: 8},
-    circleAvatar: {
-        width: 46,
-        height: 46,
+
+    activityBackButton: {
+        position: 'absolute',
+        left: 10,
+        top: 16,
+        zIndex: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.88)',
+    },
+
+    backButtonText: {
+        color: '#354335',
+        fontSize: 32,
+        lineHeight: 36,
+    },
+
+    activityCommunityCard: {
+        marginHorizontal: 12,
+        marginTop: 8,
+        position: 'relative',
+        paddingBottom: 2,
+    },
+
+    activityCover: {
+        width: '100%',
+        height: 158,
         overflow: 'hidden',
         borderRadius: 14,
-        backgroundColor: '#E5F2E2',
+        backgroundColor: '#DDEBDD',
     },
-    circleAvatarImage: {width: '100%', height: '100%'},
-    circleAvatarFallback: {color: '#397A49', fontSize: 23},
-    circleIdentityText: {flex: 1, minWidth: 0, marginLeft: 11},
-    circleName: {color: '#263526', fontSize: 16, fontWeight: '700'},
-    circleLink: {marginTop: 3, color: '#397A49', fontSize: 12, fontWeight: '600'},
-    identityArrow: {marginLeft: 8, color: '#748171', fontSize: 25},
-    sectionTabs: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: '#DCE5D8',
-        paddingHorizontal: 18,
+
+    activityCoverImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
     },
-    sectionTab: {
+
+    activityCoverFallback: {
         flex: 1,
-        minHeight: 48,
+        backgroundColor: '#DDEBDD',
         alignItems: 'center',
         justifyContent: 'center',
-        borderBottomWidth: 2,
-        borderBottomColor: 'transparent',
     },
-    sectionTabActive: {borderBottomColor: '#397A49'},
-    sectionTabText: {color: '#758174', fontSize: 14, fontWeight: '600'},
-    sectionTabTextActive: {color: '#276D3B'},
+
+    activityCoverFallbackText: {
+        fontSize: 48,
+        fontWeight: '700',
+        color: '#4E8C4A',
+    },
+
+    activityProfileWrapper: {
+        width: 86,
+        height: 86,
+        borderRadius: 43,
+        padding: 4,
+        position: 'absolute',
+        left: 18,
+        top: 116,
+        zIndex: 5,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.16,
+        shadowRadius: 5,
+        elevation: 5,
+    },
+
+    activityProfileImage: {
+        width: 78,
+        height: 78,
+        borderRadius: 39,
+        resizeMode: 'cover',
+    },
+
+    activityProfileFallback: {
+        width: 78,
+        height: 78,
+        borderRadius: 39,
+        backgroundColor: '#E5F2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    activityProfileFallbackText: {
+        fontSize: 30,
+        color: '#4E8C4A',
+    },
+
+    activityCommunityInfo: {
+        marginTop: 48,
+        paddingHorizontal: 6,
+        paddingLeft: 8,
+    },
+
+    activityCommunityName: {
+        color: '#263526',
+        fontSize: 21,
+        lineHeight: 27,
+        fontWeight: '700',
+    },
+
+    activityCategoryBadge: {
+        alignSelf: 'flex-start',
+        marginTop: 7,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+        backgroundColor: '#E7F3E4',
+    },
+
+    activityCategoryText: {
+        color: '#4E8C4A',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    activityMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 9,
+    },
+
+    activityActiveBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 11,
+        backgroundColor: '#E7F3E4',
+    },
+
+    activityActiveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#4E8C4A',
+        marginRight: 5,
+    },
+
+    activityActiveText: {
+        color: '#4E8C4A',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+
+    activityDetailsText: {
+        marginLeft: 9,
+        color: '#397A49',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    activityArrow: {
+        position: 'absolute',
+        right: 6,
+        bottom: 24,
+        color: '#748171',
+        fontSize: 28,
+    },
+
+    sectionTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAF5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCE5D8',
+    paddingHorizontal: 18,
+},
+
+    sectionTab: {
+    flex: 1,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+},
+
+sectionTabActive: {
+    borderBottomColor: '#397A49',
+},
+
+sectionTabText: {
+    color: '#758174',
+    fontSize: 13,
+    fontWeight: '600',
+},
+
+sectionTabTextActive: {
+    color: '#276D3B',
+},
+
     content: {padding: 16, paddingBottom: 36},
     composer: {
         padding: 15,
@@ -498,7 +936,9 @@ const styles = StyleSheet.create({
     readOnlyNote: {marginBottom: 14, padding: 12, color: '#536057', backgroundColor: '#EEF3EE', borderRadius: 8, fontSize: 13, lineHeight: 19},
     postCard: {padding: 15, marginBottom: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0E8DC', borderRadius: 12},
     postMetaRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+    postAuthorRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6},
     postAuthor: {color: '#536057', fontSize: 12, fontWeight: '600'},
+    postAuthorBadge: {width: 14, height: 14},
     pendingLabel: {color: '#8A5C36', fontSize: 11, fontWeight: '700'},
     postTitle: {marginTop: 8, color: '#263526', fontSize: 16, fontWeight: '700'},
     postMood: {marginTop: 7, color: '#397A49', fontSize: 12, fontWeight: '600'},
@@ -506,12 +946,94 @@ const styles = StyleSheet.create({
     postImage: {width: '100%', height: 210, marginTop: 10, borderRadius: 8},
     postDate: {marginTop: 10, color: '#879186', fontSize: 11},
     emptyText: {paddingVertical: 28, color: '#758174', textAlign: 'center', fontSize: 13},
+    announcementIntro: {
+        padding: 15,
+        marginBottom: 12,
+        backgroundColor: '#EEF5EB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#DCE9D8',
+    },
+    announcementIntroTitle: {color: '#263526', fontSize: 16, fontWeight: '700'},
+    announcementIntroText: {marginTop: 5, color: '#687467', fontSize: 12, lineHeight: 18},
+    announcementCard: {
+        padding: 15,
+        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#DCE7D8',
+        borderRadius: 12,
+    },
+    announcementTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+    announcementBadge: {
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 8,
+        backgroundColor: '#E7F3E4',
+    },
+    announcementBadgeText: {color: '#397A49', fontSize: 10, fontWeight: '800', letterSpacing: 0.6},
+    announcementStatus: {color: '#397A49', fontSize: 10, fontWeight: '800'},
+    announcementStatusCancelled: {color: '#A3443E'},
+    announcementStatusCompleted: {color: '#758174'},
+    announcementTitle: {marginTop: 12, color: '#263526', fontSize: 18, lineHeight: 24, fontWeight: '700'},
+    announcementInfoRow: {flexDirection: 'row', alignItems: 'flex-start', marginTop: 9},
+    announcementInfoIcon: {width: 24, fontSize: 14},
+    announcementInfoText: {flex: 1, color: '#536057', fontSize: 13, lineHeight: 19},
+    meetingLinkRow: {flexDirection: 'row', alignItems: 'center', marginTop: 9},
+    linkText: {flex: 1, color: '#397A49', fontSize: 13, lineHeight: 19, fontWeight: '600'},
+    capacityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#EDF1EB',
+    },
+    capacityText: {color: '#536057', fontSize: 12, fontWeight: '600'},
+    capacityFull: {color: '#B94A48', fontSize: 11, fontWeight: '800', letterSpacing: 0.5},
+    announcementDescription: {
+        marginTop: 12,
+        color: '#536057',
+        fontSize: 13,
+        lineHeight: 20,
+    },
+    registerRow: {marginTop: 14},
+    registerButton: {
+        backgroundColor: '#397A49',
+        borderRadius: 10,
+        paddingVertical: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    registerButtonDisabled: {
+        backgroundColor: '#D7DED5',
+        opacity: 0.9,
+    },
+    registerButtonFull: {
+        backgroundColor: '#B94A48',
+    },
+    registerButtonText: {color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.4},
+    emptyAnnouncementState: {
+        alignItems: 'center',
+        paddingVertical: 42,
+        paddingHorizontal: 20,
+    },
+    emptyAnnouncementIcon: {fontSize: 30, marginBottom: 10},
+    emptyAnnouncementTitle: {color: '#354335', fontSize: 16, fontWeight: '700'},
     chatHistory: {minHeight: 180, padding: 12, backgroundColor: '#F0F4EE', borderRadius: 12},
     messageRow: {alignItems: 'flex-start', marginBottom: 10},
     ownMessageRow: {alignItems: 'flex-end'},
     messageBubble: {maxWidth: '86%', minWidth: 92, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#FFFFFF', borderRadius: 12},
     ownMessageBubble: {backgroundColor: '#397A49'},
-    messageSender: {marginBottom: 4, color: '#397A49', fontSize: 11, fontWeight: '700'},
+    messageSenderRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4},
+    messageSender: {color: '#397A49', fontSize: 11, fontWeight: '700'},
+    messageSenderBadge: {width: 14, height: 14},
     messageContent: {color: '#263526', fontSize: 14, lineHeight: 20},
     ownMessageContent: {color: '#FFFFFF'},
     messageTime: {alignSelf: 'flex-end', marginTop: 4, color: '#879186', fontSize: 10},

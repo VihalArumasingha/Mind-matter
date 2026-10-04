@@ -6,7 +6,7 @@ import {useFocusEffect} from '@react-navigation/native'
 import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
 import {API_BASE_URL} from '../../../config/api'
-import organizerBadge from '../../../assets/images/community-organizer-badge.png'
+import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
 
 const MOODS = [
     {value: 'happy', label: 'Happy', emoji: '😊'},
@@ -119,12 +119,11 @@ const UserHomeScreen = ({navigation}) => {
                         <View>
                             <View style={styles.authorNameRow}>
                                 <Text style={styles.author}>{authorName}</Text>
-
-                                {!isAnonymous && post.author?.role === 'communityOrganizer' && (
-                                    <Image
-                                        source={organizerBadge}
+                                {!isAnonymous && (
+                                    <CommunityOrganizerBadge
+                                        role={post.author?.role}
+                                        size="small"
                                         style={styles.organizerBadge}
-                                        resizeMode="contain"
                                     />
                                 )}
                             </View>
@@ -211,7 +210,7 @@ const UserHomeScreen = ({navigation}) => {
                             <Text style={styles.brandName}>Mind<Text style={styles.brandGreen}>Matter</Text></Text>
                             <Text style={styles.brandTagline}>You matter. Your mind matters.</Text>
                         </View>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.notificationBellContainer}
                             onPress={() => navigation.navigate('UserNotifications')}
                         >

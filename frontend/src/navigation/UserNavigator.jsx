@@ -13,6 +13,8 @@ import UserNotificationsScreen from '../features/userHome/screens/UserNotificati
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
 import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
 import VolunteerChatScreen from '../features/volunteer/screens/VolunteerChatScreen'
+import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
+import GroupPostCreateScreen from '../features/userCommunities/screens/GroupPostCreateScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -80,8 +82,19 @@ const UserNavigator = () => {
             />
 
             <Stack.Screen
-                name="MemberCircleActivity"
+                name="Notifications"
+                component={ProfessionalNotificationsScreen}
+       
+            />
+
+            <Stack.Screen
+            name="MemberCircleActivity"
                 component={MemberCircleActivityScreen}
+                />
+
+            <Stack.Screen
+                name="GroupPostCreate"
+                component={GroupPostCreateScreen}
             />
         </Stack.Navigator>
     )
