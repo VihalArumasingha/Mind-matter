@@ -136,9 +136,9 @@ export default function VolunteerDashboardScreen({ navigation, route, onTabChang
           <Switch
             value={isAvailable}
             onValueChange={handleToggleAvailability}
-            trackColor={{ false: COLORS.switchInactive, true: COLORS.green }}
+            trackColor={{ false: '#6B7A72', true: '#8FCB9B' }}
             thumbColor={COLORS.white}
-            ios_backgroundColor={COLORS.switchInactive}
+            ios_backgroundColor="#6B7A72"
           />
         </View>
 
