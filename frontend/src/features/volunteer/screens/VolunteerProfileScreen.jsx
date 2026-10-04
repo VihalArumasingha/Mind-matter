@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import { updateProfile, deleteAccount } from '../../profile/services/profileServ
 import { profileStyles } from '../styles/volunteerProfileStyles';
 import { COLORS } from '../styles/volunteerDashboardStyles';
 
-export default function VolunteerProfileScreen({ navigation, onTabChange }) {
+export default function VolunteerProfileScreen({ navigation, onTabChange, onGoBack }) {
   const { user, token, logout, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -99,7 +99,15 @@ export default function VolunteerProfileScreen({ navigation, onTabChange }) {
       {
         text: 'Log Out',
         style: 'destructive',
-        onPress: () => logout(),
+        onPress: async () => {
+          try {
+            await logout();
+            // The RootNavigator will automatically show Login screen when user is cleared
+          } catch (error) {
+            console.error('[Logout Error]', error);
+            Alert.alert('Error', 'Failed to log out. Please try again.');
+          }
+        },
       },
     ]);
   };
@@ -128,15 +136,17 @@ export default function VolunteerProfileScreen({ navigation, onTabChange }) {
     );
   };
 
-  const handleGoBack = () => {
-    if (onTabChange) {
+  const handleGoBack = useCallback(() => {
+    if (onGoBack) {
+      onGoBack();
+    } else if (onTabChange) {
       onTabChange('dashboard');
     } else if (navigation?.canGoBack && navigation.canGoBack()) {
       navigation.goBack();
     } else if (navigation?.navigate) {
       navigation.navigate('VolunteerDashboard');
     }
-  };
+  }, [onGoBack, onTabChange, navigation]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -145,7 +155,7 @@ export default function VolunteerProfileScreen({ navigation, onTabChange }) {
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [onTabChange, navigation]);
+  }, [handleGoBack]);
 
   return (
     <SafeAreaView style={profileStyles.safeArea} edges={['top', 'bottom']}>

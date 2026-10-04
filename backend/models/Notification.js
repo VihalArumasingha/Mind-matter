@@ -13,7 +13,11 @@ const notificationSchema = new mongoose.Schema(
         'comment',
         'like',
         'booking',
+        'booking_approved',
+        'booking_declined',
         'system',
+        'zoom_link_sent',
+        'new_message',
         'MEMBER_REQUEST',
         'POST_MODERATION',
         'SESSION_REGISTRATION',
@@ -41,6 +45,14 @@ const notificationSchema = new mongoose.Schema(
       ref: 'User',
     },
     relatedUserName: String,
+    relatedBookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Booking',
+    },
+    relatedMessageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
+    },
     circleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SupportCircle',

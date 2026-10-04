@@ -4,6 +4,7 @@ import VolunteerMainScreen from '../features/volunteer/screens/VolunteerMainScre
 import ProfessionalPostFormScreen from '../features/volunteer/screens/ProfessionalPostFormScreen';
 import ViewProfessionalPostsScreen from '../features/volunteer/screens/ViewProfessionalPostsScreen';
 import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen';
+import VolunteerChatScreen from '../features/volunteer/screens/VolunteerChatScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -81,6 +82,11 @@ const VolunteerNavigator = () => {
       <Stack.Screen
         name="ProfessionalNotifications"
         component={ProfessionalNotificationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VolunteerChat"
+        component={VolunteerChatScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

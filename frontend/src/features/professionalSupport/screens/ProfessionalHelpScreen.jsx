@@ -1,104 +1,134 @@
-import React, {useState, useEffect} from 'react'
-import {StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, FlatList, ActivityIndicator} from 'react-native'
+import React, {useState, useEffect, useCallback} from 'react'
+import {
+    StyleSheet,
+    Text,
+    View,
+    TextInput,
+    TouchableOpacity,
+    ScrollView,
+    FlatList,
+    ActivityIndicator,
+    StatusBar,
+    Platform,
+} from 'react-native'
 import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import {getApprovedProfessionals, getProfessionCategories} from '../services/professionalService'
 import {useAuth} from '../../../context/AuthContext'
 import {PROFESSION_FILTERS} from '../../../config/professions'
-import {Dimensions} from 'react-native'
 import {API_BASE_URL} from '../../../config/api'
 
-const {width} = Dimensions.get('window')
+const AVATAR_COLORS = [
+    '#2D6A4F', // Forest green
+    '#1B4332', // Deep emerald
+    '#0077B6', // Ocean blue
+    '#2B593F', // Sage deep
+    '#3D5A80', // Slate blue
+    '#40916C', // Leaf green
+]
+
+const getAvatarColor = (name = '') => {
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+        hash = (hash * 31 + name.charCodeAt(i)) % 1000000007
+    }
+    const index = Math.abs(hash) % AVATAR_COLORS.length
+    return AVATAR_COLORS[index]
+}
+
+const formatDoctorName = (name = '') => {
+    if (!name) return 'Specialist'
+    return name
+        .trim()
+        .split(' ')
+        .map(word => {
+            if (!word) return ''
+            if (word.toLowerCase() === 'dr' || word.toLowerCase() === 'dr.') return 'Dr.'
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        })
+        .join(' ')
+}
+
+const getInitials = (name = '') => {
+    if (!name) return 'P'
+    const clean = name.replace(/^dr\.?\s+/i, '').trim().split(' ')
+    if (clean.length >= 2) {
+        return (clean[0][0] + clean[1][0]).toUpperCase()
+    }
+    return (clean[0] ? clean[0][0] : 'P').toUpperCase()
+}
 
 const ProfessionalHelpScreen = ({navigation}) => {
-    const {token} = useAuth()
+    const {token, authFetch} = useAuth()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedFilter, setSelectedFilter] = useState(null)
     const [professionals, setProfessionals] = useState([])
     const [categories, setCategories] = useState(PROFESSION_FILTERS)
     const [isLoading, setIsLoading] = useState(true)
+    const [expandedCard, setExpandedCard] = useState(null)
+    const [acceptedBookings, setAcceptedBookings] = useState([])
 
-    const fetchProfessionals = async () => {
+    const fetchUserBookings = useCallback(async () => {
+        if (!token) return
         try {
-            console.log('[ProfessionalHelpScreen] Fetching professionals, token:', !!token)
-            setIsLoading(true)
-            
-            if (!token) {
-                throw new Error('Authentication token not available')
+            const res = await authFetch(`${API_BASE_URL}/api/users/bookings`)
+            if (res.ok) {
+                const data = await res.json()
+                const confirmed = (data.bookings || []).filter(
+                    b => b.status === 'confirmed' || b.status === 'accepted' || b.status === 'approved'
+                )
+                setAcceptedBookings(confirmed)
             }
+        } catch (err) {
+            console.log('[ProfessionalHelpScreen] Error loading bookings:', err.message)
+        }
+    }, [token, authFetch])
+
+    const fetchProfessionals = useCallback(async () => {
+        try {
+            setIsLoading(true)
+            if (!token) throw new Error('Authentication token not available')
             
             const specializationFilter = selectedFilter || ''
             const data = await getApprovedProfessionals(token, searchQuery, specializationFilter)
-            console.log('[ProfessionalHelpScreen] Data received:', data)
             setProfessionals(data.professionals || [])
         } catch (err) {
             console.error('[ProfessionalHelpScreen] Fetch Error:', err)
-            // Don't set error state, just use empty array as fallback
             setProfessionals([])
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [token, searchQuery, selectedFilter])
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         try {
             if (!token) return
-            
             const data = await getProfessionCategories(token)
             if (data.success && data.categories && data.categories.length > 0) {
                 setCategories(data.categories)
             }
         } catch (err) {
-            console.log('[ProfessionalHelpScreen] Using default categories due to fetch error:', err.message)
-            // Keep using default categories from config
-        }
-    }
-
-    useEffect(() => {
-        console.log('[ProfessionalHelpScreen] Component mounted, token:', !!token)
-        if (token) {
-            fetchProfessionals()
-            fetchCategories()
-        } else {
-            setIsLoading(false)
+            console.log('[ProfessionalHelpScreen] Using default categories:', err.message)
         }
     }, [token])
 
     useEffect(() => {
+        if (token) {
+            fetchCategories()
+            fetchUserBookings()
+        } else {
+            setIsLoading(false)
+        }
+    }, [token, fetchCategories, fetchUserBookings])
+
+    useEffect(() => {
         if (!token) return
-        
         const debounceTimer = setTimeout(() => {
             fetchProfessionals()
-        }, 500)
-
+        }, 400)
         return () => clearTimeout(debounceTimer)
-    }, [searchQuery, selectedFilter, token])
-
-    const renderProfessionalCard = ({item}) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{item.fullName.charAt(0)}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                    <Text style={styles.name}>{item.fullName}</Text>
-                    <Text style={styles.specialization}>{item.profession}</Text>
-                    <Text style={styles.details}>{item.specialization}</Text>
-                    <View style={styles.detailsRow}>
-                        <Text style={styles.details}>{item.expYears} years exp</Text>
-                        <Text style={styles.details}>•</Text>
-                        <Text style={styles.details}>License {item.licenseNum}</Text>
-                    </View>
-                </View>
-            </View>
-            <TouchableOpacity
-                style={styles.bookButton}
-                onPress={() => navigation.navigate('ProfessionalAvailabilityBooking', { professional: item })}
-            >
-                <Text style={styles.bookButtonText}>Book Session</Text>
-            </TouchableOpacity>
-        </View>
-    )
+    }, [token, fetchProfessionals])
 
     const handleGoBack = () => {
         if (navigation?.canGoBack && navigation.canGoBack()) {
@@ -108,59 +138,300 @@ const ProfessionalHelpScreen = ({navigation}) => {
         }
     }
 
+    const renderProfessionalCard = ({item}) => {
+        const isExpanded = expandedCard === item._id
+        const displayName = formatDoctorName(item.fullName)
+        const initials = getInitials(item.fullName)
+        const avatarBg = getAvatarColor(item.fullName)
+
+        return (
+            <View style={styles.card}>
+                {/* Header Row: Avatar, Info */}
+                <View style={styles.cardHeader}>
+                    <View style={styles.avatarWrapper}>
+                        <View style={[styles.avatar, {backgroundColor: avatarBg}]}>
+                            <Text style={styles.avatarText}>{initials}</Text>
+                        </View>
+                        <View style={styles.verifiedIconBadge}>
+                            <Icon name="verified" size={15} color="#2563EB" />
+                        </View>
+                    </View>
+
+                    <View style={styles.cardInfo}>
+                        <View style={styles.nameRow}>
+                            <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+                        </View>
+
+                        <Text style={styles.professionText} numberOfLines={1}>
+                            {item.profession || 'Mental Health Professional'}
+                        </Text>
+
+                        {/* Badges / Meta tags */}
+                        <View style={styles.badgeRow}>
+                            <View style={styles.statBadge}>
+                                <Icon name="work-outline" size={13} color="#475569" style={styles.statIcon} />
+                                <Text style={styles.statBadgeText}>{item.expYears || 0}y exp</Text>
+                            </View>
+
+                            {item.licenseNum ? (
+                                <View style={styles.statBadge}>
+                                    <Icon name="verified-user" size={13} color="#2E6A38" style={styles.statIcon} />
+                                    <Text style={styles.statBadgeText}>Lic: {item.licenseNum}</Text>
+                                </View>
+                            ) : null}
+                        </View>
+
+                        {/* Specialization tag if exists and not placeholder */}
+                        {item.specialization && item.specialization.length > 2 && (
+                            <View style={styles.specializationPill}>
+                                <Icon name="spa" size={12} color="#2D6A4F" style={styles.statIcon} />
+                                <Text style={styles.specializationPillText} numberOfLines={1}>
+                                    {item.specialization}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Collapsible Details */}
+                {isExpanded && (
+                    <View style={styles.expandedContent}>
+                        {item.bio ? (
+                            <View style={styles.infoSection}>
+                                <View style={styles.infoHeader}>
+                                    <View style={styles.infoIconBox}>
+                                        <Icon name="person" size={14} color="#2E6A38" />
+                                    </View>
+                                    <Text style={styles.infoLabel}>About</Text>
+                                </View>
+                                <Text style={styles.infoText}>{item.bio}</Text>
+                            </View>
+                        ) : null}
+
+                        <View style={styles.infoGrid}>
+                            <View style={[styles.infoSection, styles.infoGridItem]}>
+                                <View style={styles.infoHeader}>
+                                    <View style={styles.infoIconBox}>
+                                        <Icon name="email" size={14} color="#2E6A38" />
+                                    </View>
+                                    <Text style={styles.infoLabel}>Email</Text>
+                                </View>
+                                <Text style={styles.infoText} numberOfLines={1}>{item.email || 'Provided upon booking'}</Text>
+                            </View>
+
+                            {item.phone ? (
+                                <View style={[styles.infoSection, styles.infoGridItem]}>
+                                    <View style={styles.infoHeader}>
+                                        <View style={styles.infoIconBox}>
+                                            <Icon name="phone" size={14} color="#2E6A38" />
+                                        </View>
+                                        <Text style={styles.infoLabel}>Phone</Text>
+                                    </View>
+                                    <Text style={styles.infoText}>{item.phone}</Text>
+                                </View>
+                            ) : null}
+                        </View>
+
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <View style={styles.infoIconBox}>
+                                    <Icon name="verified" size={14} color="#2E6A38" />
+                                </View>
+                                <Text style={styles.infoLabel}>License & Verification</Text>
+                            </View>
+                            <Text style={styles.infoText}>Official License #{item.licenseNum} • Verified by Administrator</Text>
+                        </View>
+
+                        <View style={styles.infoSection}>
+                            <View style={styles.infoHeader}>
+                                <View style={styles.infoIconBox}>
+                                    <Icon name="schedule" size={14} color="#2E6A38" />
+                                </View>
+                                <Text style={styles.infoLabel}>Online Consultation</Text>
+                            </View>
+                            <Text style={styles.infoText}>Choose from available 1-on-1 virtual time slots on the next screen.</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Card Action Row: Side-by-Side Details & Book Button */}
+                <View style={styles.cardActionsRow}>
+                    <TouchableOpacity
+                        style={[styles.detailsButton, isExpanded && styles.detailsButtonActive]}
+                        onPress={() => setExpandedCard(isExpanded ? null : item._id)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.detailsButtonText}>
+                            {isExpanded ? 'Less' : 'Details'}
+                        </Text>
+                        <Ionicons 
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                            size={16} 
+                            color="#2E6A38" 
+                        />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.bookButton}
+                        onPress={() => navigation.navigate('ProfessionalAvailabilityBooking', { professional: item })}
+                        activeOpacity={0.85}
+                    >
+                        <Icon name="calendar-today" size={16} color="#FFFFFF" style={styles.bookIcon} />
+                        <Text style={styles.bookButtonText}>Book Session</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )
+    }
+
     return (
         <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="dark-content" backgroundColor="#F8FAF7" />
             <View style={styles.container}>
+                {/* Modern Header */}
                 <View style={styles.header}>
                     <TouchableOpacity 
                         onPress={handleGoBack}
                         style={styles.backButton}
+                        activeOpacity={0.7}
                     >
-                        <Icon name="arrow-back" size={24} color="#4E8C4A" />
+                        <Icon name="arrow-back-ios" size={18} color="#1E293B" style={styles.backIcon} />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Professional Support</Text>
+
+                    <View style={styles.headerTitleContainer}>
+                        <Text style={styles.title}>Professional Support</Text>
+                        <Text style={styles.subtitle}>Verified psychologists & counselors</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.headerActionButton}
+                        onPress={() => navigation.navigate('ProfessionalPosts')}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Professional Articles"
+                    >
+                        <Icon name="article" size={20} color="#2D6A4F" />
+                    </TouchableOpacity>
                 </View>
 
+                {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Icon name="search" size={20} color="#8A918A" style={styles.searchIcon} />
+                    <Icon name="search" size={20} color="#64748B" style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search by name or specialization"
-                        placeholderTextColor="#8A918A"
+                        placeholder="Search by name, role or focus..."
+                        placeholderTextColor="#94A3B8"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        returnKeyType="search"
                     />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity 
+                            onPress={() => setSearchQuery('')}
+                            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
+                            style={styles.clearSearchBtn}
+                        >
+                            <Icon name="close" size={16} color="#94A3B8" />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
-                <View style={styles.filterContainer}>
-                    {categories.map((filter) => (
+                {/* Horizontal Category Filter Chips */}
+                <View style={styles.filterWrapper}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.filterScroll}
+                    >
                         <TouchableOpacity
-                            key={filter}
                             style={[
-                                styles.filterButton,
-                                selectedFilter === filter && styles.filterButtonActive
+                                styles.filterChip,
+                                !selectedFilter && styles.filterChipActive
                             ]}
-                            onPress={() => setSelectedFilter(selectedFilter === filter ? null : filter)}
+                            onPress={() => setSelectedFilter(null)}
+                            activeOpacity={0.7}
                         >
+                            <Icon 
+                                name="apps" 
+                                size={14} 
+                                color={!selectedFilter ? '#FFFFFF' : '#64748B'} 
+                                style={styles.filterIcon} 
+                            />
                             <Text style={[
-                                styles.filterButtonText,
-                                selectedFilter === filter && styles.filterButtonTextActive
+                                styles.filterChipText,
+                                !selectedFilter && styles.filterChipTextActive
                             ]}>
-                                {filter}
+                                All
                             </Text>
                         </TouchableOpacity>
-                    ))}
+
+                        {categories.map((filter, index) => {
+                            const isActive = selectedFilter === filter
+                            return (
+                                <TouchableOpacity
+                                    key={`${filter}-${index}`}
+                                    style={[
+                                        styles.filterChip,
+                                        isActive && styles.filterChipActive
+                                    ]}
+                                    onPress={() => setSelectedFilter(isActive ? null : filter)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[
+                                        styles.filterChipText,
+                                        isActive && styles.filterChipTextActive
+                                    ]}>
+                                        {filter}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </ScrollView>
                 </View>
 
+                {/* Result count & reset filter bar */}
+                <View style={styles.resultsInfoRow}>
+                    <Text style={styles.resultsCountText}>
+                        {professionals.length} {professionals.length === 1 ? 'specialist' : 'specialists'} available
+                    </Text>
+                    {selectedFilter && (
+                        <TouchableOpacity 
+                            onPress={() => setSelectedFilter(null)}
+                            style={styles.clearFilterBadge}
+                        >
+                            <Text style={styles.clearFilterText}>Reset filter</Text>
+                            <Icon name="close" size={12} color="#2D6A4F" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Main Body: List / Loading / Empty */}
                 {isLoading ? (
                     <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color="#4E8C4A" />
-                        <Text style={styles.loadingText}>Loading professionals...</Text>
+                        <ActivityIndicator size="large" color="#2D6A4F" />
+                        <Text style={styles.loadingText}>Finding specialists...</Text>
                     </View>
                 ) : professionals.length === 0 ? (
                     <View style={styles.centerContainer}>
-                        <Icon name="person-search" size={48} color="#8A918A" />
-                        <Text style={styles.emptyText}>No approved professionals found</Text>
+                        <View style={styles.emptyIconCircle}>
+                            <Icon name="person-search" size={38} color="#94A3B8" />
+                        </View>
+                        <Text style={styles.emptyTitle}>No specialists found</Text>
+                        <Text style={styles.emptyText}>
+                            {searchQuery || selectedFilter
+                                ? 'Try clearing your search or changing the filter.'
+                                : 'No verified professionals are currently registered.'}
+                        </Text>
+                        {(searchQuery || selectedFilter) && (
+                            <TouchableOpacity
+                                style={styles.resetSearchBtn}
+                                onPress={() => {
+                                    setSearchQuery('')
+                                    setSelectedFilter(null)
+                                }}
+                            >
+                                <Text style={styles.resetSearchBtnText}>Clear all filters</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
                     <FlatList
@@ -168,18 +439,77 @@ const ProfessionalHelpScreen = ({navigation}) => {
                         renderItem={renderProfessionalCard}
                         keyExtractor={(item) => item._id.toString()}
                         contentContainerStyle={styles.listContainer}
+                        showsVerticalScrollIndicator={false}
                         ListFooterComponent={
                             <View style={styles.footerSection}>
-                                <TouchableOpacity 
-                                    style={styles.viewPostsButton}
-                                    onPress={() => navigation.navigate('ProfessionalPosts')}
-                                >
-                                    <View style={styles.viewPostsContent}>
-                                        <Icon name="article" size={20} color="#FFFFFF" />
-                                        <Text style={styles.viewPostsText}>View Professional Posts</Text>
+                                {/* Accepted Bookings Message Bar */}
+                                {acceptedBookings.length > 0 && (
+                                    <View style={styles.acceptedBarContainer}>
+                                        <View style={styles.acceptedBarHeader}>
+                                            <View style={styles.acceptedBarTitleRow}>
+                                                <Icon name="event-available" size={17} color="#2D6A4F" />
+                                                <Text style={styles.acceptedBarTitle}>
+                                                    Accepted Bookings ({acceptedBookings.length})
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.acceptedBarHint}>Direct specialist chat</Text>
+                                        </View>
+
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.acceptedBarScroll}
+                                        >
+                                            {acceptedBookings.map((b, index) => (
+                                                <View key={`${b._id}-${index}`} style={styles.acceptedBarCard}>
+                                                    <View style={styles.acceptedBarCardHeader}>
+                                                        <View style={styles.acceptedBarAvatar}>
+                                                            <Text style={styles.acceptedBarAvatarText}>
+                                                                {b.professionalName?.charAt(0)?.toUpperCase() || 'P'}
+                                                            </Text>
+                                                        </View>
+                                                        <View style={styles.acceptedBarCardDetails}>
+                                                            <Text style={styles.acceptedBarName} numberOfLines={1}>
+                                                                {b.professionalName}
+                                                            </Text>
+                                                            <Text style={styles.acceptedBarTime}>
+                                                                {b.date} · {b.startTime}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        style={styles.acceptedBarChatBtn}
+                                                        onPress={() => {
+                                                            navigation.navigate('UserChat', {
+                                                                userId: b.professional,
+                                                                userName: b.professionalName,
+                                                            });
+                                                        }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Ionicons name="chatbubble-ellipses" size={15} color="#FFFFFF" />
+                                                        <Text style={styles.acceptedBarChatBtnText}>Message</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
                                     </View>
+                                )}
+
+                                <TouchableOpacity 
+                                    style={styles.articlesBannerCard}
+                                    onPress={() => navigation.navigate('ProfessionalPosts')}
+                                    activeOpacity={0.85}
+                                >
+                                    <View style={styles.articlesBannerIcon}>
+                                        <Icon name="menu-book" size={24} color="#2D6A4F" />
+                                    </View>
+                                    <View style={styles.articlesBannerContent}>
+                                        <Text style={styles.articlesBannerTitle}>Professional Insights & Articles</Text>
+                                        <Text style={styles.articlesBannerSubtitle}>Explore expert mental health guidance & tips</Text>
+                                    </View>
+                                    <Icon name="chevron-right" size={22} color="#2D6A4F" />
                                 </TouchableOpacity>
-                                <Text style={styles.footerText}>More approved professionals load below</Text>
                             </View>
                         }
                     />
@@ -192,261 +522,645 @@ const ProfessionalHelpScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F8FAF5',
+        backgroundColor: '#F8FAF7',
     },
 
     container: {
         flex: 1,
-        padding: 20,
+        paddingHorizontal: 16,
+        paddingTop: 8,
     },
 
+    /* Header */
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
+        paddingTop: 4,
     },
 
     backButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
         marginRight: 12,
-        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+
+    backIcon: {
+        marginLeft: 4,
+    },
+
+    headerTitleContainer: {
+        flex: 1,
     },
 
     title: {
-        fontSize: 28,
+        fontSize: 22,
         fontWeight: '800',
-        color: '#2D5A27',
-        letterSpacing: -0.5,
+        color: '#1E293B',
+        letterSpacing: -0.3,
     },
 
+    subtitle: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#64748B',
+        marginTop: 2,
+    },
+
+    headerActionButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#E8F5E9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#C8E6C9',
+    },
+
+    /* Accepted Bookings Message Bar */
+    acceptedBarContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 14,
+        borderWidth: 1.5,
+        borderColor: '#B8DBC2',
+        shadowColor: '#2D6A4F',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+
+    acceptedBarHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+
+    acceptedBarTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
+    acceptedBarTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1B4332',
+    },
+
+    acceptedBarHint: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#2D6A4F',
+    },
+
+    acceptedBarScroll: {
+        gap: 10,
+        paddingRight: 8,
+    },
+
+    acceptedBarCard: {
+        backgroundColor: '#F4F9F5',
+        borderRadius: 12,
+        padding: 10,
+        width: 220,
+        borderWidth: 1,
+        borderColor: '#D8EEDB',
+    },
+
+    acceptedBarCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+
+    acceptedBarAvatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#2D6A4F',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8,
+    },
+
+    acceptedBarAvatarText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    acceptedBarCardDetails: {
+        flex: 1,
+    },
+
+    acceptedBarName: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+
+    acceptedBarTime: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 1,
+    },
+
+    acceptedBarChatBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2D6A4F',
+        borderRadius: 8,
+        paddingVertical: 6,
+        gap: 6,
+    },
+
+    acceptedBarChatBtnText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+
+    /* Search Bar */
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginBottom: 20,
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: Platform.OS === 'ios' ? 12 : 6,
+        marginBottom: 14,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
-        shadowRadius: 8,
+        shadowRadius: 6,
         elevation: 2,
         borderWidth: 1,
-        borderColor: '#E8ECE6',
+        borderColor: '#E2E8F0',
     },
 
     searchIcon: {
-        marginRight: 12,
+        marginRight: 10,
     },
 
     searchInput: {
         flex: 1,
-        fontSize: 15,
-        color: '#1A1A1A',
+        fontSize: 14,
+        color: '#1E293B',
         fontWeight: '500',
+        paddingVertical: 4,
     },
 
-    filterContainer: {
+    clearSearchBtn: {
+        padding: 4,
+    },
+
+    /* Filter Chips */
+    filterWrapper: {
+        marginBottom: 12,
+        marginHorizontal: -16,
+    },
+
+    filterScroll: {
+        paddingHorizontal: 16,
+        gap: 8,
         flexDirection: 'row',
-        marginBottom: 20,
-        gap: 10,
-        flexWrap: 'nowrap',
-        overflow: 'hidden',
-    },
-
-    filterButton: {
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#C8D5C2',
         alignItems: 'center',
-        flexShrink: 1,
     },
 
-    filterButtonActive: {
-        backgroundColor: '#4E8C4A',
-        borderColor: '#4E8C4A',
+    filterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
     },
 
-    filterButtonText: {
+    filterIcon: {
+        marginRight: 6,
+    },
+
+    filterChipActive: {
+        backgroundColor: '#2D6A4F',
+        borderColor: '#2D6A4F',
+        shadowColor: '#2D6A4F',
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+
+    filterChipText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#5A6A58',
-        textAlign: 'center',
+        color: '#475569',
     },
 
-    filterButtonTextActive: {
+    filterChipTextActive: {
         color: '#FFFFFF',
     },
 
-    listContainer: {
-        paddingBottom: 20,
+    /* Results Info Row */
+    resultsInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+        paddingHorizontal: 2,
     },
 
+    resultsCountText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748B',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+
+    clearFilterBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#E8F5E9',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+    },
+
+    clearFilterText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#2D6A4F',
+    },
+
+    /* List Container */
+    listContainer: {
+        paddingBottom: 24,
+    },
+
+    /* Professional Card */
     card: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 16,
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 14,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius: 12,
+        shadowRadius: 8,
         elevation: 3,
         borderWidth: 1,
-        borderColor: '#F0F4F0',
+        borderColor: '#EDF2F7',
     },
 
     cardHeader: {
         flexDirection: 'row',
-        marginBottom: 16,
+        alignItems: 'flex-start',
+    },
+
+    avatarWrapper: {
+        position: 'relative',
+        marginRight: 14,
     },
 
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#4E8C4A',
+        width: 54,
+        height: 54,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
-        shadowColor: '#4E8C4A',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
         shadowRadius: 4,
         elevation: 2,
     },
 
     avatarText: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-
-    cardInfo: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-
-    name: {
         fontSize: 20,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        marginBottom: 6,
-        letterSpacing: -0.3,
-    },
-
-    specialization: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#4E8C4A',
-        marginBottom: 4,
-    },
-
-    details: {
-        fontSize: 13,
-        color: '#6B7280',
-        marginBottom: 2,
-    },
-
-    detailsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 6,
-        gap: 8,
-    },
-
-    bookButton: {
-        backgroundColor: '#4E8C4A',
-        borderRadius: 12,
-        paddingVertical: 14,
-        alignItems: 'center',
-        shadowColor: '#4E8C4A',
-        shadowOffset: {
-            width: 0,
-            height: 3,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-
-    bookButtonText: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#FFFFFF',
         letterSpacing: 0.5,
     },
 
-    footerText: {
-        textAlign: 'center',
-        fontSize: 13,
-        color: '#9CA3AF',
-        marginTop: 20,
-        marginBottom: 12,
-        fontWeight: '500',
+    verifiedIconBadge: {
+        position: 'absolute',
+        bottom: -3,
+        right: -3,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        padding: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
 
-    centerContainer: {
+    cardInfo: {
         flex: 1,
+    },
+
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+
+    name: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#0F172A',
+        letterSpacing: -0.2,
+    },
+
+    professionText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#2D6A4F',
+        marginBottom: 6,
+    },
+
+    badgeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginBottom: 6,
+    },
+
+    statBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+
+    statIcon: {
+        marginRight: 4,
+    },
+
+    statBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#475569',
+    },
+
+    specializationPill: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#D1FAE5',
+    },
+
+    specializationPillText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#065F46',
+    },
+
+    /* Expanded Details */
+    expandedContent: {
+        backgroundColor: '#F8FAF8',
+        borderRadius: 14,
+        padding: 12,
+        marginTop: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+
+    infoGrid: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+
+    infoGridItem: {
+        flex: 1,
+    },
+
+    infoSection: {
+        marginBottom: 10,
+    },
+
+    infoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+
+    infoIconBox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        backgroundColor: '#E8F5E9',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 60,
     },
 
-    loadingText: {
-        marginTop: 20,
-        fontSize: 16,
-        color: '#6B7280',
-        fontWeight: '500',
+    infoLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#2D6A4F',
     },
 
-    emptyText: {
-        marginTop: 20,
-        fontSize: 16,
-        color: '#6B7280',
-        textAlign: 'center',
-        fontWeight: '500',
+    infoText: {
+        fontSize: 12,
+        color: '#334155',
+        lineHeight: 17,
+        marginLeft: 28,
     },
 
-    footerSection: {
-        marginTop: 20,
-    },
-
-    viewPostsButton: {
-        backgroundColor: '#4E8C4A',
-        borderRadius: 12,
-        paddingVertical: 14,
+    /* Action Row (Side-by-Side) */
+    cardActionsRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
-        shadowColor: '#4E8C4A',
+        gap: 10,
+        marginTop: 14,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+
+    detailsButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#F1F5F0',
+        borderWidth: 1,
+        borderColor: '#D8E2D6',
+    },
+
+    detailsButtonActive: {
+        backgroundColor: '#E4ECE2',
+    },
+
+    detailsButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#2D6A4F',
+    },
+
+    bookButton: {
+        flex: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2D6A4F',
+        borderRadius: 12,
+        paddingVertical: 11,
+        shadowColor: '#2D6A4F',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 3,
     },
 
-    viewPostsContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
+    bookIcon: {
+        marginRight: 8,
     },
 
-    viewPostsText: {
-        fontSize: 16,
-        fontWeight: '600',
+    bookButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
         color: '#FFFFFF',
+        letterSpacing: 0.2,
+    },
+
+    /* Footer Articles Banner */
+    footerSection: {
+        marginTop: 10,
+        marginBottom: 16,
+    },
+
+    articlesBannerCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+
+    articlesBannerIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#E8F5E9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+
+    articlesBannerContent: {
+        flex: 1,
+    },
+
+    articlesBannerTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 2,
+    },
+
+    articlesBannerSubtitle: {
+        fontSize: 12,
+        color: '#64748B',
+        lineHeight: 16,
+    },
+
+    /* State Screens */
+    centerContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 50,
+        paddingHorizontal: 20,
+    },
+
+    loadingText: {
+        marginTop: 14,
+        fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+
+    emptyIconCircle: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+
+    emptyTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 6,
+    },
+
+    emptyText: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 18,
+        marginBottom: 18,
+    },
+
+    resetSearchBtn: {
+        backgroundColor: '#2D6A4F',
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+
+    resetSearchBtnText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '600',
     },
 })
 

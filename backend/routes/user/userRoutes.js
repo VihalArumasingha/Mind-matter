@@ -8,6 +8,9 @@ import {
     getProfessionalAvailability,
     createBooking,
     getUserBookings,
+    getUserNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
     getUserBroadcasts
 } from '../../controllers/user/userController.js'
 import authMiddleware from '../../middleware/authMiddleware.js'
@@ -30,6 +33,12 @@ router.get('/professionals/:id/availability', getProfessionalAvailability)
 router.post('/bookings', authMiddleware, createBooking)
 
 router.get('/bookings', authMiddleware, getUserBookings)
+
+router.get('/notifications', authMiddleware, getUserNotifications)
+
+router.put('/notifications/:id/read', authMiddleware, markNotificationAsRead)
+
+router.put('/notifications/read-all', authMiddleware, markAllNotificationsAsRead)
 
 router.get('/my-broadcasts', authMiddleware, getUserBroadcasts)
 

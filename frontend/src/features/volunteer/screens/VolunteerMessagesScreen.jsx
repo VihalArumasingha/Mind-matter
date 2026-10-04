@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,49 +14,68 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../styles/volunteerDashboardStyles';
+import { useAuth } from '../../../context/AuthContext';
+import { API_BASE_URL } from '../../../config/api';
 
-const initialConversations = [
-  {
-    id: 'conv_1',
-    name: 'Chamodi P.',
-    initials: 'CP',
-    category: 'Student support',
-    lastMessage: "Thank you so much! Looking forward to our session tomorrow at 4:00 PM.",
-    time: '10:42 AM',
-    unread: 1,
-    online: true,
-    avatarBg: '#EAF3ED',
-    avatarColor: '#2F6B47',
-  },
-  {
-    id: 'conv_2',
-    name: 'Isuru M.',
-    initials: 'IM',
-    category: 'Listening session',
-    lastMessage: 'Hi Dewmini, is it possible to adjust the time to 7:00 PM?',
-    time: 'Yesterday',
-    unread: 0,
-    online: false,
-    avatarBg: '#F3E8FF',
-    avatarColor: '#7C3AED',
-  },
-  {
-    id: 'conv_3',
-    name: 'Ravindu K.',
-    initials: 'RK',
-    category: 'Emotional support',
-    lastMessage: 'Hello, I sent a request for a support session on Saturday.',
-    time: 'May 18',
-    unread: 0,
-    online: true,
-    avatarBg: '#FCE7D6',
-    avatarColor: '#B45309',
-  },
-];
-
-export default function VolunteerMessagesScreen({ navigation, onTabChange }) {
+export default function VolunteerMessagesScreen({ navigation, onTabChange, onGoBack }) {
+  const { token, authFetch } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [conversations] = useState(initialConversations);
+  const [conversations, setConversations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadConversations = useCallback(async () => {
+    if (!token) return;
+    try {
+      setIsLoading(true);
+      const res = await authFetch(`${API_BASE_URL}/api/messages/conversations`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const mapped = data.data.map((c) => {
+            const initials = (c.userName || 'U')
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2)
+              .toUpperCase();
+
+            const timeStr = c.lastMessageTime
+              ? new Date(c.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '';
+
+            return {
+              id: c.userId,
+              userId: c.userId,
+              name: c.userName,
+              initials,
+              category: 'Chat',
+              lastMessage: c.lastMessage,
+              time: timeStr,
+              unread: c.unreadCount || 0,
+              online: true,
+              avatarBg: '#EAF3ED',
+              avatarColor: '#2F6B47',
+            };
+          });
+
+          // Deduplicate conversations by userId
+          const uniqueConversations = mapped.filter((conv, index, self) =>
+            index === self.findIndex((c) => c.userId === conv.userId)
+          );
+
+          setConversations(uniqueConversations);
+        }
+      }
+    } catch (err) {
+      console.log('[VolunteerMessagesScreen] Error loading conversations:', err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, authFetch]);
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
 
   const filteredConversations = conversations.filter(
     (c) =>
@@ -64,15 +83,17 @@ export default function VolunteerMessagesScreen({ navigation, onTabChange }) {
       c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleGoBack = () => {
-    if (onTabChange) {
+  const handleGoBack = useCallback(() => {
+    if (onGoBack) {
+      onGoBack();
+    } else if (onTabChange) {
       onTabChange('dashboard');
     } else if (navigation?.canGoBack && navigation.canGoBack()) {
       navigation.goBack();
     } else if (navigation?.navigate) {
       navigation.navigate('VolunteerDashboard');
     }
-  };
+  }, [onGoBack, onTabChange, navigation]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -81,7 +102,7 @@ export default function VolunteerMessagesScreen({ navigation, onTabChange }) {
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [onTabChange, navigation]);
+  }, [handleGoBack]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -137,6 +158,7 @@ export default function VolunteerMessagesScreen({ navigation, onTabChange }) {
               key={chat.id}
               style={styles.chatCard}
               activeOpacity={0.7}
+              onPress={() => navigation.navigate('VolunteerChat', { userId: chat.userId, userName: chat.name })}
             >
               <View style={styles.avatarWrapper}>
                 <View style={[styles.avatarCircle, { backgroundColor: chat.avatarBg }]}>

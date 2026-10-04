@@ -55,5 +55,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>zoomus</string>
+	</array>
 </dict>
 </plist>

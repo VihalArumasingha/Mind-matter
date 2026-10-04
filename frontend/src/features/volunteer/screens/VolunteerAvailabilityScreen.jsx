@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -41,7 +41,7 @@ const DEFAULT_WEEK_SLOT = {
   breakDuration: '',
 };
 
-export default function VolunteerAvailabilityScreen({ navigation, onTabChange }) {
+export default function VolunteerAvailabilityScreen({ navigation, onTabChange, onGoBack }) {
   const { token } = useAuth();
 
   // Current calendar view state (defaults to today's month/year)
@@ -379,15 +379,17 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     showToast('Cleared ticked days for this week');
   };
 
-  const handleGoBack = () => {
-    if (onTabChange) {
+  const handleGoBack = useCallback(() => {
+    if (onGoBack) {
+      onGoBack();
+    } else if (onTabChange) {
       onTabChange('dashboard');
     } else if (navigation?.canGoBack && navigation.canGoBack()) {
       navigation.goBack();
     } else if (navigation?.navigate) {
       navigation.navigate('VolunteerDashboard');
     }
-  };
+  }, [onGoBack, onTabChange, navigation]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -396,7 +398,7 @@ export default function VolunteerAvailabilityScreen({ navigation, onTabChange })
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [onTabChange, navigation]);
+  }, [handleGoBack]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>

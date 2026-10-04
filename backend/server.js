@@ -18,6 +18,8 @@ import groupPostRoutes from './routes/supportCircleOrganizer/groupPost/groupPost
 import groupChatRoutes from './routes/supportCircleOrganizer/groupPost/groupChatRoutes.js'
 import moderationRoutes from './routes/supportCircleOrganizer/moderation/moderationRoutes.js'
 import onboardingRoutes from './routes/user/onboardingRoutes.js'
+import messageRoutes from './routes/message/messageRoutes.js'
+import startSessionReminderScheduler from './utils/sessionReminderScheduler.js'
 import reportRoutes from './routes/reportRoutes.js'
 import organizerNotificationRoutes from './routes/supportCircleOrganizer/notifications/organizerNotificationRoutes.js'
 
@@ -27,6 +29,14 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Debug route to log all incoming requests
+app.use((req, res, next) => {
+  console.log('[Debug] Incoming request:', req.method, req.url);
+  console.log('[Debug] Full URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+  next();
+});
+
+// Base test route
 app.get('/', (req, res) => {
     res.send('Mind-Matter API is running successfully!');
 });
@@ -40,6 +50,7 @@ app.use('/api/group-memberships', groupMembershipRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/volunteer', volunteerRoutes);
+console.log('[Server] Volunteer routes mounted at /api/volunteer');
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/user-posts', userPostRoutes);
@@ -47,11 +58,16 @@ app.use('/api/posts', postRoutes);
 app.use('/api/group-posts', groupPostRoutes);
 app.use('/api/group-chat', groupChatRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/messages', messageRoutes);
+console.log('[Server] Message routes mounted at /api/messages');
 app.use('/api/organizer/notifications', organizerNotificationRoutes);
 
 const startServer = async () => {
     try {
         await connectDB();
+
+        // Start session reminder scheduler
+        startSessionReminderScheduler();
 
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`[Server] Running actively on port ${PORT}`);

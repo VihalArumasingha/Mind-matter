@@ -9,12 +9,12 @@ import OrganizerApplicationScreen from '../features/profile/screens/OrganizerApp
 import ProfessionalAvailabilityBookingScreen from '../features/professionalSupport/screens/ProfessionalAvailabilityBookingScreen'
 import MoodHistoryScreen from '../features/mood/screen/MoodHistoryScreen'
 import MyPostsScreen from '../features/profile/screens/MyPostsScreen'
+import UserNotificationsScreen from '../features/userHome/screens/UserNotificationsScreen'
 import MemberCircleDetailScreen from '../features/userCommunities/screens/MemberCircleDetailScreen'
-import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
-
 import MemberCircleActivityScreen from '../features/userCommunities/screens/MemberCircleActivityScreen'
+import VolunteerChatScreen from '../features/volunteer/screens/VolunteerChatScreen'
+import ProfessionalNotificationsScreen from '../features/volunteer/screens/ProfessionalNotificationsScreen'
 import GroupPostCreateScreen from '../features/userCommunities/screens/GroupPostCreateScreen'
-
 
 const Stack = createNativeStackNavigator()
 
@@ -59,6 +59,21 @@ const UserNavigator = () => {
             <Stack.Screen
                 name="MyPosts"
                 component={MyPostsScreen}
+            />
+
+            <Stack.Screen
+                name="UserNotifications"
+                component={UserNotificationsScreen}
+            />
+
+            <Stack.Screen
+                name="UserChat"
+                component={VolunteerChatScreen}
+            />
+
+            <Stack.Screen
+                name="VolunteerChat"
+                component={VolunteerChatScreen}
             />
 
             <Stack.Screen
