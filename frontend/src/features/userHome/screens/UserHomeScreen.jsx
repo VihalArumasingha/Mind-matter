@@ -7,6 +7,9 @@ import {useAuth} from '../../../context/AuthContext'
 import {addComment, deleteComment, getFeedPosts, updateComment} from '../../posts/services/postService'
 import {API_BASE_URL} from '../../../config/api'
 import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge'
+import T from '../../../components/TranslateText'
+import LanguageBar from '../../../components/LanguageBar'
+import { useLanguage } from '../../../context/LanguageContext'
 
 const MOODS = [
     {value: 'happy', label: 'Happy', emoji: '😊'},
@@ -19,6 +22,7 @@ const MOODS = [
 
 const UserHomeScreen = ({navigation}) => {
     const {token, user, authFetch} = useAuth()
+    const { t } = useLanguage()
     const [posts, setPosts] = useState([])
     const [commentText, setCommentText] = useState({})
     const [editingComment, setEditingComment] = useState(null)
@@ -135,14 +139,14 @@ const UserHomeScreen = ({navigation}) => {
                     </View>
                     <Icon name="more-horiz" size={23} color="#243024" />
                 </View>
-                {post.title ? <Text style={styles.postTitle}>{post.title}</Text> : null}
+                {post.title ? <T style={styles.postTitle} text={post.title} /> : null}
                 {moodInfo ? (
                     <View style={styles.moodBadge}>
                         <Text style={styles.moodBadgeEmoji}>{moodInfo.emoji}</Text>
-                        <Text style={styles.moodBadgeText}>Feeling {moodInfo.label}</Text>
+                        <T style={styles.moodBadgeText} text={`Feeling ${moodInfo.label}`} />
                     </View>
                 ) : null}
-                <Text style={styles.content}>{post.description || post.content}</Text>
+                <T style={styles.content} text={post.description || post.content} />
                 {post.imageUrl ? <Image source={{uri: post.imageUrl}} style={styles.postImage} /> : null}
 
                 <View style={styles.engagementRow}>
@@ -151,11 +155,11 @@ const UserHomeScreen = ({navigation}) => {
                     <Icon name="chat-bubble-outline" size={20} color="#536057" />
                     <Text style={styles.engagementText}>{post.comments?.length || 0}</Text>
                     <Icon name="share" size={20} color="#536057" />
-                    <Text style={styles.shareText}>Share</Text>
+                    <T style={styles.shareText}>Share</T>
                     <Icon name="bookmark-border" size={21} color="#536057" />
                 </View>
 
-                <Text style={styles.commentHeading}>Comments ({post.comments?.length || 0})</Text>
+                <T style={styles.commentHeading} text={`Comments (${post.comments?.length || 0})`} />
                 {(post.comments || []).map(comment => {
                     const commentIsBeingEdited = editingComment?.id === comment._id
                     const commentIsOwned = comment.user?._id === user?._id
@@ -164,13 +168,13 @@ const UserHomeScreen = ({navigation}) => {
                             <Text style={styles.commentAuthor}>{comment.user?.name || 'User'}</Text>
                             {commentIsBeingEdited ? (
                                 <TextInput value={editingComment.content} onChangeText={content => setEditingComment({...editingComment, content})} style={styles.editInput} />
-                            ) : <Text style={styles.commentContent}>{comment.content}</Text>}
+                            ) : <T style={styles.commentContent} text={comment.content} />}
                             {commentIsOwned && (
                                 <View style={styles.inlineActions}>
                                     {commentIsBeingEdited ? (
-                                        <TouchableOpacity onPress={() => saveComment(post._id, comment._id, editingComment.content)}><Text style={styles.actionText}>Save</Text></TouchableOpacity>
-                                    ) : <TouchableOpacity onPress={() => setEditingComment({id: comment._id, content: comment.content})}><Text style={styles.actionText}>Edit</Text></TouchableOpacity>}
-                                    <TouchableOpacity onPress={() => removeComment(post._id, comment._id)}><Text style={styles.deleteText}>Delete</Text></TouchableOpacity>
+                                        <TouchableOpacity onPress={() => saveComment(post._id, comment._id, editingComment.content)}><T style={styles.actionText}>Save</T></TouchableOpacity>
+                                    ) : <TouchableOpacity onPress={() => setEditingComment({id: comment._id, content: comment.content})}><T style={styles.actionText}>Edit</T></TouchableOpacity>}
+                                    <TouchableOpacity onPress={() => removeComment(post._id, comment._id)}><T style={styles.deleteText}>Delete</T></TouchableOpacity>
                                 </View>
                             )}
                         </View>
@@ -180,7 +184,7 @@ const UserHomeScreen = ({navigation}) => {
                     <TextInput
                         value={commentText[post._id] || ''}
                         onChangeText={content => setCommentText(current => ({...current, [post._id]: content}))}
-                        placeholder="Add a comment..."
+                        placeholder={t('addComment')}
                         placeholderTextColor="#8A918A"
                         style={styles.commentInput}
                     />
@@ -240,17 +244,13 @@ const UserHomeScreen = ({navigation}) => {
                             </View>
                             <View style={styles.messageBannerContent}>
                                 <View style={styles.approvedBannerHeader}>
-                                    <Text style={styles.messageBannerTitle}>
-                                        Message from {latestMessage.relatedUserName || 'Professional'}
-                                    </Text>
+                                    <T style={styles.messageBannerTitle} text={`Message from ${latestMessage.relatedUserName || 'Professional'}`} />
                                     <View style={styles.messageNewBadge}>
-                                        <Text style={styles.newBadgeText}>NEW</Text>
+                                        <T style={styles.newBadgeText}>NEW</T>
                                     </View>
                                 </View>
-                                <Text style={styles.messageBannerText} numberOfLines={2}>
-                                    {latestMessage.message}
-                                </Text>
-                                <Text style={styles.messageBannerTap}>Tap to open chat & reply →</Text>
+                                <T style={styles.messageBannerText} numberOfLines={2} text={latestMessage.message} />
+                                <T style={styles.messageBannerTap}>Tap to open chat & reply →</T>
                             </View>
                         </TouchableOpacity>
                     )}
@@ -261,16 +261,14 @@ const UserHomeScreen = ({navigation}) => {
                             </View>
                             <View style={styles.approvedBannerContent}>
                                 <View style={styles.approvedBannerHeader}>
-                                    <Text style={styles.approvedBannerTitle}>Booking Request Accepted! 🎉</Text>
+                                    <T style={styles.approvedBannerTitle}>Booking Request Accepted! 🎉</T>
                                     {!latestApprovedBooking.isRead && (
                                         <View style={styles.newBadge}>
-                                            <Text style={styles.newBadgeText}>NEW</Text>
+                                            <T style={styles.newBadgeText}>NEW</T>
                                         </View>
                                     )}
                                 </View>
-                                <Text style={styles.approvedBannerMessage} numberOfLines={2}>
-                                    {latestApprovedBooking.message}
-                                </Text>
+                                <T style={styles.approvedBannerMessage} numberOfLines={2} text={latestApprovedBooking.message} />
                                 <View style={styles.approvedBannerButtons}>
                                     {latestApprovedBooking.relatedUserId && (
                                         <TouchableOpacity
@@ -282,23 +280,25 @@ const UserHomeScreen = ({navigation}) => {
                                             activeOpacity={0.8}
                                         >
                                             <Icon name="chat" size={14} color="#FFFFFF" />
-                                            <Text style={styles.approvedBannerChatBtnText}>Chat with Professional</Text>
+                                            <T style={styles.approvedBannerChatBtnText}>Chat with Professional</T>
                                         </TouchableOpacity>
                                     )}
                                     <TouchableOpacity
                                         onPress={() => navigation.navigate('UserNotifications')}
                                         activeOpacity={0.7}
                                     >
-                                        <Text style={styles.approvedBannerTap}>View Details →</Text>
+                                        <T style={styles.approvedBannerTap}>View Details →</T>
                                     </TouchableOpacity>
                                 </View>
                             </View>
                         </View>
                     )}
-                    <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><Text style={styles.composerText}>What's on your mind?</Text><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
-                    <View style={styles.feedTabs}><Text style={styles.activeTab}>For You</Text><Text style={styles.tab}>Following</Text><Text style={styles.tab}>Latest</Text></View>
+                    <TouchableOpacity style={styles.composer} onPress={() => navigation.navigate('Create')}><Icon name="spa" size={22} color="#243024" /><T style={styles.composerText}>{t('whatsOnMind')}</T><Icon name="image" size={22} color="#243024" /></TouchableOpacity>
+                    {/* ★ ALWAYS-VISIBLE language switcher — whole-page translate; Zoom links/IDs stay English */}
+                    <LanguageBar compact />
+                    <View style={styles.feedTabs}><T style={styles.activeTab}>{t('forYou')}</T><T style={styles.tab}>{t('following')}</T><T style={styles.tab}>{t('latest')}</T></View>
                 </>}
-                ListEmptyComponent={!isLoading ? <Text style={styles.empty}>No posts yet. Share the first thought.</Text> : null}
+                ListEmptyComponent={!isLoading ? <T style={styles.empty}>{t('noPostsYet')}</T> : null}
             />
             <TouchableOpacity 
                 style={styles.fab}
@@ -311,7 +311,7 @@ const UserHomeScreen = ({navigation}) => {
                     <View style={styles.fabIconContainer}>
                         <Icon name="volunteer-activism" size={24} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.fabLabel}>Professional help</Text>
+                    <T style={styles.fabLabel}>Professional help</T>
                 </View>
             </TouchableOpacity>
         </SafeAreaView>
@@ -356,6 +356,11 @@ const styles = StyleSheet.create({
     brandTagline: {fontSize: 10, color: '#4F5A51', marginTop: 2},
     composer: {height: 60, marginHorizontal: 2, paddingHorizontal: 15, borderRadius: 13, borderWidth: 1, borderColor: '#E0E8DC', backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center'},
     composerText: {flex: 1, marginLeft: 14, color: '#69736B', fontSize: 14},
+    langSwitchRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingTop: 10},
+    langSwitchChip: {paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#E8F0E4', borderWidth: 1.5, borderColor: '#4E8C4A'},
+    langSwitchChipActive: {backgroundColor: '#4E8C4A'},
+    langSwitchText: {fontSize: 13, fontWeight: '800', color: '#4E8C4A'},
+    langSwitchTextActive: {color: '#FFFFFF'},
     feedTabs: {height: 58, borderBottomWidth: 1, borderBottomColor: '#E0E8DC', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center'},
     activeTab: {height: 58, paddingTop: 21, color: '#276D3B', fontWeight: '700', borderBottomWidth: 2, borderBottomColor: '#3F9651'},
     tab: {color: '#1B251D', fontSize: 13},

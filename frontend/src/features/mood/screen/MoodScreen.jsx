@@ -4,6 +4,9 @@ import {SafeAreaView} from 'react-native-safe-area-context'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import {useAuth} from '../../../context/AuthContext'
 import {getMoods, saveMood} from '../services/moodService'
+import {useLanguage} from '../../../context/LanguageContext'
+import T from '../../../components/TranslateText'
+import LanguageBar from '../../../components/LanguageBar'
 
 const MOODS = [
     ['Very Bad', 'emoticon-dead-outline', '#D96A5D'],
@@ -15,6 +18,7 @@ const MOODS = [
 
 const MoodScreen = ({navigation}) => {
     const {token} = useAuth()
+    const {t} = useLanguage()
     const [mood, setMood] = useState(4)
     const [intensity, setIntensity] = useState(7)
     const [note, setNote] = useState('')
@@ -61,14 +65,16 @@ const MoodScreen = ({navigation}) => {
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Mood</Text>
+                    <T style={styles.title}>{t('mood')}</T>
                     <Pressable onPress={() => navigation.navigate('MoodHistory')} hitSlop={12}>
                         <MaterialCommunityIcons name="calendar-month-outline" size={25} color="#26342A" />
                     </Pressable>
                 </View>
+                {/* ★ Always-visible language switcher */}
+                <LanguageBar compact />
                 <View style={styles.formCard}>
-                    <Text style={styles.question}>How are you feeling today?</Text>
-                    <Text style={styles.helper}>Your feelings matter</Text>
+                    <T style={styles.question}>{t('howFeelingToday')}</T>
+                    <T style={styles.helper}>{t('feelingsMatter')}</T>
                     <View style={styles.moodRow}>
                         {MOODS.map(([label, icon, color], index) => {
                             const selected = index + 1 === mood
@@ -93,7 +99,7 @@ const MoodScreen = ({navigation}) => {
                     <TextInput value={note} onChangeText={setNote} placeholder="Write your thoughts..." placeholderTextColor="#8B958C" multiline maxLength={200} textAlignVertical="top" style={styles.noteInput} />
                     <Text style={styles.counter}>{note.length}/200</Text>
                     <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-                        {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveText}>Save Mood</Text>}
+                        {isSaving ? <ActivityIndicator color="#FFF" /> : <T style={styles.saveText}>{t('saveMood')}</T>}
                     </Pressable>
                 </View>
             </ScrollView>

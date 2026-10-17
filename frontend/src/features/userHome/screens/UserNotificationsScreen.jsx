@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,14 +15,18 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config/api';
+import T from '../../../components/TranslateText';
+import LanguageBar from '../../../components/LanguageBar';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function UserNotificationsScreen({ navigation }) {
+  const { t } = useLanguage();
   const { token, authFetch } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await authFetch(`${API_BASE_URL}/api/users/notifications`);
@@ -36,7 +40,7 @@ export default function UserNotificationsScreen({ navigation }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authFetch]);
 
   const markAsRead = async (notificationId) => {
     try {
@@ -80,7 +84,7 @@ export default function UserNotificationsScreen({ navigation }) {
 
   useEffect(() => {
     loadNotifications();
-  }, [token]);
+  }, [loadNotifications, token]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -182,7 +186,7 @@ export default function UserNotificationsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#17231A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <T style={styles.headerTitle}>{t('notifications')}</T>
         {notifications.some(n => !n.isRead) && (
           <TouchableOpacity
             style={styles.markAllReadButton}
@@ -193,24 +197,27 @@ export default function UserNotificationsScreen({ navigation }) {
             {isMarkingAll ? (
               <ActivityIndicator size={16} color="#4E8C4A" />
             ) : (
-              <Text style={styles.markAllReadText}>Mark all read</Text>
+              <T style={styles.markAllReadText}>{t('markAllRead')}</T>
             )}
           </TouchableOpacity>
         )}
       </View>
 
+      {/* Always-visible language switcher — Zoom link values stay English */}
+      <LanguageBar compact />
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4E8C4A" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
+          <T style={styles.loadingText}>{t('loadingNotifications')}</T>
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="notifications-off-outline" size={64} color="#A0A0A0" />
-          <Text style={styles.emptyText}>No notifications yet</Text>
-          <Text style={styles.emptySubtext}>
-            You'll see booking updates and other notifications here
-          </Text>
+          <T style={styles.emptyText}>{t('noNotifications')}</T>
+          <T style={styles.emptySubtext}>
+            {t('notificationsDesc')}
+          </T>
         </View>
       ) : (
         <ScrollView 
@@ -244,21 +251,26 @@ export default function UserNotificationsScreen({ navigation }) {
                   />
                 </View>
                 <View style={styles.content}>
-                  <Text style={styles.title}>{notification.title}</Text>
-                  <Text style={styles.message}>{notification.message}</Text>
+                  <T text={notification.title} style={styles.title} />
+                  {/* Zoom-bearing messages: translate wrapper text but keep raw link English */}
+                  {notification.type === 'zoom_link_sent' ? (
+                    <Text style={styles.message}>{notification.message}</Text>
+                  ) : (
+                    <T text={notification.message} style={styles.message} />
+                  )}
                   {zoomDetails && (
                     <View style={styles.zoomDetailsBox}>
                       <View style={styles.zoomDetailRow}>
-                        <Text style={styles.zoomDetailLabel}>Meeting ID:</Text>
-                        <Text style={styles.zoomDetailValue}>{zoomDetails.meetingId}</Text>
+                        <T style={styles.zoomDetailLabel}>{t('meetingId')}</T>
+                        <Text style={styles.zoomDetailValue} selectable>{zoomDetails.meetingId}</Text>
                       </View>
                       <View style={styles.zoomDetailRow}>
-                        <Text style={styles.zoomDetailLabel}>Password:</Text>
-                        <Text style={styles.zoomDetailValue}>{zoomDetails.password}</Text>
+                        <T style={styles.zoomDetailLabel}>{t('password')}</T>
+                        <Text style={styles.zoomDetailValue} selectable>{zoomDetails.password}</Text>
                       </View>
                       <View style={styles.zoomDetailRow}>
-                        <Text style={styles.zoomDetailLabel}>Link:</Text>
-                        <Text style={styles.zoomDetailLink}>
+                        <T style={styles.zoomDetailLabel}>{t('link')}</T>
+                        <Text style={styles.zoomDetailLink} selectable>
                           {zoomDetails.fullLink}
                         </Text>
                       </View>

@@ -20,9 +20,13 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { COLORS } from '../styles/volunteerDashboardStyles';
 import { acceptVolunteerRequest, declineVolunteerRequest, getVolunteerDashboardData, getVolunteerRequests, sendZoomLink } from '../services/volunteerService';
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from '../../../context/LanguageContext';
+import T from '../../../components/TranslateText';
+import LanguageBar from '../../../components/LanguageBar';
 
 export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoBack }) {
   const { token } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'accepted' | 'history'
   const [requestsList, setRequestsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -248,10 +252,13 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
           <TouchableOpacity onPress={handleGoBack} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color={TEXT_DARK} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Session Requests</Text>
+          <T style={styles.headerTitle}>{t('sessionRequests')}</T>
         </View>
         <Ionicons name="options-outline" size={20} color={GREEN} />
       </View>
+
+      {/* Always-visible language switcher — Zoom links/IDs stay English */}
+      <LanguageBar compact />
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -260,9 +267,9 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
           onPress={() => setActiveTab('pending')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            Pending ({pendingCount})
-          </Text>
+          <T style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
+            {t('pending')} ({pendingCount})
+          </T>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -270,9 +277,9 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
           onPress={() => setActiveTab('accepted')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.tabText, activeTab === 'accepted' && styles.tabTextActive]}>
-            Accepted ({acceptedCount})
-          </Text>
+          <T style={[styles.tabText, activeTab === 'accepted' && styles.tabTextActive]}>
+            {t('accepted')} ({acceptedCount})
+          </T>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -280,9 +287,9 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
           onPress={() => setActiveTab('history')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
-            History
-          </Text>
+          <T style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
+            {t('history')}
+          </T>
         </TouchableOpacity>
       </View>
 
@@ -294,17 +301,17 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
         {isLoading ? (
           <View style={styles.emptyStateContainer}>
             <ActivityIndicator size="large" color={GREEN} />
-            <Text style={styles.emptyTitle}>Loading requests...</Text>
+            <T style={styles.emptyTitle}>{t('loadingRequests')}</T>
           </View>
         ) : filteredRequests.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="clipboard-outline" size={48} color={TEXT_MUTED} />
-            <Text style={styles.emptyTitle}>No {activeTab} requests</Text>
-            <Text style={styles.emptySubtitle}>
+            <T style={styles.emptyTitle}>No {activeTab} {t('noRequests')}</T>
+            <T style={styles.emptySubtitle}>
               {activeTab === 'pending'
-                ? "You're all caught up! New requests from users will appear here."
+                ? t('caughtUp')
                 : `No ${activeTab} session requests found.`}
-            </Text>
+            </T>
           </View>
         ) : (
           filteredRequests.map((req) => (
@@ -317,15 +324,15 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
                   </Text>
                 </View>
                 <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{req.name}</Text>
+                  <T text={req.name} style={styles.userName} />
                   <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>{req.category}</Text>
+                    <T text={req.category} style={styles.categoryText} />
                   </View>
                 </View>
                 {(req.status === 'accepted' || req.status === 'confirmed') && (
                   <View style={styles.acceptedBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={GREEN} />
-                    <Text style={styles.acceptedBadgeText}>Accepted</Text>
+                    <T style={styles.acceptedBadgeText}>{t('accepted')}</T>
                   </View>
                 )}
               </View>
@@ -338,11 +345,11 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
                 </Text>
               </View>
 
-              {/* User Note */}
+              {/* User Note — user-typed, translated */}
               {req.note ? (
                 <View style={styles.noteBox}>
                   <Text style={styles.noteLabel}>User note:</Text>
-                  <Text style={styles.noteText}>"{req.note}"</Text>
+                  <T text={req.note} style={styles.noteText} />
                 </View>
               ) : null}
 
@@ -407,23 +414,23 @@ export default function VolunteerRequestsScreen({ navigation, onTabChange, onGoB
                     )}
                   </View>
 
-                  {/* Display Zoom link with open buttons */}
+                  {/* Display Zoom link — Meeting ID / Password / Link ALWAYS stay English (never translated) */}
                   {req.zoomLinkSent && req.zoomMeetingLink && (() => {
                     const zoomDetails = parseZoomDetails(req.zoomMeetingLink);
                     return zoomDetails ? (
                       <View style={styles.zoomLinkContainer}>
                         <Text style={styles.zoomLinkLabel}>Meeting Details</Text>
                         <View style={styles.zoomDetailRow}>
-                          <Text style={styles.zoomDetailLabel}>Meeting ID:</Text>
-                          <Text style={styles.zoomDetailValue}>{zoomDetails.meetingId}</Text>
+                          <T style={styles.zoomDetailLabel}>{t('meetingId')}</T>
+                          <Text style={styles.zoomDetailValue} selectable>{zoomDetails.meetingId}</Text>
                         </View>
                         <View style={styles.zoomDetailRow}>
-                          <Text style={styles.zoomDetailLabel}>Password:</Text>
-                          <Text style={styles.zoomDetailValue}>{zoomDetails.password}</Text>
+                          <T style={styles.zoomDetailLabel}>{t('password')}</T>
+                          <Text style={styles.zoomDetailValue} selectable>{zoomDetails.password}</Text>
                         </View>
                         <View style={styles.zoomDetailRow}>
-                          <Text style={styles.zoomDetailLabel}>Link:</Text>
-                          <Text style={styles.zoomDetailLink}>
+                          <T style={styles.zoomDetailLabel}>{t('link')}</T>
+                          <Text style={styles.zoomDetailLink} selectable>
                             {zoomDetails.fullLink}
                           </Text>
                         </View>

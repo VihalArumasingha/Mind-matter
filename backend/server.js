@@ -22,6 +22,7 @@ import messageRoutes from './routes/message/messageRoutes.js'
 import startSessionReminderScheduler from './utils/sessionReminderScheduler.js'
 import reportRoutes from './routes/reportRoutes.js'
 import organizerNotificationRoutes from './routes/supportCircleOrganizer/notifications/organizerNotificationRoutes.js'
+import translateRoutes from './routes/translateRoutes.js'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,6 +62,7 @@ app.use('/api/moderation', moderationRoutes);
 app.use('/api/messages', messageRoutes);
 console.log('[Server] Message routes mounted at /api/messages');
 app.use('/api/organizer/notifications', organizerNotificationRoutes);
+app.use('/api/translate', translateRoutes);
 
 const startServer = async () => {
     try {

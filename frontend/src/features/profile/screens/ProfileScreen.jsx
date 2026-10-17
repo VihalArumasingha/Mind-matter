@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from '../../../context/LanguageContext';
 import { deleteAccount } from '../services/profileService';
 import TherapistApplicationForm from '../../admin/therapist/TherapistApplicationForm'; 
 import { getMyPosts } from '../../posts/services/postService';
@@ -20,6 +21,7 @@ import CommunityOrganizerBadge from '../../../components/CommunityOrganizerBadge
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, token } = useAuth();
+  const { language, changeLanguage, t, LANGUAGES } = useLanguage();
   
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [myPosts, setMyPosts] = useState([]);
@@ -111,7 +113,7 @@ const ProfileScreen = ({ navigation }) => {
             onPress={() => navigation.goBack()}>
             <Text style={styles.backArrow}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={styles.headerTitle}>{t('myProfile')}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -144,22 +146,22 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <Text style={styles.sectionTitle}>{t('personalInfo')}</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Full name</Text>
+              <Text style={styles.infoLabel}>{t('fullName')}</Text>
               <Text style={styles.infoValue}>{user?.name}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoLabel}>{t('email')}</Text>
               <Text style={styles.infoValue}>{user?.email}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Bio</Text>
+              <Text style={styles.infoLabel}>{t('bio')}</Text>
               <Text style={styles.infoValue}>
-                {user?.bio || 'No bio added yet'}
+                {user?.bio || t('noBio')}
               </Text>
             </View>
           </View>
@@ -168,8 +170,32 @@ const ProfileScreen = ({ navigation }) => {
         <Pressable
           style={styles.editButton}
           onPress={() => navigation.navigate('EditProfile')}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Text style={styles.editButtonText}>{t('editProfile')}</Text>
         </Pressable>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('appLanguage')}</Text>
+          <View style={styles.infoCard}>
+            <Text style={[styles.infoLabel, { marginBottom: 10 }]}>
+              {t('appLanguageDesc')}
+            </Text>
+            <View style={styles.langRow}>
+              {LANGUAGES.map(lang => {
+                const active = lang.code === language;
+                return (
+                  <Pressable
+                    key={lang.code}
+                    onPress={() => changeLanguage(lang.code)}
+                    style={[styles.langChip, active && styles.langChipActive]}>
+                    <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
+                      {lang.nativeLabel}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
 
         <View style={styles.section}>
           <View style={styles.postsTitleRow}>
@@ -570,7 +596,34 @@ roleBadgeIcon: {
         fontSize: 14,
         fontWeight: '600',
         color: '#B94A48',
-    }
+    },
+    langRow: {
+        flexDirection: 'row',
+        paddingBottom: 16,
+        gap: 10,
+    },
+    langChip: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F0F4EE',
+        borderWidth: 1.5,
+        borderColor: '#D9E1D6',
+    },
+    langChipActive: {
+        backgroundColor: '#4E8C4A',
+        borderColor: '#4E8C4A',
+    },
+    langChipText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#4E8C4A',
+    },
+    langChipTextActive: {
+        color: '#FFFFFF',
+    },
 })
 
 export default ProfileScreen

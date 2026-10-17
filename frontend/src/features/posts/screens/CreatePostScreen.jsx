@@ -5,6 +5,9 @@ import Icon from 'react-native-vector-icons/MaterialIcons'
 import {pick, types} from '@react-native-documents/picker'
 import {useAuth} from '../../../context/AuthContext'
 import {createPost} from '../services/postService'
+import {useLanguage} from '../../../context/LanguageContext'
+import T from '../../../components/TranslateText'
+import LanguageBar from '../../../components/LanguageBar'
 
 const MOODS = [
     {value: 'happy', label: 'Happy', emoji: '😊'},
@@ -17,6 +20,7 @@ const MOODS = [
 
 const CreatePostScreen = ({navigation}) => {
     const {token} = useAuth()
+    const {t} = useLanguage()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [image, setImage] = useState(null)
@@ -73,16 +77,19 @@ const CreatePostScreen = ({navigation}) => {
                     <Icon name="close" size={26} color="#243024" />
                 </TouchableOpacity>
                 <View style={styles.headerTitleWrap}>
-                    <Text style={styles.headerTitle}>Create a Post</Text>
-                    <Text style={styles.headerSubtitle}>Share your thoughts. You matter.</Text>
+                    <T style={styles.headerTitle}>{t('createPost')}</T>
+                    <T style={styles.headerSubtitle}>{t('shareThoughts')}</T>
                 </View>
                 <TouchableOpacity
                     disabled={isSaving}
                     onPress={submitPost}
                     style={[styles.postButton, isSaving && styles.disabledButton]}>
-                    <Text style={styles.postButtonText}>{isSaving ? 'Posting...' : 'Post'}</Text>
+                    <T style={styles.postButtonText}>{isSaving ? t('posting') : t('post')}</T>
                 </TouchableOpacity>
             </View>
+
+            {/* ★ Always-visible language switcher */}
+            <LanguageBar compact />
 
             <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.card}>

@@ -1,6 +1,7 @@
 import React from 'react'
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import {useLanguage} from '../context/LanguageContext'
 
 import UserHomeScreen from '../features/userHome/screens/UserHomeScreen'
 import CommunitiesScreen from '../features/userCommunities/screens/CommunitiesScreen'
@@ -11,6 +12,7 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen'
 const Tab = createBottomTabNavigator()
 
 const UserBottomTabs = () => {
+    const {t} = useLanguage()
     console.log('[UserBottomTabs] Component rendering')
     return (
         <Tab.Navigator
@@ -72,26 +74,31 @@ const UserBottomTabs = () => {
             <Tab.Screen
                 name="Home"
                 component={UserHomeScreen}
+                options={{tabBarLabel: t('home')}}
             />
 
             <Tab.Screen
                 name="Communities"
                 component={CommunitiesScreen}
+                options={{tabBarLabel: t('communities')}}
             />
 
             <Tab.Screen
                 name="Create"
                 component={CreatePostScreen}
+                options={{tabBarLabel: t('create')}}
             />
 
             <Tab.Screen
                 name="Mood"
                 component={MoodScreen}
+                options={{tabBarLabel: t('mood')}}
             />
 
             <Tab.Screen
                 name="Profile"
                 component={ProfileScreen}
+                options={{tabBarLabel: t('profile')}}
             />
         </Tab.Navigator>
     )

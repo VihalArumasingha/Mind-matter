@@ -15,6 +15,9 @@ import {SafeAreaView} from 'react-native-safe-area-context'
 import {useFocusEffect, useNavigation} from '@react-navigation/native'
 
 import {useAuth} from '../../../context/AuthContext'
+import {useLanguage} from '../../../context/LanguageContext'
+import T from '../../../components/TranslateText'
+import LanguageBar from '../../../components/LanguageBar'
 import {
     getAvailableSupportCircles,
     getMyMemberships,
@@ -24,6 +27,7 @@ import {
 const CommunitiesScreen = () => {
     const navigation = useNavigation()
     const {token} = useAuth()
+    const {t} = useLanguage()
 
     const [circles, setCircles] = useState([])
     const [memberships, setMemberships] = useState([])
@@ -164,17 +168,13 @@ const openCommunityDetails = circle => {
                         </View>
 
                         <View style={styles.cardTitleContainer}>
-                            <Text style={styles.communityTitle} numberOfLines={1}>
-                                {item.topic || 'Support Community'}
-                            </Text>
-                            {item.category ? <Text style={styles.categoryText}>{item.category}</Text> : null}
+                            <T style={styles.communityTitle} numberOfLines={1} text={item.topic || 'Support Community'} />
+                            {item.category ? <T style={styles.categoryText} text={item.category} /> : null}
                         </View>
                         <Text style={styles.arrow}>›</Text>
                     </View>
 
-                    <Text style={styles.communityDescription} numberOfLines={3}>
-                        {item.description || 'A safe space to connect, share and support one another.'}
-                    </Text>
+                    <T style={styles.communityDescription} numberOfLines={3} text={item.description || 'A safe space to connect, share and support one another.'} />
 
                     <View style={styles.cardBottomRow}>
                         <View style={styles.memberInfo}>
@@ -191,7 +191,7 @@ const openCommunityDetails = circle => {
 
                 <View style={styles.communityActions}>
                     <Pressable style={styles.viewCommunityButton} onPress={() => openCommunity(item)}>
-                        <Text style={styles.viewCommunityButtonText}>View community</Text>
+                        <T style={styles.viewCommunityButtonText}>{t('viewCommunity')}</T>
                     </Pressable>
                     {(() => {
                         const membership = memberships.find(entry =>
@@ -206,16 +206,16 @@ const openCommunityDetails = circle => {
                                     ? 'Request rejected'
                                     : membership?.status === 'removed'
                                         ? 'Removed'
-                                        : 'Request to join'
+                                        : t('requestToJoin')
 
                         return (
                             <Pressable
                                 disabled={!canRequest || joiningCircleId === item._id}
                                 style={[styles.joinCommunityButton, !canRequest && styles.joinCommunityButtonDisabled]}
                                 onPress={() => joinCommunity(item)}>
-                                <Text style={[styles.joinCommunityButtonText, !canRequest && styles.joinCommunityButtonTextDisabled]}>
+                                <T style={[styles.joinCommunityButtonText, !canRequest && styles.joinCommunityButtonTextDisabled]}>
                                     {joiningCircleId === item._id ? 'Sending...' : statusLabel}
-                                </Text>
+                                </T>
                             </Pressable>
                         )
                     })()}
@@ -243,18 +243,21 @@ const openCommunityDetails = circle => {
             <View style={styles.container}>
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.title}>Communities</Text>
+                        <T style={styles.title}>Communities</T>
 
-                        <Text style={styles.subtitle}>
+                        <T style={styles.subtitle}>
                             Find a space where you feel supported
-                        </Text>
+                        </T>
                     </View>
                 </View>
 
+                {/* ★ Always-visible language switcher — whole page translates */}
+                <LanguageBar compact />
+
                 <View style={styles.sectionTabs}>
                     {[
-                        {key: 'explore', label: 'Explore'},
-                        {key: 'mine', label: 'My communities'},
+                        {key: 'explore', label: t('explore')},
+                        {key: 'mine', label: t('myCommunities')},
                     ].map(section => (
                         <Pressable
                             key={section.key}
@@ -265,12 +268,12 @@ const openCommunityDetails = circle => {
                                 styles.sectionTab,
                                 selectedSection === section.key && styles.sectionTabActive,
                             ]}>
-                            <Text style={[
+                            <T style={[
                                 styles.sectionTabText,
                                 selectedSection === section.key && styles.sectionTabTextActive,
                             ]}>
                                 {section.label}
-                            </Text>
+                            </T>
                         </Pressable>
                     ))}
                 </View>
@@ -281,7 +284,7 @@ const openCommunityDetails = circle => {
                     <TextInput
                         value={searchQuery}
                         onChangeText={setSearchQuery}
-                        placeholder="Search communities..."
+                        placeholder={t('searchCommunities')}
                         placeholderTextColor="#8B9588"
                         style={styles.searchInput}
                         returnKeyType="search"
@@ -291,7 +294,7 @@ const openCommunityDetails = circle => {
                 {selectedSection === 'explore' ? (
                     <View style={styles.filters}>
                         <View style={styles.filterHeadingRow}>
-                            <Text style={styles.filterTitle}>Filter communities</Text>
+                            <T style={styles.filterTitle}>{t('filterCommunities')}</T>
                             {(categoryFilter !== 'All' || meetingFilter !== 'all') ? (
                                 <Pressable
                                     accessibilityRole="button"
@@ -337,9 +340,9 @@ const openCommunityDetails = circle => {
                 ) : null}
 
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>
-                        {selectedSection === 'explore' ? 'Explore Communities' : 'My Communities'}
-                    </Text>
+                    <T style={styles.sectionTitle}>
+                        {selectedSection === 'explore' ? t('exploreCommunities') : t('myCommunities')}
+                    </T>
 
                     <Text style={styles.communityCount}>
                         {displayedCircles.length}
